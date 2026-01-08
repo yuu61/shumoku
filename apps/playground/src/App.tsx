@@ -19,7 +19,7 @@ function App() {
   const [svgContent, setSvgContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleParseAndRender = () => {
+  const handleParseAndRender = async () => {
     try {
       // Parse YAML
       const result = parserV2.parse(yamlContent)
@@ -39,14 +39,14 @@ function App() {
       setNetworkGraph(result.graph)
       console.log('Parsed network:', result.graph)
 
-      // Layout
+      // Layout (async with ELK.js)
       const layout = new layoutV2.HierarchicalLayoutV2({
         direction: result.graph.settings?.direction || 'TB',
         nodeSpacing: result.graph.settings?.nodeSpacing || 50,
         rankSpacing: result.graph.settings?.rankSpacing || 100,
         subgraphPadding: result.graph.settings?.subgraphPadding || 40,
       })
-      const layoutRes = layout.layout(result.graph)
+      const layoutRes = await layout.layoutAsync(result.graph)
       setLayoutResult(layoutRes)
       console.log('Layout result:', layoutRes)
 

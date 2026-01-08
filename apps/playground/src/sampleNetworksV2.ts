@@ -31,20 +31,21 @@ subgraphs:
       stroke: "#d4a017"
       strokeWidth: 2
 
-  # Core Layer
-  - id: core
-    label: "Core Layer (EX4000-VC)"
-    style:
-      fill: "#e6f7ff"
-      stroke: "#0055a6"
-      strokeWidth: 2
-
   # Venue Layer
   - id: venue
     label: "Venue: SRE NEXT (TOC Ariake)"
     style:
       fill: "#fffbf0"
       stroke: "#d4a017"
+
+  # NOC (nested in venue) - Core equipment location
+  - id: noc
+    label: "NOC (Network Operations Center)"
+    parent: venue
+    style:
+      fill: "#e6f7ff"
+      stroke: "#0055a6"
+      strokeWidth: 2
 
   # East Wing (nested in venue)
   - id: zone-east
@@ -137,7 +138,7 @@ nodes:
       stroke: "#dc2626"
       strokeWidth: 2
 
-  # ========== Core Layer ==========
+  # ========== NOC (Core + Aggregation) ==========
   - id: ex-vc
     label:
       - "<b>Core-SW (VC)</b>"
@@ -145,13 +146,12 @@ nodes:
       - "DHCP Relay / Inter-VLAN"
     shape: trapezoid
     type: l3-switch
-    parent: core
+    parent: noc
     style:
       fill: "#bfdbfe"
       stroke: "#2563eb"
       strokeWidth: 2
 
-  # ========== Venue Layer ==========
   - id: venue-agg
     label:
       - "<b>Venue-Agg (EX4400)</b>"
@@ -159,7 +159,7 @@ nodes:
       - "Uplink: ae0 (10G)"
     shape: trapezoid
     type: l3-switch
-    parent: venue
+    parent: noc
     style:
       fill: "#ddd6fe"
       stroke: "#7c3aed"

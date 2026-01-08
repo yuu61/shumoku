@@ -266,17 +266,17 @@ export class SVGRendererV2 {
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
     const markerEnd = link.arrow !== 'none' ? 'url(#arrow)' : ''
 
-    // Generate path
+    // Generate path - use bezier curve for smooth lines
     let path: string
 
     if (points.length === 4) {
-      // Bezier curve
+      // Cubic bezier curve (start, control1, control2, end)
       path = `M ${points[0].x} ${points[0].y} C ${points[1].x} ${points[1].y}, ${points[2].x} ${points[2].y}, ${points[3].x} ${points[3].y}`
     } else if (points.length === 2) {
       // Straight line
       path = `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
     } else {
-      // Polyline
+      // Polyline (fallback)
       path = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
     }
 
@@ -320,22 +320,38 @@ ${result}`
 
   private getMidPoint(points: { x: number; y: number }[]): { x: number; y: number } {
     if (points.length === 4) {
-      // Bezier curve midpoint approximation
+      // Cubic bezier curve midpoint at t=0.5
       const t = 0.5
-      const x = Math.pow(1 - t, 3) * points[0].x +
-        3 * Math.pow(1 - t, 2) * t * points[1].x +
-        3 * (1 - t) * Math.pow(t, 2) * points[2].x +
-        Math.pow(t, 3) * points[3].x
-      const y = Math.pow(1 - t, 3) * points[0].y +
-        3 * Math.pow(1 - t, 2) * t * points[1].y +
-        3 * (1 - t) * Math.pow(t, 2) * points[2].y +
-        Math.pow(t, 3) * points[3].y
+      const mt = 1 - t
+      const x = mt * mt * mt * points[0].x +
+        3 * mt * mt * t * points[1].x +
+        3 * mt * t * t * points[2].x +
+        t * t * t * points[3].x
+      const y = mt * mt * mt * points[0].y +
+        3 * mt * mt * t * points[1].y +
+        3 * mt * t * t * points[2].y +
+        t * t * t * points[3].y
       return { x, y }
     }
 
-    // Linear midpoint
+    if (points.length === 2) {
+      // Simple midpoint between two points
+      return {
+        x: (points[0].x + points[1].x) / 2,
+        y: (points[0].y + points[1].y) / 2,
+      }
+    }
+
+    // For polylines, find the middle segment and get its midpoint
     const midIndex = Math.floor(points.length / 2)
-    return points[midIndex]
+    if (midIndex > 0 && midIndex < points.length) {
+      return {
+        x: (points[midIndex - 1].x + points[midIndex].x) / 2,
+        y: (points[midIndex - 1].y + points[midIndex].y) / 2,
+      }
+    }
+
+    return points[midIndex] || points[0]
   }
 
   private escapeXml(str: string): string {

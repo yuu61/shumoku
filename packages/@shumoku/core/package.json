@@ -44,6 +44,7 @@
     "lint": "biome check ."
   },
   "dependencies": {
+    "elkjs": "^0.11.0",
     "pixi.js": "^8.5.2"
   },
   "devDependencies": {

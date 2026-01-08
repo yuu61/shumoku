@@ -107,27 +107,71 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     app.stage.removeChildren()
 
     // Create containers for different layers
+    const locationContainer = new PIXI.Container()
     const moduleContainer = new PIXI.Container()
     const linkContainer = new PIXI.Container()
     const deviceContainer = new PIXI.Container()
 
-    // モジュール → リンク → デバイスの順で追加（リンクがデバイスの下に来るように）
+    // 場所 → モジュール → リンク → デバイスの順で追加（リンクがデバイスの下に来るように）
+    app.stage.addChild(locationContainer)
     app.stage.addChild(moduleContainer)
     app.stage.addChild(linkContainer)
     app.stage.addChild(deviceContainer)
 
-    console.log('Containers added to stage')
 
     // Create a map of device positions from layout nodes
     const devicePositions = new Map<string, { x: number; y: number }>()
     const deviceNodes = new Map<string, LayoutNode>()
-    layout.nodes.forEach((layoutNode) => {
-      devicePositions.set(layoutNode.id, {
-        x: layoutNode.position.x,
-        y: layoutNode.position.y,
+
+    // Handle Map format (location-based layout returns a Map)
+    if (layout.nodes instanceof Map) {
+      layout.nodes.forEach((layoutNode, nodeId) => {
+        devicePositions.set(nodeId, {
+          x: layoutNode.position.x,
+          y: layoutNode.position.y,
+        })
+        deviceNodes.set(nodeId, layoutNode)
       })
-      deviceNodes.set(layoutNode.id, layoutNode)
-    })
+    } else {
+      // Handle array format if needed
+      console.warn('Unexpected: layout.nodes is not a Map')
+    }
+
+
+    // Draw locations (use layout result, not network model)
+    if (layout.locations) {
+      layout.locations.forEach((layoutLocation) => {
+        const graphics = new PIXI.Graphics()
+        const { x, y, width, height } = layoutLocation.bounds
+
+        // Location background
+        const bgColor = layoutLocation.style?.backgroundColor || '#f0f4f8'
+        const borderColor = layoutLocation.style?.borderColor || '#4a5568'
+        const borderWidth = layoutLocation.style?.borderWidth || 2
+
+        // PixiJS v8 API
+        graphics.roundRect(x, y, width, height, 8)
+        graphics.fill({ color: colorToNumber(bgColor), alpha: 0.3 })
+        graphics.stroke({ width: borderWidth, color: colorToNumber(borderColor), alpha: 0.8 })
+
+        locationContainer.addChild(graphics)
+
+        // Location label
+        const labelStyle = new PIXI.TextStyle({
+          fontFamily: theme.typography.fontFamily.sans,
+          fontSize: theme.dimensions.fontSize.large,
+          fontWeight: String(theme.typography.fontWeight.bold) as PIXI.TextStyleFontWeight,
+          fill: colorToNumber(borderColor),
+        })
+
+        const label = new PIXI.Text(layoutLocation.name, labelStyle)
+        label.anchor.set(0.5, 0)
+        label.x = x + width / 2
+        label.y = y - 25
+
+        locationContainer.addChild(label)
+      })
+    }
 
     // Draw modules
     if (network.modules && layout.modules) {
@@ -139,17 +183,16 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         const { x, y, width, height } = layoutModule.bounds
         const padding = 20
 
-        // Module background
-        graphics.beginFill(colorToNumber(theme.colors.surface), 0.5)
-        graphics.lineStyle(2, colorToNumber(theme.colors.grid), 0.8)
-        graphics.drawRoundedRect(
+        // Module background (PixiJS v8 API)
+        graphics.roundRect(
           x - padding,
           y - padding,
           width + padding * 2,
           height + padding * 2,
           theme.dimensions.radius.medium,
         )
-        graphics.endFill()
+        graphics.fill({ color: colorToNumber(theme.colors.surface), alpha: 0.5 })
+        graphics.stroke({ width: 2, color: colorToNumber(theme.colors.grid), alpha: 0.8 })
 
         moduleContainer.addChild(graphics)
 
@@ -169,98 +212,137 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
       })
     }
 
-    // Draw links - シンプルな直線描画に戻す
-    network.links.forEach((link) => {
-      const sourcePos = devicePositions.get(link.source.deviceId)
-      const targetPos = devicePositions.get(link.target.deviceId)
+    // Draw location links (if available from layout)
+    if (layout.links && network.locationLinks) {
+      layout.links.forEach((layoutLink) => {
+        if (layoutLink.metadata?.type === 'location-link') {
+          const graphics = new PIXI.Graphics()
 
-      if (!sourcePos || !targetPos) {
-        console.warn(`Missing position for link ${link.id}`)
+          const style = (layoutLink.metadata.style || {}) as any
+          const lineColor = colorToNumber(style.color || '#2d3748')
+          const lineWidth = style.strokeWidth || 4
+
+          if (layoutLink.points && layoutLink.points.length > 1) {
+            graphics.moveTo(layoutLink.points[0].x, layoutLink.points[0].y)
+            for (let i = 1; i < layoutLink.points.length; i++) {
+              graphics.lineTo(layoutLink.points[i].x, layoutLink.points[i].y)
+            }
+            graphics.stroke({ width: lineWidth, color: lineColor, alpha: 0.8 })
+          }
+
+          linkContainer.addChild(graphics)
+        }
+      })
+    }
+
+    // Draw links using edge points from layout
+    layout.edges.forEach((layoutEdge, edgeId) => {
+      const link = network.links.find((l) => l.id === edgeId)
+      if (!link) {
+        console.warn(`Renderer: No matching link for edge ${edgeId}`)
+        return
+      }
+
+      const points = layoutEdge.points
+      if (!points || points.length < 2) {
+        console.warn(`Renderer: Edge ${edgeId} has no points or insufficient points:`, points)
         return
       }
 
       const graphics = new PIXI.Graphics()
 
-      // 線のスタイルを設定（帯域幅に応じた太さ）
-      const lineWidth = link.bandwidth?.includes('40G')
-        ? 6
+      // Check if this is a cross-location link (set by layout engine)
+      const isCrossLocation = (layoutEdge.data?.metadata as any)?.crossLocation === true
+
+      // 線のスタイルを設定
+      const baseWidth = link.bandwidth?.includes('40G')
+        ? 5
         : link.bandwidth?.includes('10G')
-          ? 5
+          ? 4
           : link.bandwidth?.includes('1G')
-            ? 4
-            : 3
+            ? 3
+            : 2
 
-      // 濃い青色の線を描画（より見やすく）
-      graphics.lineStyle(lineWidth, 0x2563eb, 1)
-      graphics.moveTo(sourcePos.x, sourcePos.y)
-      graphics.lineTo(targetPos.x, targetPos.y)
+      if (isCrossLocation && points.length >= 5) {
+        // Cross-location link with orthogonal routing
+        // Points: [device, edge1, gap1, gap2, edge2, device] or similar
 
-      // デバッグ用：線の端点を表示
-      graphics.beginFill(0x2563eb)
-      graphics.drawCircle(sourcePos.x, sourcePos.y, 3)
-      graphics.drawCircle(targetPos.x, targetPos.y, 3)
-      graphics.endFill()
+        // First segment: device to first edge point (internal)
+        graphics.moveTo(points[0].x, points[0].y)
+        graphics.lineTo(points[1].x, points[1].y)
+        graphics.stroke({ width: baseWidth, color: 0x64748b, alpha: 0.6 })
+
+        // Middle segments: through the gap (trunk, red)
+        for (let i = 1; i < points.length - 2; i++) {
+          graphics.moveTo(points[i].x, points[i].y)
+          graphics.lineTo(points[i + 1].x, points[i + 1].y)
+        }
+        graphics.stroke({ width: baseWidth + 2, color: 0xdc2626, alpha: 1 })
+
+        // Last segment: edge to device (internal)
+        graphics.moveTo(points[points.length - 2].x, points[points.length - 2].y)
+        graphics.lineTo(points[points.length - 1].x, points[points.length - 1].y)
+        graphics.stroke({ width: baseWidth, color: 0x64748b, alpha: 0.6 })
+
+        // Draw connector points at location boundaries
+        graphics.circle(points[1].x, points[1].y, 5)
+        graphics.circle(points[points.length - 2].x, points[points.length - 2].y, 5)
+        graphics.fill(0xdc2626)
+      } else if (isCrossLocation) {
+        // Fallback for simpler cross-location paths
+        graphics.moveTo(points[0].x, points[0].y)
+        for (let i = 1; i < points.length; i++) {
+          graphics.lineTo(points[i].x, points[i].y)
+        }
+        graphics.stroke({ width: baseWidth + 1, color: 0xdc2626, alpha: 0.8 })
+      } else {
+        // Internal link: curved bezier line
+        const isCurved = (layoutEdge.data?.metadata as any)?.curved === true
+
+        if (isCurved && points.length === 4) {
+          // Cubic bezier curve: [start, ctrl1, ctrl2, end]
+          graphics.moveTo(points[0].x, points[0].y)
+          graphics.bezierCurveTo(
+            points[1].x, points[1].y,  // control point 1
+            points[2].x, points[2].y,  // control point 2
+            points[3].x, points[3].y,  // end point
+          )
+        } else {
+          // Fallback to straight lines
+          graphics.moveTo(points[0].x, points[0].y)
+          for (let i = 1; i < points.length; i++) {
+            graphics.lineTo(points[i].x, points[i].y)
+          }
+        }
+        graphics.stroke({ width: baseWidth, color: 0x64748b, alpha: 0.6 })
+      }
 
       linkContainer.addChild(graphics)
 
-      // ポートとラベルの表示
-      if (sourcePos && targetPos) {
-        // Port labels at connection endpoints
-        if (link.source.portId) {
-          const portStyle = new PIXI.TextStyle({
-            fontFamily: theme.typography.fontFamily.mono,
-            fontSize: theme.dimensions.fontSize.tiny,
-            fill: colorToNumber(theme.colors.textSecondary),
-          })
+      // Bandwidth label for cross-location links (on the trunk segment middle)
+      if (isCrossLocation && link.bandwidth && points.length >= 5) {
+        const labelStyle = new PIXI.TextStyle({
+          fontFamily: theme.typography.fontFamily.mono,
+          fontSize: theme.dimensions.fontSize.small,
+          fill: 0xdc2626,
+          fontWeight: 'bold',
+        })
 
-          const sourcePortLabel = new PIXI.Text(link.source.portId, portStyle)
-          sourcePortLabel.x = sourcePos.x
-          sourcePortLabel.y = sourcePos.y + 40
-          sourcePortLabel.anchor.set(0.5)
+        // Find middle of trunk segment (points 2 and 3 for typical 6-point path)
+        const midIndex = Math.floor(points.length / 2)
+        const label = new PIXI.Text(link.bandwidth, labelStyle)
+        label.x = (points[midIndex - 1].x + points[midIndex].x) / 2
+        label.y = (points[midIndex - 1].y + points[midIndex].y) / 2
+        label.anchor.set(0.5)
 
-          linkContainer.addChild(sourcePortLabel)
-        }
+        const bg = new PIXI.Graphics()
+        bg.roundRect(-25, -10, 50, 20, 4)
+        bg.fill({ color: colorToNumber(theme.colors.background), alpha: 0.95 })
+        bg.x = label.x
+        bg.y = label.y
 
-        if (link.target.portId) {
-          const portStyle = new PIXI.TextStyle({
-            fontFamily: theme.typography.fontFamily.mono,
-            fontSize: theme.dimensions.fontSize.tiny,
-            fill: colorToNumber(theme.colors.textSecondary),
-          })
-
-          const targetPortLabel = new PIXI.Text(link.target.portId, portStyle)
-          targetPortLabel.x = targetPos.x
-          targetPortLabel.y = targetPos.y - 40
-          targetPortLabel.anchor.set(0.5)
-
-          linkContainer.addChild(targetPortLabel)
-        }
-
-        // Bandwidth label (if available)
-        if (link.bandwidth) {
-          const labelStyle = new PIXI.TextStyle({
-            fontFamily: theme.typography.fontFamily.mono,
-            fontSize: theme.dimensions.fontSize.small,
-            fill: colorToNumber(theme.colors.text),
-            fontWeight: 'bold',
-          })
-
-          const label = new PIXI.Text(link.bandwidth, labelStyle)
-          label.x = (sourcePos.x + targetPos.x) / 2
-          label.y = (sourcePos.y + targetPos.y) / 2
-          label.anchor.set(0.5)
-
-          // 背景を追加して見やすくする
-          const bg = new PIXI.Graphics()
-          bg.beginFill(colorToNumber(theme.colors.background), 0.9)
-          bg.drawRoundedRect(-25, -10, 50, 20, 4)
-          bg.endFill()
-          bg.x = label.x
-          bg.y = label.y
-
-          linkContainer.addChild(bg)
-          linkContainer.addChild(label)
-        }
+        linkContainer.addChild(bg)
+        linkContainer.addChild(label)
       }
     })
 
@@ -279,34 +361,26 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
       const shape = getDeviceShape(device.type)
       // レイアウトノードからサイズを取得、なければデフォルトサイズを使用
       const layoutNode = deviceNodes.get(device.id)
-      const size = layoutNode?.size || { width: 120, height: 80 }
+      const size = layoutNode?.size || { width: 60, height: 60 }
       const deviceColor =
         theme.colors.devices[device.type] || theme.colors.modules.default || theme.colors.primary
       const isHovered = hoveredNode === device.id
 
-      // Draw shadow if hovered
+      // Draw shadow if hovered (PixiJS v8 API)
       if (isHovered) {
-        graphics.beginFill(0x000000, 0.1)
         if (shape === 'rect') {
-          graphics.drawRect(-size.width / 2 + 2, -size.height / 2 + 2, size.width, size.height)
+          graphics.rect(-size.width / 2 + 2, -size.height / 2 + 2, size.width, size.height)
         } else if (shape === 'circle') {
-          graphics.drawCircle(2, 2, size.width / 2)
+          graphics.circle(2, 2, size.width / 2)
         }
-        graphics.endFill()
+        graphics.fill({ color: 0x000000, alpha: 0.1 })
       }
 
-      // Draw device shape
-      graphics.beginFill(colorToNumber(deviceColor))
-      graphics.lineStyle(
-        theme.dimensions.lineWidth.normal,
-        isHovered ? 0xffffff : colorToNumber(theme.colors.grid),
-        isHovered ? 0.8 : 0.3,
-      )
-
+      // Draw device shape (PixiJS v8 API)
       if (shape === 'rect') {
-        graphics.drawRect(-size.width / 2, -size.height / 2, size.width, size.height)
+        graphics.rect(-size.width / 2, -size.height / 2, size.width, size.height)
       } else if (shape === 'circle') {
-        graphics.drawCircle(0, 0, size.width / 2)
+        graphics.circle(0, 0, size.width / 2)
       } else if (shape === 'hexagon') {
         const radius = size.width / 2
         const angle = Math.PI / 3
@@ -317,7 +391,12 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         graphics.closePath()
       }
 
-      graphics.endFill()
+      graphics.fill(colorToNumber(deviceColor))
+      graphics.stroke({
+        width: theme.dimensions.lineWidth.normal,
+        color: isHovered ? 0xffffff : colorToNumber(theme.colors.grid),
+        alpha: isHovered ? 0.8 : 0.3,
+      })
       container.addChild(graphics)
 
       // Device name label
