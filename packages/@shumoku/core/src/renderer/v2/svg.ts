@@ -145,8 +145,9 @@ export class SVGRendererV2 {
 
     const rx = 8 // Border radius
 
-    // Check if subgraph has vendor icon
-    const hasIcon = subgraph.vendor && subgraph.service
+    // Check if subgraph has vendor icon (service for cloud, model for hardware)
+    const iconKey = subgraph.service || subgraph.model
+    const hasIcon = subgraph.vendor && iconKey
     const iconSize = 24
     const iconPadding = 8
 
@@ -169,16 +170,32 @@ export class SVGRendererV2 {
     if (hasIcon) {
       const iconContent = getVendorIcon(
         subgraph.vendor!,
-        subgraph.service!,
+        iconKey!,
         subgraph.resource,
         this.options.theme
       )
       if (iconContent) {
-        iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+        // Check if icon is a nested SVG (PNG-based with custom viewBox)
+        if (iconContent.startsWith('<svg')) {
+          const viewBoxMatch = iconContent.match(/viewBox="0 0 (\d+) (\d+)"/)
+          if (viewBoxMatch) {
+            const vbWidth = parseInt(viewBoxMatch[1])
+            const vbHeight = parseInt(viewBoxMatch[2])
+            const aspectRatio = vbWidth / vbHeight
+            const iconWidth = Math.round(iconSize * aspectRatio)
+            iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+    <svg width="${iconWidth}" height="${iconSize}" viewBox="0 0 ${vbWidth} ${vbHeight}">
+      ${iconContent.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')}
+    </svg>
+  </g>`
+          }
+        } else {
+          iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
     <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 48 48">
       ${iconContent}
     </svg>
   </g>`
+        }
       }
     }
 
@@ -279,15 +296,32 @@ export class SVGRendererV2 {
     const iconSize = 40
     const iconY = y - h / 2 + 12 // Position near top of node
 
-    // Try vendor-specific icon first
-    if (node.vendor && node.service) {
+    // Try vendor-specific icon first (service for cloud, model for hardware)
+    const iconKey = node.service || node.model
+    if (node.vendor && iconKey) {
       const vendorIcon = getVendorIcon(
         node.vendor,
-        node.service,
+        iconKey,
         node.resource,
         this.options.theme
       )
       if (vendorIcon) {
+        // Check if icon is a nested SVG (PNG-based with custom viewBox)
+        if (vendorIcon.startsWith('<svg')) {
+          // Extract viewBox to calculate aspect ratio
+          const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
+          if (viewBoxMatch) {
+            const vbWidth = parseInt(viewBoxMatch[1])
+            const vbHeight = parseInt(viewBoxMatch[2])
+            const aspectRatio = vbWidth / vbHeight
+            const iconWidth = Math.round(iconSize * aspectRatio)
+            return `<g class="node-icon" transform="translate(${x - iconWidth / 2}, ${iconY})">
+      <svg width="${iconWidth}" height="${iconSize}" viewBox="0 0 ${vbWidth} ${vbHeight}">
+        ${vendorIcon.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')}
+      </svg>
+    </g>`
+          }
+        }
         // AWS icons use 48x48 viewBox
         return `<g class="node-icon" transform="translate(${x - iconSize / 2}, ${iconY})">
       <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 48 48">

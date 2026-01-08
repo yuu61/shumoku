@@ -75,6 +75,7 @@ nodes:
       - "DNS: 172.16.0.53"
       - "DHCP: 172.16.0.67"
       - "Zabbix: 172.16.0.100"
+    type: server
     vendor: aws
     service: ec2
     resource: instances
@@ -84,6 +85,7 @@ nodes:
     label:
       - "<b>AWS VGW</b>"
       - "Peer: 169.254.x.x"
+    type: vpn
     vendor: aws
     service: vpc
     resource: vpn-gateway
@@ -111,6 +113,8 @@ nodes:
       - "Mgmt: 10.241.0.21"
       - "VRRP VIP: 10.57.0.1"
     type: router
+    vendor: yamaha
+    model: rtx3510
     parent: edge
 
   - id: rt2
@@ -119,6 +123,8 @@ nodes:
       - "Mgmt: 10.241.0.22"
       - "VRRP VIP: 10.57.0.1"
     type: router
+    vendor: yamaha
+    model: rtx3510
     parent: edge
 
   # ========== NOC (Core + Aggregation) ==========

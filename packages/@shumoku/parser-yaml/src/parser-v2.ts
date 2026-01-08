@@ -54,10 +54,12 @@ interface YamlNode {
   rank?: number | string
   style?: YamlNodeStyle
   metadata?: Record<string, unknown>
-  /** Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp') */
+  /** Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp', 'yamaha') */
   vendor?: string
   /** Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda') */
   service?: string
+  /** Model name for hardware vendors (e.g., 'rtx3510', 'ex4400') */
+  model?: string
   /** Resource type within the service (e.g., 'instance', 'nat-gateway') */
   resource?: string
 }
@@ -108,10 +110,12 @@ interface YamlSubgraph {
   parent?: string
   direction?: string
   style?: YamlSubgraphStyle
-  /** Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp') */
+  /** Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp', 'yamaha') */
   vendor?: string
   /** Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda') */
   service?: string
+  /** Model name for hardware vendors (e.g., 'rtx3510', 'ex4400') */
+  model?: string
   /** Resource type within the service (e.g., 'instance', 'nat-gateway') */
   resource?: string
 }
@@ -227,6 +231,7 @@ export class YamlParserV2 {
         metadata: n.metadata,
         vendor: n.vendor,
         service: n.service,
+        model: n.model,
         resource: n.resource,
       }
     })
@@ -316,6 +321,7 @@ export class YamlParserV2 {
         } : undefined,
         vendor: s.vendor,
         service: s.service,
+        model: s.model,
         resource: s.resource,
       }
     })

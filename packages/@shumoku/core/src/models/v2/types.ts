@@ -69,14 +69,21 @@ export interface Node {
   metadata?: Record<string, unknown>
 
   /**
-   * Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp')
+   * Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp', 'yamaha')
    */
   vendor?: string
 
   /**
    * Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda')
+   * Used for cloud providers like AWS
    */
   service?: string
+
+  /**
+   * Model name for hardware vendors (e.g., 'rtx3510', 'ex4400')
+   * Alternative to service for equipment vendors
+   */
+  model?: string
 
   /**
    * Resource type within the service (e.g., 'instance', 'nat-gateway')
@@ -227,14 +234,21 @@ export interface Subgraph {
   style?: SubgraphStyle
 
   /**
-   * Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp')
+   * Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp', 'yamaha')
    */
   vendor?: string
 
   /**
    * Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda')
+   * Used for cloud providers like AWS
    */
   service?: string
+
+  /**
+   * Model name for hardware vendors (e.g., 'rtx3510', 'ex4400')
+   * Alternative to service for equipment vendors
+   */
+  model?: string
 
   /**
    * Resource type within the service (e.g., 'instance', 'nat-gateway')

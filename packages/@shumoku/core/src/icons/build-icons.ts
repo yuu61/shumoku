@@ -43,6 +43,33 @@ function extractSvgContent(svgContent: string): string {
 }
 
 /**
+ * Read PNG dimensions from file header
+ * PNG header: bytes 16-19 = width, bytes 20-23 = height (big-endian)
+ */
+function getPngDimensions(buffer: Buffer): { width: number; height: number } {
+  const width = buffer.readUInt32BE(16)
+  const height = buffer.readUInt32BE(20)
+  return { width, height }
+}
+
+/**
+ * Convert PNG file to base64 image tag content for embedding in SVG
+ * Reads actual PNG dimensions and creates appropriate viewBox
+ */
+function convertPngToImageTag(filePath: string): string {
+  const buffer = fs.readFileSync(filePath)
+  const base64 = buffer.toString('base64')
+  const { width, height } = getPngDimensions(buffer)
+
+  // Normalize to height=48 (matching AWS icon size) while preserving aspect ratio
+  const normalizedWidth = Math.round((width / height) * 48)
+  const normalizedHeight = 48
+
+  // Return nested SVG with proper viewBox for the image dimensions
+  return `<svg viewBox="0 0 ${normalizedWidth} ${normalizedHeight}" width="100%" height="100%"><image href="data:image/png;base64,${base64}" width="${normalizedWidth}" height="${normalizedHeight}" preserveAspectRatio="xMidYMid meet"/></svg>`
+}
+
+/**
  * Parse AWS icon filename to extract service, resource, and theme variant
  *
  * Examples:
@@ -117,15 +144,23 @@ function scanDefaultIconFolder(folderPath: string): Record<string, string> {
   const files = fs.readdirSync(folderPath)
 
   for (const file of files) {
-    if (!file.endsWith('.svg')) continue
-
     const filePath = path.join(folderPath, file)
-    const content = fs.readFileSync(filePath, 'utf-8')
-    const iconName = file.replace('.svg', '')
-    const svgContent = extractSvgContent(content)
 
-    if (svgContent) {
-      icons[iconName] = svgContent
+    // Handle SVG files
+    if (file.endsWith('.svg')) {
+      const content = fs.readFileSync(filePath, 'utf-8')
+      const iconName = file.replace('.svg', '')
+      const svgContent = extractSvgContent(content)
+
+      if (svgContent) {
+        icons[iconName] = svgContent
+      }
+    }
+    // Handle PNG files
+    else if (file.endsWith('.png')) {
+      const iconName = file.replace('.png', '')
+      const imageContent = convertPngToImageTag(filePath)
+      icons[iconName] = imageContent
     }
   }
 
@@ -201,9 +236,11 @@ function generateTypeScript(iconSets: IconSet[]): string {
     '',
   ]
 
-  // Find default and aws icon sets
+  // Find default icon set
   const defaultSet = iconSets.find(s => s.name === 'default') as DefaultIconSet | undefined
-  const awsSet = iconSets.find(s => s.name === 'aws') as VendorIconSet | undefined
+
+  // Get all vendor sets (non-default)
+  const vendorSets = iconSets.filter(s => s.name !== 'default') as VendorIconSet[]
 
   // Generate default icons
   if (defaultSet) {
@@ -216,13 +253,17 @@ function generateTypeScript(iconSets: IconSet[]): string {
     lines.push('')
   }
 
-  // Generate AWS icons with theme variants
-  if (awsSet) {
-    lines.push('// AWS icons with theme variants')
-    lines.push('const awsIcons: Record<string, IconEntry> = {')
-    const sortedKeys = Object.keys(awsSet.icons).sort()
+  // Generate vendor icons with theme variants
+  const vendorVarNames: Record<string, string> = {}
+  for (const vendorSet of vendorSets) {
+    const varName = `${vendorSet.name}Icons`
+    vendorVarNames[vendorSet.name] = varName
+
+    lines.push(`// ${vendorSet.name.toUpperCase()} icons with theme variants`)
+    lines.push(`const ${varName}: Record<string, IconEntry> = {`)
+    const sortedKeys = Object.keys(vendorSet.icons).sort()
     for (const key of sortedKeys) {
-      const entry = awsSet.icons[key]
+      const entry = vendorSet.icons[key]
       const escapedDefault = entry.default.replace(/`/g, '\\`')
 
       if (entry.light || entry.dark) {
@@ -263,6 +304,15 @@ function generateTypeScript(iconSets: IconSet[]): string {
   lines.push('}')
   lines.push('')
 
+  // Generate all vendor icons lookup
+  lines.push('// All vendor icon sets for dynamic lookup')
+  lines.push('const vendorIconSets: Record<string, Record<string, IconEntry>> = {')
+  for (const vendorSet of vendorSets) {
+    lines.push(`  '${vendorSet.name}': ${vendorVarNames[vendorSet.name]},`)
+  }
+  lines.push('}')
+  lines.push('')
+
   // Generate getter functions
   lines.push('/**')
   lines.push(' * Get SVG icon content for a device type (backward compatible)')
@@ -277,11 +327,11 @@ function generateTypeScript(iconSets: IconSet[]): string {
   lines.push('}')
   lines.push('')
 
-  // New vendor icon getter
+  // New vendor icon getter - dynamic
   lines.push('/**')
   lines.push(' * Get icon by vendor, service, and optional resource')
-  lines.push(" * @param vendor - Vendor name ('aws', 'default')")
-  lines.push(" * @param service - Service name (e.g., 'ec2', 'vpc')")
+  lines.push(" * @param vendor - Vendor name ('aws', 'yamaha', 'default', etc.)")
+  lines.push(" * @param service - Service/model name (e.g., 'ec2', 'vpc', 'rtx3510')")
   lines.push(" * @param resource - Resource name (optional, e.g., 'instance', 'nat-gateway')")
   lines.push(" * @param theme - Theme variant ('light', 'dark', or 'default')")
   lines.push(' */')
@@ -295,29 +345,31 @@ function generateTypeScript(iconSets: IconSet[]): string {
   lines.push('    return defaultIcons[service] || (resource ? defaultIcons[resource] : undefined)')
   lines.push('  }')
   lines.push('')
-  lines.push("  if (vendor === 'aws') {")
-  lines.push("    const key = resource ? `${service}/${resource}` : service")
-  lines.push('    const entry = awsIcons[key]')
-  lines.push('    if (!entry) {')
-  lines.push('      // Try to find a partial match (service-level icon)')
-  lines.push('      const serviceKey = Object.keys(awsIcons).find(k => k.startsWith(service + \'/\'))')
-  lines.push('      if (serviceKey) {')
-  lines.push('        const serviceEntry = awsIcons[serviceKey]')
-  lines.push('        return serviceEntry[theme] || serviceEntry.default')
-  lines.push('      }')
-  lines.push('      return undefined')
-  lines.push('    }')
-  lines.push('    return entry[theme] || entry.default')
-  lines.push('  }')
+  lines.push('  // Look up vendor icon set')
+  lines.push('  const vendorIcons = vendorIconSets[vendor]')
+  lines.push('  if (!vendorIcons) return undefined')
   lines.push('')
-  lines.push('  return undefined')
+  lines.push('  const key = resource ? `${service}/${resource}` : service')
+  lines.push('  const entry = vendorIcons[key]')
+  lines.push('  if (!entry) {')
+  lines.push('    // Try to find a partial match (service-level icon)')
+  lines.push("    const serviceKey = Object.keys(vendorIcons).find(k => k.startsWith(service + '/'))")
+  lines.push('    if (serviceKey) {')
+  lines.push('      const serviceEntry = vendorIcons[serviceKey]')
+  lines.push('      return serviceEntry[theme] || serviceEntry.default')
+  lines.push('    }')
+  lines.push('    return undefined')
+  lines.push('  }')
+  lines.push('  return entry[theme] || entry.default')
   lines.push('}')
   lines.push('')
 
   // Export all icon sets
   lines.push('export const iconSets = {')
   if (defaultSet) lines.push('  default: defaultIcons,')
-  if (awsSet) lines.push('  aws: awsIcons,')
+  for (const vendorSet of vendorSets) {
+    lines.push(`  ${vendorSet.name}: ${vendorVarNames[vendorSet.name]},`)
+  }
   lines.push('}')
   lines.push('')
 

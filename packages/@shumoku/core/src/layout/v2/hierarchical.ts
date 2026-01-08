@@ -316,7 +316,7 @@ export class HierarchicalLayoutV2 {
     const baseHeight = 40
     const lineHeight = 16
     // Add extra height for icon if device type or vendor icon is specified
-    const hasIcon = node.type || (node.vendor && node.service)
+    const hasIcon = node.type || (node.vendor && (node.service || node.model))
     const iconHeight = hasIcon ? 36 : 0
     return Math.max(this.options.nodeHeight, baseHeight + (lines - 1) * lineHeight + iconHeight)
   }
