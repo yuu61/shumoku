@@ -58,6 +58,10 @@ export class HierarchicalLayoutV2 {
     const startTime = performance.now()
     const direction = graph.settings?.direction || this.options.direction
 
+    // Detect HA pairs first (before building ELK graph)
+    const haPairs = this.detectHAPairs(graph)
+    console.log('HA pairs for layout:', haPairs)
+
     // Build ELK graph
     const elkGraph = this.buildElkGraph(graph, direction)
 
@@ -66,6 +70,10 @@ export class HierarchicalLayoutV2 {
 
     // Extract results
     const result = this.extractLayoutResult(graph, layoutedGraph)
+
+    // Post-process: adjust positions for HA pairs (same rank nodes)
+    this.adjustHAPairPositions(result, haPairs, direction)
+
     result.metadata = {
       algorithm: 'elk-layered',
       duration: performance.now() - startTime,
@@ -128,6 +136,17 @@ export class HierarchicalLayoutV2 {
       }
     }
 
+    // Create ELK node
+    const createElkNode_ = (node: Node): ElkNode => {
+      const height = this.calculateNodeHeight(node)
+      return {
+        id: node.id,
+        width: this.options.nodeWidth,
+        height,
+        labels: [{ text: Array.isArray(node.label) ? node.label.join('\n') : node.label }],
+      }
+    }
+
     // Create ELK nodes recursively
     const createElkNode = (nodeId: string, isSubgraph: boolean, subgraph?: Subgraph): ElkNode => {
       if (isSubgraph && subgraph) {
@@ -146,13 +165,7 @@ export class HierarchicalLayoutV2 {
         // Add nodes in this subgraph
         for (const node of graph.nodes) {
           if (node.parent === subgraph.id) {
-            const height = this.calculateNodeHeight(node)
-            childNodes.push({
-              id: node.id,
-              width: this.options.nodeWidth,
-              height,
-              labels: [{ text: Array.isArray(node.label) ? node.label.join('\n') : node.label }],
-            })
+            childNodes.push(createElkNode_(node))
           }
         }
 
@@ -167,7 +180,10 @@ export class HierarchicalLayoutV2 {
       } else {
         // Regular node
         const node = graph.nodes.find(n => n.id === nodeId)
-        const height = node ? this.calculateNodeHeight(node) : this.options.nodeHeight
+        if (node) {
+          return createElkNode_(node)
+        }
+        const height = this.options.nodeHeight
         return {
           id: nodeId,
           width: this.options.nodeWidth,
@@ -189,12 +205,7 @@ export class HierarchicalLayoutV2 {
     // Add root-level nodes
     for (const node of graph.nodes) {
       if (!node.parent || !subgraphMap.has(node.parent)) {
-        const height = this.calculateNodeHeight(node)
-        rootChildren.push({
-          id: node.id,
-          width: this.options.nodeWidth,
-          height,
-        })
+        rootChildren.push(createElkNode_(node))
       }
     }
 
@@ -503,6 +514,184 @@ export class HierarchicalLayoutV2 {
       height: maxY - minY + padding * 2,
     }
   }
+
+  /**
+   * Detect redundancy pairs based on link.redundancy property
+   * Returns array of [nodeA, nodeB] pairs that should be placed on the same layer
+   */
+  private detectHAPairs(graph: NetworkGraphV2): [string, string][] {
+    const pairs: [string, string][] = []
+    const processedPairs = new Set<string>()
+
+    for (const link of graph.links) {
+      // Only process links with redundancy property set
+      if (!link.redundancy) continue
+
+      const pairKey = [link.from, link.to].sort().join(':')
+      if (processedPairs.has(pairKey)) continue
+
+      pairs.push([link.from, link.to])
+      processedPairs.add(pairKey)
+    }
+
+    return pairs
+  }
+
+  /**
+   * Adjust positions of HA pairs to be on the same horizontal/vertical level
+   */
+  private adjustHAPairPositions(
+    result: LayoutResult,
+    haPairs: [string, string][],
+    direction: LayoutDirection
+  ): void {
+    const adjustedNodes = new Set<string>()
+
+    for (const [nodeAId, nodeBId] of haPairs) {
+      const nodeA = result.nodes.get(nodeAId)
+      const nodeB = result.nodes.get(nodeBId)
+
+      if (!nodeA || !nodeB) continue
+
+      // Calculate the Y offset (how much we're moving the nodes)
+      const originalAY = nodeA.position.y
+      const originalBY = nodeB.position.y
+
+      console.log(`Adjusting HA pair: ${nodeAId} and ${nodeBId}`)
+      console.log(`Before: A(${nodeA.position.x}, ${nodeA.position.y}), B(${nodeB.position.x}, ${nodeB.position.y})`)
+
+      if (direction === 'TB' || direction === 'BT') {
+        // For top-bottom layout, align Y coordinates (make horizontal)
+        const avgY = (nodeA.position.y + nodeB.position.y) / 2
+        nodeA.position.y = avgY
+        nodeB.position.y = avgY
+
+        // Ensure they are side by side with proper spacing
+        const spacing = this.options.nodeSpacing
+        const centerX = (nodeA.position.x + nodeB.position.x) / 2
+        const halfSpacing = (nodeA.size.width + spacing) / 2
+
+        // Keep left-right order
+        if (nodeA.position.x < nodeB.position.x) {
+          nodeA.position.x = centerX - halfSpacing
+          nodeB.position.x = centerX + halfSpacing
+        } else {
+          nodeA.position.x = centerX + halfSpacing
+          nodeB.position.x = centerX - halfSpacing
+        }
+
+        // Also adjust parallel uplink nodes (nodes that connect exclusively to one HA member)
+        const offsetA = avgY - originalAY
+        const offsetB = avgY - originalBY
+        this.adjustParallelNodes(result, nodeAId, nodeBId, offsetA, offsetB, 'y', adjustedNodes)
+      } else {
+        // For left-right layout, align X coordinates (make vertical)
+        const avgX = (nodeA.position.x + nodeB.position.x) / 2
+        nodeA.position.x = avgX
+        nodeB.position.x = avgX
+
+        // Ensure they are stacked with proper spacing
+        const spacing = this.options.nodeSpacing
+        const centerY = (nodeA.position.y + nodeB.position.y) / 2
+        const halfSpacing = (nodeA.size.height + spacing) / 2
+
+        if (nodeA.position.y < nodeB.position.y) {
+          nodeA.position.y = centerY - halfSpacing
+          nodeB.position.y = centerY + halfSpacing
+        } else {
+          nodeA.position.y = centerY + halfSpacing
+          nodeB.position.y = centerY - halfSpacing
+        }
+      }
+
+      adjustedNodes.add(nodeAId)
+      adjustedNodes.add(nodeBId)
+
+      console.log(`After: A(${nodeA.position.x}, ${nodeA.position.y}), B(${nodeB.position.x}, ${nodeB.position.y})`)
+    }
+
+    // Recalculate all edges (since we may have moved multiple nodes)
+    this.recalculateAllEdges(result)
+  }
+
+  /**
+   * Adjust nodes that connect exclusively to one member of an HA pair
+   */
+  private adjustParallelNodes(
+    result: LayoutResult,
+    nodeAId: string,
+    nodeBId: string,
+    offsetA: number,
+    offsetB: number,
+    axis: 'x' | 'y',
+    adjustedNodes: Set<string>
+  ): void {
+    // Find nodes that connect to only nodeA or only nodeB
+    const nodeAConnections = new Set<string>()
+    const nodeBConnections = new Set<string>()
+
+    result.links.forEach((link) => {
+      if (link.from === nodeAId && link.to !== nodeBId) {
+        nodeAConnections.add(link.to)
+      }
+      if (link.to === nodeAId && link.from !== nodeBId) {
+        nodeAConnections.add(link.from)
+      }
+      if (link.from === nodeBId && link.to !== nodeAId) {
+        nodeBConnections.add(link.to)
+      }
+      if (link.to === nodeBId && link.from !== nodeAId) {
+        nodeBConnections.add(link.from)
+      }
+    })
+
+    // Find exclusive connections (connect to A but not B, or vice versa)
+    const exclusiveToA = [...nodeAConnections].filter(id => !nodeBConnections.has(id) && !adjustedNodes.has(id))
+    const exclusiveToB = [...nodeBConnections].filter(id => !nodeAConnections.has(id) && !adjustedNodes.has(id))
+
+    console.log(`Parallel nodes to ${nodeAId}:`, exclusiveToA)
+    console.log(`Parallel nodes to ${nodeBId}:`, exclusiveToB)
+
+    // Adjust exclusive connections
+    for (const nodeId of exclusiveToA) {
+      const node = result.nodes.get(nodeId)
+      if (node) {
+        if (axis === 'y') {
+          node.position.y += offsetA
+        } else {
+          node.position.x += offsetA
+        }
+        adjustedNodes.add(nodeId)
+      }
+    }
+
+    for (const nodeId of exclusiveToB) {
+      const node = result.nodes.get(nodeId)
+      if (node) {
+        if (axis === 'y') {
+          node.position.y += offsetB
+        } else {
+          node.position.x += offsetB
+        }
+        adjustedNodes.add(nodeId)
+      }
+    }
+  }
+
+  /**
+   * Recalculate all edge paths
+   */
+  private recalculateAllEdges(result: LayoutResult): void {
+    result.links.forEach((layoutLink) => {
+      const fromNode = result.nodes.get(layoutLink.from)
+      const toNode = result.nodes.get(layoutLink.to)
+
+      if (fromNode && toNode) {
+        layoutLink.points = this.calculateEdgePath(fromNode, toNode, result.nodes, result.subgraphs)
+      }
+    })
+  }
+
 }
 
 // Default export

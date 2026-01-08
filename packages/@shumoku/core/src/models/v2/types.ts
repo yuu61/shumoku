@@ -53,6 +53,12 @@ export interface Node {
   parent?: string
 
   /**
+   * Rank/layer for horizontal alignment
+   * Nodes with the same rank value will be placed on the same horizontal level
+   */
+  rank?: number | string
+
+  /**
    * Custom style
    */
   style?: NodeStyle
@@ -106,6 +112,17 @@ export interface Link {
    * Arrow direction
    */
   arrow?: ArrowType
+
+  /**
+   * Redundancy/clustering type - nodes connected with this will be placed on the same layer
+   * ha: High Availability (VRRP, HSRP, GLBP, keepalive)
+   * vc: Virtual Chassis (Juniper)
+   * vss: Virtual Switching System (Cisco)
+   * vpc: Virtual Port Channel (Cisco Nexus)
+   * mlag: Multi-Chassis Link Aggregation
+   * stack: Stacking
+   */
+  redundancy?: 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack'
 
   /**
    * Custom style

@@ -51,6 +51,7 @@ interface YamlNode {
   shape?: string
   type?: string
   parent?: string
+  rank?: number | string
   style?: YamlNodeStyle
   metadata?: Record<string, unknown>
 }
@@ -69,6 +70,7 @@ interface YamlLink {
   label?: string | string[]
   type?: string
   arrow?: string
+  redundancy?: string
   style?: YamlLinkStyle
 }
 
@@ -189,6 +191,7 @@ export class YamlParserV2 {
         shape: this.parseNodeShape(n.shape),
         type: this.parseDeviceType(n.type),
         parent: n.parent,
+        rank: n.rank,
         style: n.style ? {
           fill: n.style.fill,
           stroke: n.style.stroke,
@@ -212,6 +215,7 @@ export class YamlParserV2 {
       label: l.label,
       type: this.parseLinkType(l.type),
       arrow: this.parseArrowType(l.arrow),
+      redundancy: this.parseRedundancyType(l.redundancy),
       style: l.style ? {
         stroke: l.style.stroke,
         strokeWidth: l.style.strokeWidth,
@@ -219,6 +223,29 @@ export class YamlParserV2 {
         opacity: l.style.opacity,
       } : undefined,
     }))
+  }
+
+  private parseRedundancyType(redundancy?: string): 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack' | undefined {
+    if (!redundancy) return undefined
+
+    const typeMap: Record<string, 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack'> = {
+      ha: 'ha',
+      vrrp: 'ha',
+      hsrp: 'ha',
+      glbp: 'ha',
+      keepalive: 'ha',
+      vc: 'vc',
+      'virtual-chassis': 'vc',
+      vss: 'vss',
+      vpc: 'vpc',
+      mlag: 'mlag',
+      mclag: 'mlag',
+      stack: 'stack',
+      stacking: 'stack',
+      irf: 'stack',
+    }
+
+    return typeMap[redundancy.toLowerCase()]
   }
 
   private parseSubgraphs(yamlSubgraphs: YamlSubgraph[], warnings: ParseWarning[]): Subgraph[] {

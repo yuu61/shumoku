@@ -112,6 +112,7 @@ nodes:
       fill: "#fef3c7"
       stroke: "#f59e0b"
 
+  # rt1 and rt2 will be auto-detected as HA pair (connected via Keepalive link)
   - id: rt1
     label:
       - "<b>RTX3510-1 (Master)</b>"
@@ -328,12 +329,13 @@ links:
     label: "IPsec VPN / tun1"
     type: dashed
 
-  # HA Keepalive
+  # HA Keepalive - redundancy: ha で横並びに配置
   - from: rt1
     to: rt2
     label: "lan3: Keepalive"
     type: double
     arrow: none
+    redundancy: ha
 
   # Router to Core
   - from: rt1
