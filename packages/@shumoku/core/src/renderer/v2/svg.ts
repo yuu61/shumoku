@@ -13,7 +13,7 @@ import type {
   NodeShape,
   LinkType,
 } from '../../models/v2'
-import { getDeviceIcon } from '../../icons'
+import { getDeviceIcon, getVendorIcon, type IconThemeVariant } from '../../icons'
 
 // ============================================
 // Renderer Options
@@ -32,6 +32,8 @@ export interface SVGRendererOptions {
   fontFamily?: string
   /** Include interactive elements */
   interactive?: boolean
+  /** Theme for icon selection ('light', 'dark', or 'default') */
+  theme?: IconThemeVariant
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
@@ -41,6 +43,7 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
   defaultLinkStroke: '#94a3b8',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   interactive: true,
+  theme: 'default',
 }
 
 // ============================================
@@ -123,6 +126,7 @@ export class SVGRendererV2 {
   .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: #1e293b; }
   .node-label-bold { font-weight: bold; }
   .node-icon { color: #475569; }
+  .subgraph-icon { opacity: 0.9; }
   .subgraph-label { font-family: ${this.options.fontFamily}; font-size: 14px; font-weight: 600; fill: #374151; }
   .link-label { font-family: ${this.options.fontFamily}; font-size: 11px; fill: #64748b; }
   .endpoint-label { font-family: ${this.options.fontFamily}; font-size: 9px; fill: #94a3b8; }
@@ -141,14 +145,41 @@ export class SVGRendererV2 {
 
     const rx = 8 // Border radius
 
-    // Label position
-    let labelX = bounds.x + 10
+    // Check if subgraph has vendor icon
+    const hasIcon = subgraph.vendor && subgraph.service
+    const iconSize = 24
+    const iconPadding = 8
+
+    // Calculate icon position (top-left corner)
+    const iconX = bounds.x + iconPadding
+    const iconY = bounds.y + iconPadding
+
+    // Label position - shift right if there's an icon
+    let labelX = hasIcon ? bounds.x + iconSize + iconPadding * 2 : bounds.x + 10
     let labelY = bounds.y + 20
-    let textAnchor = 'start'
+    const textAnchor = 'start'
 
     if (labelPos === 'top') {
-      labelX = bounds.x + 10
+      labelX = hasIcon ? bounds.x + iconSize + iconPadding * 2 : bounds.x + 10
       labelY = bounds.y + 20
+    }
+
+    // Render vendor icon if available
+    let iconSvg = ''
+    if (hasIcon) {
+      const iconContent = getVendorIcon(
+        subgraph.vendor!,
+        subgraph.service!,
+        subgraph.resource,
+        this.options.theme
+      )
+      if (iconContent) {
+        iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+    <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 48 48">
+      ${iconContent}
+    </svg>
+  </g>`
+      }
     }
 
     return `<g class="subgraph" data-id="${sg.id}">
@@ -156,6 +187,7 @@ export class SVGRendererV2 {
     rx="${rx}" ry="${rx}"
     fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"
     ${strokeDasharray ? `stroke-dasharray="${strokeDasharray}"` : ''} />
+  ${iconSvg}
   <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>
 </g>`
   }
@@ -244,12 +276,32 @@ export class SVGRendererV2 {
   }
 
   private renderNodeIcon(node: Node, x: number, y: number, h: number): string {
-    const iconPath = getDeviceIcon(node.type)
-    if (!iconPath) return ''
-
     const iconSize = 40
     const iconY = y - h / 2 + 12 // Position near top of node
 
+    // Try vendor-specific icon first
+    if (node.vendor && node.service) {
+      const vendorIcon = getVendorIcon(
+        node.vendor,
+        node.service,
+        node.resource,
+        this.options.theme
+      )
+      if (vendorIcon) {
+        // AWS icons use 48x48 viewBox
+        return `<g class="node-icon" transform="translate(${x - iconSize / 2}, ${iconY})">
+      <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 48 48">
+        ${vendorIcon}
+      </svg>
+    </g>`
+      }
+    }
+
+    // Fall back to device type icon
+    const iconPath = getDeviceIcon(node.type)
+    if (!iconPath) return ''
+
+    // Default icons use 24x24 viewBox
     return `<g class="node-icon" transform="translate(${x - iconSize / 2}, ${iconY})">
       <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="currentColor">
         ${iconPath}

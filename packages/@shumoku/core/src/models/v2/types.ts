@@ -67,6 +67,21 @@ export interface Node {
    * Additional metadata
    */
   metadata?: Record<string, unknown>
+
+  /**
+   * Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp')
+   */
+  vendor?: string
+
+  /**
+   * Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda')
+   */
+  service?: string
+
+  /**
+   * Resource type within the service (e.g., 'instance', 'nat-gateway')
+   */
+  resource?: string
 }
 
 // ============================================
@@ -210,6 +225,21 @@ export interface Subgraph {
    * Custom style
    */
   style?: SubgraphStyle
+
+  /**
+   * Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp')
+   */
+  vendor?: string
+
+  /**
+   * Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda')
+   */
+  service?: string
+
+  /**
+   * Resource type within the service (e.g., 'instance', 'nat-gateway')
+   */
+  resource?: string
 }
 
 // ============================================

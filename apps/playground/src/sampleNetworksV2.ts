@@ -15,6 +15,9 @@ subgraphs:
   # Cloud Layer
   - id: cloud
     label: "AWS Cloud (Services)"
+    vendor: aws
+    service: vpc
+    resource: virtual-private-cloud-vpc
     style:
       fill: "#f0f8ff"
       stroke: "#0072bc"
@@ -72,14 +75,18 @@ nodes:
       - "DNS: 172.16.0.53"
       - "DHCP: 172.16.0.67"
       - "Zabbix: 172.16.0.100"
-    type: cloud
+    vendor: aws
+    service: ec2
+    resource: instances
     parent: cloud
 
   - id: vgw
     label:
       - "<b>AWS VGW</b>"
       - "Peer: 169.254.x.x"
-    type: vpn
+    vendor: aws
+    service: vpc
+    resource: vpn-gateway
     parent: cloud
 
   # ========== Edge Layer ==========

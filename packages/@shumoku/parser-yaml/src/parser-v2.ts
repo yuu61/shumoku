@@ -54,6 +54,12 @@ interface YamlNode {
   rank?: number | string
   style?: YamlNodeStyle
   metadata?: Record<string, unknown>
+  /** Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp') */
+  vendor?: string
+  /** Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda') */
+  service?: string
+  /** Resource type within the service (e.g., 'instance', 'nat-gateway') */
+  resource?: string
 }
 
 interface YamlLinkStyle {
@@ -102,6 +108,12 @@ interface YamlSubgraph {
   parent?: string
   direction?: string
   style?: YamlSubgraphStyle
+  /** Vendor name for vendor-specific icons (e.g., 'aws', 'azure', 'gcp') */
+  vendor?: string
+  /** Service name within the vendor (e.g., 'ec2', 'vpc', 'lambda') */
+  service?: string
+  /** Resource type within the service (e.g., 'instance', 'nat-gateway') */
+  resource?: string
 }
 
 interface YamlGraphSettings {
@@ -213,6 +225,9 @@ export class YamlParserV2 {
           opacity: n.style.opacity,
         } : undefined,
         metadata: n.metadata,
+        vendor: n.vendor,
+        service: n.service,
+        resource: n.resource,
       }
     })
   }
@@ -299,6 +314,9 @@ export class YamlParserV2 {
           nodeSpacing: s.style.nodeSpacing,
           rankSpacing: s.style.rankSpacing,
         } : undefined,
+        vendor: s.vendor,
+        service: s.service,
+        resource: s.resource,
       }
     })
   }
