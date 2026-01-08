@@ -60,7 +60,6 @@ export class HierarchicalLayoutV2 {
 
     // Detect HA pairs first (before building ELK graph)
     const haPairs = this.detectHAPairs(graph)
-    console.log('HA pairs for layout:', haPairs)
 
     // Build ELK graph
     const elkGraph = this.buildElkGraph(graph, direction)
@@ -557,9 +556,6 @@ export class HierarchicalLayoutV2 {
       const originalAY = nodeA.position.y
       const originalBY = nodeB.position.y
 
-      console.log(`Adjusting HA pair: ${nodeAId} and ${nodeBId}`)
-      console.log(`Before: A(${nodeA.position.x}, ${nodeA.position.y}), B(${nodeB.position.x}, ${nodeB.position.y})`)
-
       if (direction === 'TB' || direction === 'BT') {
         // For top-bottom layout, align Y coordinates (make horizontal)
         const avgY = (nodeA.position.y + nodeB.position.y) / 2
@@ -606,8 +602,6 @@ export class HierarchicalLayoutV2 {
 
       adjustedNodes.add(nodeAId)
       adjustedNodes.add(nodeBId)
-
-      console.log(`After: A(${nodeA.position.x}, ${nodeA.position.y}), B(${nodeB.position.x}, ${nodeB.position.y})`)
     }
 
     // Recalculate all edges (since we may have moved multiple nodes)
@@ -649,9 +643,6 @@ export class HierarchicalLayoutV2 {
     const exclusiveToA = [...nodeAConnections].filter(id => !nodeBConnections.has(id) && !adjustedNodes.has(id))
     const exclusiveToB = [...nodeBConnections].filter(id => !nodeAConnections.has(id) && !adjustedNodes.has(id))
 
-    console.log(`Parallel nodes to ${nodeAId}:`, exclusiveToA)
-    console.log(`Parallel nodes to ${nodeBId}:`, exclusiveToB)
-
     // Adjust exclusive connections
     for (const nodeId of exclusiveToA) {
       const node = result.nodes.get(nodeId)
@@ -679,15 +670,143 @@ export class HierarchicalLayoutV2 {
   }
 
   /**
-   * Recalculate all edge paths
+   * Calculate edge path with offset for multiple connections
+   */
+  private calculateEdgePathWithOffset(
+    fromNode: LayoutNode,
+    toNode: LayoutNode,
+    outIndex: number,
+    outTotal: number,
+    inIndex: number,
+    inTotal: number
+  ): Position[] {
+    const fromPos = fromNode.position
+    const toPos = toNode.position
+    const fromSize = fromNode.size
+    const toSize = toNode.size
+
+    // Calculate direction from source to target
+    const dx = toPos.x - fromPos.x
+    const dy = toPos.y - fromPos.y
+
+    // Calculate offset for distributing multiple connections
+    const portSpacing = 15 // pixels between port connections
+
+    let fromPoint: Position
+    let toPoint: Position
+    let controlDist: number
+
+    // For vertical layouts (TB), prefer top/bottom connections
+    if (Math.abs(dy) > Math.abs(dx) * 0.3) {
+      // Primarily vertical
+      // Calculate horizontal offset for multiple outgoing/incoming links
+      const outOffset = outTotal > 1 ? (outIndex - (outTotal - 1) / 2) * portSpacing : 0
+      const inOffset = inTotal > 1 ? (inIndex - (inTotal - 1) / 2) * portSpacing : 0
+
+      if (dy > 0) {
+        fromPoint = { x: fromPos.x + outOffset, y: fromPos.y + fromSize.height / 2 }
+        toPoint = { x: toPos.x + inOffset, y: toPos.y - toSize.height / 2 }
+      } else {
+        fromPoint = { x: fromPos.x + outOffset, y: fromPos.y - fromSize.height / 2 }
+        toPoint = { x: toPos.x + inOffset, y: toPos.y + toSize.height / 2 }
+      }
+      controlDist = Math.min(Math.abs(toPoint.y - fromPoint.y) * 0.4, 80)
+
+      return [
+        fromPoint,
+        { x: fromPoint.x, y: fromPoint.y + Math.sign(dy) * controlDist },
+        { x: toPoint.x, y: toPoint.y - Math.sign(dy) * controlDist },
+        toPoint,
+      ]
+    } else {
+      // Primarily horizontal
+      // Calculate vertical offset for multiple outgoing/incoming links
+      const outOffset = outTotal > 1 ? (outIndex - (outTotal - 1) / 2) * portSpacing : 0
+      const inOffset = inTotal > 1 ? (inIndex - (inTotal - 1) / 2) * portSpacing : 0
+
+      if (dx > 0) {
+        fromPoint = { x: fromPos.x + fromSize.width / 2, y: fromPos.y + outOffset }
+        toPoint = { x: toPos.x - toSize.width / 2, y: toPos.y + inOffset }
+      } else {
+        fromPoint = { x: fromPos.x - fromSize.width / 2, y: fromPos.y + outOffset }
+        toPoint = { x: toPos.x + toSize.width / 2, y: toPos.y + inOffset }
+      }
+      controlDist = Math.min(Math.abs(toPoint.x - fromPoint.x) * 0.4, 80)
+
+      return [
+        fromPoint,
+        { x: fromPoint.x + Math.sign(dx) * controlDist, y: fromPoint.y },
+        { x: toPoint.x - Math.sign(dx) * controlDist, y: toPoint.y },
+        toPoint,
+      ]
+    }
+  }
+
+  /**
+   * Recalculate all edge paths with port offset distribution
    */
   private recalculateAllEdges(result: LayoutResult): void {
-    result.links.forEach((layoutLink) => {
+    // Group links by source and target nodes to calculate offsets
+    const outgoingLinks = new Map<string, string[]>() // nodeId -> [linkIds]
+    const incomingLinks = new Map<string, string[]>() // nodeId -> [linkIds]
+
+    result.links.forEach((layoutLink, linkId) => {
+      // Outgoing from source
+      if (!outgoingLinks.has(layoutLink.from)) {
+        outgoingLinks.set(layoutLink.from, [])
+      }
+      outgoingLinks.get(layoutLink.from)!.push(linkId)
+
+      // Incoming to target
+      if (!incomingLinks.has(layoutLink.to)) {
+        incomingLinks.set(layoutLink.to, [])
+      }
+      incomingLinks.get(layoutLink.to)!.push(linkId)
+    })
+
+    // Sort outgoing links by target X position to reduce crossings
+    outgoingLinks.forEach((linkIds, _nodeId) => {
+      linkIds.sort((a, b) => {
+        const linkA = result.links.get(a)
+        const linkB = result.links.get(b)
+        if (!linkA || !linkB) return 0
+        const targetA = result.nodes.get(linkA.to)
+        const targetB = result.nodes.get(linkB.to)
+        if (!targetA || !targetB) return 0
+        return targetA.position.x - targetB.position.x
+      })
+    })
+
+    // Sort incoming links by source X position to reduce crossings
+    incomingLinks.forEach((linkIds, _nodeId) => {
+      linkIds.sort((a, b) => {
+        const linkA = result.links.get(a)
+        const linkB = result.links.get(b)
+        if (!linkA || !linkB) return 0
+        const sourceA = result.nodes.get(linkA.from)
+        const sourceB = result.nodes.get(linkB.from)
+        if (!sourceA || !sourceB) return 0
+        return sourceA.position.x - sourceB.position.x
+      })
+    })
+
+    // Calculate edge paths with offset
+    result.links.forEach((layoutLink, linkId) => {
       const fromNode = result.nodes.get(layoutLink.from)
       const toNode = result.nodes.get(layoutLink.to)
 
       if (fromNode && toNode) {
-        layoutLink.points = this.calculateEdgePath(fromNode, toNode, result.nodes, result.subgraphs)
+        // Get offset indices for this link
+        const outLinks = outgoingLinks.get(layoutLink.from) || []
+        const inLinks = incomingLinks.get(layoutLink.to) || []
+        const outIndex = outLinks.indexOf(linkId)
+        const inIndex = inLinks.indexOf(linkId)
+
+        layoutLink.points = this.calculateEdgePathWithOffset(
+          fromNode, toNode,
+          outIndex, outLinks.length,
+          inIndex, inLinks.length
+        )
       }
     })
   }
