@@ -24,6 +24,7 @@ interface IconEntry {
   default: string
   light?: string
   dark?: string
+  viewBox?: string  // Original SVG viewBox (e.g., "0 0 500 500")
 }
 
 interface VendorIconSet {
@@ -33,13 +34,32 @@ interface VendorIconSet {
 
 type IconSet = DefaultIconSet | VendorIconSet
 
-function extractSvgContent(svgContent: string): string {
+interface SvgExtractResult {
+  content: string
+  viewBox?: string
+}
+
+function extractSvgContent(svgContent: string): SvgExtractResult {
+  // Extract the SVG tag attributes
+  const svgTagMatch = svgContent.match(/<svg([^>]*)>/i)
+  let viewBox: string | undefined
+
+  if (svgTagMatch) {
+    // Extract viewBox attribute
+    const viewBoxMatch = svgTagMatch[1].match(/viewBox="([^"]+)"/i)
+    if (viewBoxMatch) {
+      viewBox = viewBoxMatch[1]
+    }
+  }
+
   // Extract the inner content of the SVG (everything inside <svg>...</svg>)
-  const match = svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i)
-  if (!match) return ''
+  const contentMatch = svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i)
+  if (!contentMatch) return { content: '' }
 
   // Clean up whitespace
-  return match[1].trim().replace(/\s+/g, ' ')
+  const content = contentMatch[1].trim().replace(/\s+/g, ' ')
+
+  return { content, viewBox }
 }
 
 /**
@@ -134,7 +154,28 @@ function normalizeResourceName(name: string): string {
     .replace(/\s+/g, '-') // Replace spaces with hyphens
 }
 
-function scanDefaultIconFolder(folderPath: string): Record<string, string> {
+/**
+ * Normalize Aruba icon name by removing category prefix
+ * "Device - AP500 Series.svg" → "ap500-series"
+ * "Client - Desktop.svg" → "desktop"
+ */
+function normalizeArubaIconName(filename: string): string {
+  let name = filename.replace(/\.(svg|png)$/i, '')
+
+  // Remove category prefixes
+  const prefixes = ['Device - ', 'Client - ', 'Generic - ', 'Function - ']
+  for (const prefix of prefixes) {
+    if (name.startsWith(prefix)) {
+      name = name.slice(prefix.length)
+      break
+    }
+  }
+
+  // Convert to lowercase and replace spaces with hyphens
+  return name.toLowerCase().replace(/\s+/g, '-')
+}
+
+function scanDefaultIconFolder(folderPath: string, vendorName?: string): Record<string, string> {
   const icons: Record<string, string> = {}
 
   if (!fs.existsSync(folderPath)) {
@@ -149,8 +190,11 @@ function scanDefaultIconFolder(folderPath: string): Record<string, string> {
     // Handle SVG files
     if (file.endsWith('.svg')) {
       const content = fs.readFileSync(filePath, 'utf-8')
-      const iconName = file.replace('.svg', '')
-      const svgContent = extractSvgContent(content)
+      // Use special normalization for Aruba icons
+      const iconName = vendorName === 'aruba'
+        ? normalizeArubaIconName(file)
+        : file.replace('.svg', '')
+      const { content: svgContent } = extractSvgContent(content)
 
       if (svgContent) {
         icons[iconName] = svgContent
@@ -158,9 +202,53 @@ function scanDefaultIconFolder(folderPath: string): Record<string, string> {
     }
     // Handle PNG files
     else if (file.endsWith('.png')) {
-      const iconName = file.replace('.png', '')
+      const iconName = vendorName === 'aruba'
+        ? normalizeArubaIconName(file)
+        : file.replace('.png', '')
       const imageContent = convertPngToImageTag(filePath)
       icons[iconName] = imageContent
+    }
+  }
+
+  return icons
+}
+
+/**
+ * Scan vendor icon folder and return IconEntry with viewBox info
+ */
+function scanVendorIconFolder(folderPath: string, vendorName: string): Record<string, IconEntry> {
+  const icons: Record<string, IconEntry> = {}
+
+  if (!fs.existsSync(folderPath)) {
+    return icons
+  }
+
+  const files = fs.readdirSync(folderPath)
+
+  for (const file of files) {
+    const filePath = path.join(folderPath, file)
+
+    // Handle SVG files
+    if (file.endsWith('.svg')) {
+      const content = fs.readFileSync(filePath, 'utf-8')
+      // Use special normalization for Aruba icons
+      const iconName = vendorName === 'aruba'
+        ? normalizeArubaIconName(file)
+        : file.replace('.svg', '')
+      const { content: svgContent, viewBox } = extractSvgContent(content)
+
+      if (svgContent) {
+        icons[iconName] = { default: svgContent, viewBox }
+      }
+    }
+    // Handle PNG files
+    else if (file.endsWith('.png')) {
+      const iconName = vendorName === 'aruba'
+        ? normalizeArubaIconName(file)
+        : file.replace('.png', '')
+      const imageContent = convertPngToImageTag(filePath)
+      // PNG images use their own embedded viewBox
+      icons[iconName] = { default: imageContent }
     }
   }
 
@@ -184,14 +272,15 @@ function scanAWSIconFolder(folderPath: string): Record<string, IconEntry> {
 
     const filePath = path.join(folderPath, file)
     const content = fs.readFileSync(filePath, 'utf-8')
-    const svgContent = extractSvgContent(content)
+    const { content: svgContent, viewBox } = extractSvgContent(content)
 
     if (!svgContent) continue
 
     const { key, variant } = parsed
 
     if (!icons[key]) {
-      icons[key] = { default: '' }
+      // AWS icons use 48x48 viewBox
+      icons[key] = { default: '', viewBox: viewBox || '0 0 48 48' }
     }
 
     if (variant === 'light') {
@@ -232,6 +321,7 @@ function generateTypeScript(iconSets: IconSet[]): string {
     '  default: string',
     '  light?: string',
     '  dark?: string',
+    '  viewBox?: string',
     '}',
     '',
   ]
@@ -266,7 +356,7 @@ function generateTypeScript(iconSets: IconSet[]): string {
       const entry = vendorSet.icons[key]
       const escapedDefault = entry.default.replace(/`/g, '\\`')
 
-      if (entry.light || entry.dark) {
+      if (entry.light || entry.dark || entry.viewBox) {
         lines.push(`  '${key}': {`)
         lines.push(`    default: \`${escapedDefault}\`,`)
         if (entry.light) {
@@ -276,6 +366,9 @@ function generateTypeScript(iconSets: IconSet[]): string {
         if (entry.dark) {
           const escapedDark = entry.dark.replace(/`/g, '\\`')
           lines.push(`    dark: \`${escapedDark}\`,`)
+        }
+        if (entry.viewBox) {
+          lines.push(`    viewBox: '${entry.viewBox}',`)
         }
         lines.push('  },')
       } else {
@@ -364,6 +457,37 @@ function generateTypeScript(iconSets: IconSet[]): string {
   lines.push('}')
   lines.push('')
 
+  // Add new function to get full icon entry with viewBox
+  lines.push('/**')
+  lines.push(' * Get full icon entry by vendor, service, and optional resource')
+  lines.push(' * Returns the IconEntry object including viewBox information')
+  lines.push(' */')
+  lines.push('export function getVendorIconEntry(')
+  lines.push('  vendor: string,')
+  lines.push('  service: string,')
+  lines.push('  resource?: string')
+  lines.push('): IconEntry | undefined {')
+  lines.push("  if (vendor === 'default' || !vendor) {")
+  lines.push('    const content = defaultIcons[service] || (resource ? defaultIcons[resource] : undefined)')
+  lines.push('    return content ? { default: content } : undefined')
+  lines.push('  }')
+  lines.push('')
+  lines.push('  const vendorIcons = vendorIconSets[vendor]')
+  lines.push('  if (!vendorIcons) return undefined')
+  lines.push('')
+  lines.push('  const key = resource ? `${service}/${resource}` : service')
+  lines.push('  const entry = vendorIcons[key]')
+  lines.push('  if (!entry) {')
+  lines.push("    const serviceKey = Object.keys(vendorIcons).find(k => k.startsWith(service + '/'))")
+  lines.push('    if (serviceKey) {')
+  lines.push('      return vendorIcons[serviceKey]')
+  lines.push('    }')
+  lines.push('    return undefined')
+  lines.push('  }')
+  lines.push('  return entry')
+  lines.push('}')
+  lines.push('')
+
   // Export all icon sets
   lines.push('export const iconSets = {')
   if (defaultSet) lines.push('  default: defaultIcons,')
@@ -405,14 +529,9 @@ function main() {
         console.log(`  Found ${Object.keys(icons).length} unique AWS icons in ${entry.name}/`)
       }
     } else {
-      // Other vendors can be added similarly
-      // Convert simple icons to IconEntry format for type compatibility
-      const simpleIcons = scanDefaultIconFolder(folderPath)
-      if (Object.keys(simpleIcons).length > 0) {
-        const icons: Record<string, IconEntry> = {}
-        for (const [key, content] of Object.entries(simpleIcons)) {
-          icons[key] = { default: content }
-        }
+      // Other vendors use the vendor icon folder scanner which preserves viewBox
+      const icons = scanVendorIconFolder(folderPath, entry.name)
+      if (Object.keys(icons).length > 0) {
         iconSets.push({ name: entry.name, icons })
         console.log(`  Found ${Object.keys(icons).length} icons in ${entry.name}/`)
       }

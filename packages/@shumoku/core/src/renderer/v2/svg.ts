@@ -13,7 +13,7 @@ import type {
   NodeShape,
   LinkType,
 } from '../../models/v2'
-import { getDeviceIcon, getVendorIcon, type IconThemeVariant } from '../../icons'
+import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../../icons'
 
 // ============================================
 // Renderer Options
@@ -168,14 +168,12 @@ export class SVGRendererV2 {
     // Render vendor icon if available
     let iconSvg = ''
     if (hasIcon) {
-      const iconContent = getVendorIcon(
-        subgraph.vendor!,
-        iconKey!,
-        subgraph.resource,
-        this.options.theme
-      )
-      if (iconContent) {
-        // Check if icon is a nested SVG (PNG-based with custom viewBox)
+      const iconEntry = getVendorIconEntry(subgraph.vendor!, iconKey!, subgraph.resource)
+      if (iconEntry) {
+        const iconContent = iconEntry[this.options.theme] || iconEntry.default
+        const viewBox = iconEntry.viewBox || '0 0 48 48'
+
+        // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
         if (iconContent.startsWith('<svg')) {
           const viewBoxMatch = iconContent.match(/viewBox="0 0 (\d+) (\d+)"/)
           if (viewBoxMatch) {
@@ -190,8 +188,9 @@ export class SVGRendererV2 {
   </g>`
           }
         } else {
+          // Use viewBox from entry
           iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
-    <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 48 48">
+    <svg width="${iconSize}" height="${iconSize}" viewBox="${viewBox}">
       ${iconContent}
     </svg>
   </g>`
@@ -299,14 +298,13 @@ export class SVGRendererV2 {
     // Try vendor-specific icon first (service for cloud, model for hardware)
     const iconKey = node.service || node.model
     if (node.vendor && iconKey) {
-      const vendorIcon = getVendorIcon(
-        node.vendor,
-        iconKey,
-        node.resource,
-        this.options.theme
-      )
-      if (vendorIcon) {
-        // Check if icon is a nested SVG (PNG-based with custom viewBox)
+      const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
+      if (iconEntry) {
+        const vendorIcon = iconEntry[this.options.theme] || iconEntry.default
+        // Get viewBox from entry, or use defaults
+        const viewBox = iconEntry.viewBox || '0 0 48 48'
+
+        // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
         if (vendorIcon.startsWith('<svg')) {
           // Extract viewBox to calculate aspect ratio
           const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
@@ -322,9 +320,25 @@ export class SVGRendererV2 {
     </g>`
           }
         }
-        // AWS icons use 48x48 viewBox
+
+        // Parse viewBox for aspect ratio calculation
+        const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
+        if (vbMatch) {
+          const vbWidth = parseInt(vbMatch[3])
+          const vbHeight = parseInt(vbMatch[4])
+          const aspectRatio = vbWidth / vbHeight
+          // Keep square for 1:1 aspect ratio icons
+          const iconWidth = Math.abs(aspectRatio - 1) < 0.01 ? iconSize : Math.round(iconSize * aspectRatio)
+          return `<g class="node-icon" transform="translate(${x - iconWidth / 2}, ${iconY})">
+      <svg width="${iconWidth}" height="${iconSize}" viewBox="${viewBox}">
+        ${vendorIcon}
+      </svg>
+    </g>`
+        }
+
+        // Fallback: use viewBox directly
         return `<g class="node-icon" transform="translate(${x - iconSize / 2}, ${iconY})">
-      <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 48 48">
+      <svg width="${iconSize}" height="${iconSize}" viewBox="${viewBox}">
         ${vendorIcon}
       </svg>
     </g>`

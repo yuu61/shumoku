@@ -164,11 +164,15 @@ nodes:
   - id: ap-foyer-01
     label: "AP-Foyer-01"
     type: access-point
+    vendor: aruba
+    model: ap500-series
     parent: zone-east
 
   - id: ap-track-a
     label: "AP-TrackA"
     type: access-point
+    vendor: aruba
+    model: ap500-series
     parent: zone-east
 
   # ========== West Wing ==========
@@ -210,21 +214,29 @@ nodes:
   - id: ap-spon-01
     label: "AP-Spon-01"
     type: access-point
+    vendor: aruba
+    model: ap500-series
     parent: zone-west
 
   - id: ap-spon-02
     label: "AP-Spon-02"
     type: access-point
+    vendor: aruba
+    model: ap500-series
     parent: zone-west
 
   - id: ap-track-b
     label: "AP-TrkB-01"
     type: access-point
+    vendor: aruba
+    model: ap500-series
     parent: zone-west
 
   - id: ap-track-c
     label: "AP-TrkC-01"
     type: access-point
+    vendor: aruba
+    model: ap500-series
     parent: zone-west
 
 links:
