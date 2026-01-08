@@ -63,10 +63,17 @@ interface YamlLinkStyle {
   opacity?: number
 }
 
+interface YamlLinkEndpoint {
+  node: string
+  port?: string
+  ip?: string
+  vlan_id?: number
+}
+
 interface YamlLink {
   id?: string
-  from: string
-  to: string
+  from: string | YamlLinkEndpoint
+  to: string | YamlLinkEndpoint
   label?: string | string[]
   type?: string
   arrow?: string
@@ -210,8 +217,8 @@ export class YamlParserV2 {
   private parseLinks(yamlLinks: YamlLink[], _warnings: ParseWarning[]): Link[] {
     return yamlLinks.map((l, index) => ({
       id: l.id || `link-${index}`,
-      from: l.from,
-      to: l.to,
+      from: this.parseLinkEndpoint(l.from),
+      to: this.parseLinkEndpoint(l.to),
       label: l.label,
       type: this.parseLinkType(l.type),
       arrow: this.parseArrowType(l.arrow),
@@ -223,6 +230,18 @@ export class YamlParserV2 {
         opacity: l.style.opacity,
       } : undefined,
     }))
+  }
+
+  private parseLinkEndpoint(endpoint: string | YamlLinkEndpoint): string | { node: string; port?: string; ip?: string; vlan_id?: number } {
+    if (typeof endpoint === 'string') {
+      return endpoint
+    }
+    return {
+      node: endpoint.node,
+      port: endpoint.port,
+      ip: endpoint.ip,
+      vlan_id: endpoint.vlan_id,
+    }
   }
 
   private parseRedundancyType(redundancy?: string): 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack' | undefined {
@@ -348,7 +367,9 @@ export class YamlParserV2 {
     return typeMap[type?.toLowerCase() || ''] || 'solid'
   }
 
-  private parseArrowType(arrow?: string): ArrowType {
+  private parseArrowType(arrow?: string): ArrowType | undefined {
+    if (!arrow) return undefined  // Let renderer decide based on redundancy
+
     const arrowMap: Record<string, ArrowType> = {
       none: 'none',
       forward: 'forward',
@@ -359,7 +380,7 @@ export class YamlParserV2 {
       '<->': 'both',
     }
 
-    return arrowMap[arrow?.toLowerCase() || ''] || 'forward'
+    return arrowMap[arrow.toLowerCase()] || 'forward'
   }
 
   private parseDirection(direction?: string): 'TB' | 'BT' | 'LR' | 'RL' | undefined {

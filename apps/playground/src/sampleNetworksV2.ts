@@ -308,118 +308,212 @@ nodes:
 
 links:
   # OCX to Routers
-  - from: ocx1
-    to: rt1
-    label: "lan2"
+  - from:
+      node: ocx1
+      port: eth0
+    to:
+      node: rt1
+      port: lan2
+      ip: 169.254.1.1/30
     type: solid
 
-  - from: ocx2
-    to: rt2
-    label: "lan2"
+  - from:
+      node: ocx2
+      port: eth0
+    to:
+      node: rt2
+      port: lan2
+      ip: 169.254.2.1/30
     type: solid
 
   # VPN Tunnels
-  - from: vgw
-    to: rt1
-    label: "IPsec VPN / tun1"
+  - from:
+      node: vgw
+      ip: 169.254.100.1/30
+    to:
+      node: rt1
+      port: tun1
+      ip: 169.254.100.2/30
+    label: "IPsec VPN"
     type: dashed
 
-  - from: vgw
-    to: rt2
-    label: "IPsec VPN / tun1"
+  - from:
+      node: vgw
+      ip: 169.254.101.1/30
+    to:
+      node: rt2
+      port: tun1
+      ip: 169.254.101.2/30
+    label: "IPsec VPN"
     type: dashed
 
-  # HA Keepalive - redundancy: ha で横並びに配置
-  - from: rt1
-    to: rt2
-    label: "lan3: Keepalive"
-    type: double
-    arrow: none
+  # HA Keepalive - redundancy: ha で横並び配置 + 自動スタイル適用
+  - from:
+      node: rt1
+      port: lan3
+      ip: 10.57.0.1/30
+    to:
+      node: rt2
+      port: lan3
+      ip: 10.57.0.2/30
+    label: "Keepalive"
     redundancy: ha
 
   # Router to Core
-  - from: rt1
-    to: ex-vc
-    label: "lan4: Active"
+  - from:
+      node: rt1
+      port: lan4
+      ip: 10.241.0.1/24
+    to:
+      node: ex-vc
+      port: ge-0/0/0
+      ip: 10.241.0.10/24
+    label: "Active"
     type: solid
 
-  - from: rt2
-    to: ex-vc
-    label: "lan4: Standby"
+  - from:
+      node: rt2
+      port: lan4
+      ip: 10.241.0.2/24
+    to:
+      node: ex-vc
+      port: ge-0/0/1
+      ip: 10.241.0.10/24
+    label: "Standby"
     type: dashed
 
   # Core to Venue Agg
-  - from: ex-vc
-    to: venue-agg
-    label: "ae0: LACP Trunk"
+  - from:
+      node: ex-vc
+      port: ae0
+    to:
+      node: venue-agg
+      port: ae0
+    label: "LACP Trunk"
     type: thick
 
   # Venue Agg to Wings
-  - from: venue-agg
-    to: sw02
-    label: "Trunk Gi1/0/48"
+  - from:
+      node: venue-agg
+      port: ge-0/0/48
+      vlan_id: 100
+    to:
+      node: sw02
+      port: Gi1/0/48
+      vlan_id: 100
+    label: "Trunk"
     type: solid
 
-  - from: venue-agg
-    to: sw03
-    label: "Trunk Gi1/0/47"
+  - from:
+      node: venue-agg
+      port: ge-0/0/47
+      vlan_id: 100
+    to:
+      node: sw03
+      port: Gi1/0/48
+      vlan_id: 100
+    label: "Trunk"
     type: solid
 
   # East Wing cascade
-  - from: sw02
-    to: sw08
+  - from:
+      node: sw02
+      port: Gi1/0/24
+    to:
+      node: sw08
+      port: Gi1/0/48
     label: "Cascade"
     type: solid
 
-  - from: sw02
-    to: ap-foyer-01
+  - from:
+      node: sw02
+      port: Gi1/0/1
+    to:
+      node: ap-foyer-01
+      port: eth0
     type: solid
     arrow: none
 
-  - from: sw08
-    to: ap-track-a
+  - from:
+      node: sw08
+      port: Gi1/0/1
+    to:
+      node: ap-track-a
+      port: eth0
     type: solid
     arrow: none
 
   # West Wing cascade
-  - from: sw03
-    to: sw04
+  - from:
+      node: sw03
+      port: Gi1/0/24
+    to:
+      node: sw04
+      port: Gi1/0/48
     label: "Cascade"
     type: solid
 
-  - from: sw03
-    to: sw05
+  - from:
+      node: sw03
+      port: Gi1/0/23
+    to:
+      node: sw05
+      port: Gi1/0/48
     label: "Branch"
     type: solid
 
-  - from: sw04
-    to: sw06
+  - from:
+      node: sw04
+      port: Gi1/0/24
+    to:
+      node: sw06
+      port: Gi1/0/48
     label: "Cascade"
     type: solid
 
-  - from: sw06
-    to: sw07
+  - from:
+      node: sw06
+      port: Gi1/0/24
+    to:
+      node: sw07
+      port: Gi1/0/48
     label: "Cascade"
     type: solid
 
   # APs
-  - from: sw03
-    to: ap-spon-01
+  - from:
+      node: sw03
+      port: Gi1/0/1
+    to:
+      node: ap-spon-01
+      port: eth0
     type: solid
     arrow: none
 
-  - from: sw04
-    to: ap-spon-02
+  - from:
+      node: sw04
+      port: Gi1/0/1
+    to:
+      node: ap-spon-02
+      port: eth0
     type: solid
     arrow: none
 
-  - from: sw06
-    to: ap-track-b
+  - from:
+      node: sw06
+      port: Gi1/0/1
+    to:
+      node: ap-track-b
+      port: eth0
     type: solid
     arrow: none
 
-  - from: sw07
-    to: ap-track-c
+  - from:
+      node: sw07
+      port: Gi1/0/1
+    to:
+      node: ap-track-c
+      port: eth0
     type: solid
     arrow: none
 `

@@ -4,18 +4,34 @@
  */
 
 import ELK, { type ElkNode, type ElkExtendedEdge, type LayoutOptions } from 'elkjs/lib/elk.bundled.js'
-import type {
-  NetworkGraphV2,
-  Node,
-  Subgraph,
-  LayoutResult,
-  LayoutNode,
-  LayoutLink,
-  LayoutSubgraph,
-  Position,
-  Bounds,
-  LayoutDirection,
+import {
+  type NetworkGraphV2,
+  type Node,
+  type Subgraph,
+  type LayoutResult,
+  type LayoutNode,
+  type LayoutLink,
+  type LayoutSubgraph,
+  type Position,
+  type Bounds,
+  type LayoutDirection,
+  type LinkEndpoint,
+  getNodeId,
 } from '../../models/v2'
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Convert endpoint to full LinkEndpoint object
+ */
+function toEndpoint(endpoint: string | LinkEndpoint): LinkEndpoint {
+  if (typeof endpoint === 'string') {
+    return { node: endpoint }
+  }
+  return endpoint
+}
 
 // ============================================
 // Layout Options
@@ -212,8 +228,8 @@ export class HierarchicalLayoutV2 {
     const edges: ElkExtendedEdge[] = graph.links.map((link, index) => {
       const edge: ElkExtendedEdge = {
         id: link.id || `edge-${index}`,
-        sources: [link.from],
-        targets: [link.to],
+        sources: [getNodeId(link.from)],
+        targets: [getNodeId(link.to)],
       }
       // Add label if present
       if (link.label) {
@@ -327,8 +343,10 @@ export class HierarchicalLayoutV2 {
     // We calculate our own routing since ELK's edge coordinates don't match our node coordinates
     graph.links.forEach((link, index) => {
       const id = link.id || `link-${index}`
-      const fromNode = layoutNodes.get(link.from)
-      const toNode = layoutNodes.get(link.to)
+      const fromId = getNodeId(link.from)
+      const toId = getNodeId(link.to)
+      const fromNode = layoutNodes.get(fromId)
+      const toNode = layoutNodes.get(toId)
 
       if (!fromNode || !toNode) return
 
@@ -337,8 +355,10 @@ export class HierarchicalLayoutV2 {
 
       layoutLinks.set(id, {
         id,
-        from: link.from,
-        to: link.to,
+        from: fromId,
+        to: toId,
+        fromEndpoint: toEndpoint(link.from),
+        toEndpoint: toEndpoint(link.to),
         points,
         link,
       })
@@ -455,13 +475,17 @@ export class HierarchicalLayoutV2 {
 
     // Simple links
     graph.links.forEach((link, index) => {
-      const from = layoutNodes.get(link.from)
-      const to = layoutNodes.get(link.to)
+      const fromId = getNodeId(link.from)
+      const toId = getNodeId(link.to)
+      const from = layoutNodes.get(fromId)
+      const to = layoutNodes.get(toId)
       if (from && to) {
         layoutLinks.set(link.id || `link-${index}`, {
           id: link.id || `link-${index}`,
-          from: link.from,
-          to: link.to,
+          from: fromId,
+          to: toId,
+          fromEndpoint: toEndpoint(link.from),
+          toEndpoint: toEndpoint(link.to),
           points: [from.position, to.position],
           link,
         })
@@ -526,10 +550,12 @@ export class HierarchicalLayoutV2 {
       // Only process links with redundancy property set
       if (!link.redundancy) continue
 
-      const pairKey = [link.from, link.to].sort().join(':')
+      const fromId = getNodeId(link.from)
+      const toId = getNodeId(link.to)
+      const pairKey = [fromId, toId].sort().join(':')
       if (processedPairs.has(pairKey)) continue
 
-      pairs.push([link.from, link.to])
+      pairs.push([fromId, toId])
       processedPairs.add(pairKey)
     }
 

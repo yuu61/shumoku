@@ -93,13 +93,31 @@ export interface LinkStyle {
   opacity?: number
 }
 
+/**
+ * Link endpoint with optional port/IP details
+ */
+export interface LinkEndpoint {
+  node: string
+  port?: string
+  ip?: string      // e.g., "10.57.0.1/30"
+  vlan_id?: number
+}
+
 export interface Link {
   id?: string
-  from: string
-  to: string
 
   /**
-   * Link label - can be multiple lines
+   * Source endpoint - can be simple node ID or detailed endpoint
+   */
+  from: string | LinkEndpoint
+
+  /**
+   * Target endpoint - can be simple node ID or detailed endpoint
+   */
+  to: string | LinkEndpoint
+
+  /**
+   * Link label - can be multiple lines (displayed at center)
    */
   label?: string | string[]
 
@@ -128,6 +146,13 @@ export interface Link {
    * Custom style
    */
   style?: LinkStyle
+}
+
+/**
+ * Helper to get node ID from endpoint
+ */
+export function getNodeId(endpoint: string | LinkEndpoint): string {
+  return typeof endpoint === 'string' ? endpoint : endpoint.node
 }
 
 // ============================================
@@ -286,8 +311,10 @@ export interface LayoutNode {
 
 export interface LayoutLink {
   id: string
-  from: string
-  to: string
+  from: string          // Node ID
+  to: string            // Node ID
+  fromEndpoint: LinkEndpoint  // Full endpoint info
+  toEndpoint: LinkEndpoint    // Full endpoint info
   points: Position[]
   link: Link
 }

@@ -123,6 +123,7 @@ export class SVGRendererV2 {
   .node-label-bold { font-weight: bold; }
   .subgraph-label { font-family: ${this.options.fontFamily}; font-size: 14px; font-weight: 600; fill: #374151; }
   .link-label { font-family: ${this.options.fontFamily}; font-size: 11px; fill: #64748b; }
+  .endpoint-label { font-family: ${this.options.fontFamily}; font-size: 9px; fill: #94a3b8; }
 </style>`
   }
 
@@ -257,14 +258,17 @@ export class SVGRendererV2 {
   }
 
   private renderLink(layoutLink: LayoutLink): string {
-    const { id, points, link } = layoutLink
-    const type = link.type || 'solid'
+    const { id, points, link, fromEndpoint, toEndpoint } = layoutLink
     const label = link.label
 
-    const stroke = link.style?.stroke || this.options.defaultLinkStroke
+    // Auto-apply styles based on redundancy type
+    const type = link.type || this.getDefaultLinkType(link.redundancy)
+    const arrow = link.arrow ?? this.getDefaultArrowType(link.redundancy)
+
+    const stroke = link.style?.stroke || this.getRedundancyStroke(link.redundancy) || this.options.defaultLinkStroke
     const strokeWidth = link.style?.strokeWidth || this.getLinkStrokeWidth(type)
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
-    const markerEnd = link.arrow !== 'none' ? 'url(#arrow)' : ''
+    const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
 
     // Generate path - use bezier curve for smooth lines
     let path: string
@@ -292,14 +296,109 @@ export class SVGRendererV2 {
 ${result}`
     }
 
-    // Label
+    // Center label
     if (label) {
       const labelText = Array.isArray(label) ? label.join(' / ') : label
       const midPoint = this.getMidPoint(points)
       result += `\n<text x="${midPoint.x}" y="${midPoint.y - 8}" class="link-label" text-anchor="middle">${this.escapeXml(labelText)}</text>`
     }
 
+    // Endpoint labels (port/ip at both ends) - positioned along the line
+    const fromLabels = this.formatEndpointLabels(fromEndpoint)
+    const toLabels = this.formatEndpointLabels(toEndpoint)
+
+    if (fromLabels.length > 0 && points.length > 1) {
+      const labelPos = this.getEndpointLabelPosition(points, 'start')
+      result += this.renderEndpointLabels(fromLabels, labelPos.x, labelPos.y, labelPos.anchor)
+    }
+
+    if (toLabels.length > 0 && points.length > 1) {
+      const labelPos = this.getEndpointLabelPosition(points, 'end')
+      result += this.renderEndpointLabels(toLabels, labelPos.x, labelPos.y, labelPos.anchor)
+    }
+
     return `<g class="link-group">\n${result}\n</g>`
+  }
+
+  private formatEndpointLabels(endpoint: { node: string; port?: string; ip?: string; vlan_id?: number }): string[] {
+    const parts: string[] = []
+    if (endpoint.port) parts.push(endpoint.port)
+    if (endpoint.ip) parts.push(endpoint.ip)
+    if (endpoint.vlan_id !== undefined) parts.push(`VLAN${endpoint.vlan_id}`)
+    return parts
+  }
+
+  /**
+   * Calculate position for endpoint label along the line
+   */
+  private getEndpointLabelPosition(
+    points: { x: number; y: number }[],
+    which: 'start' | 'end'
+  ): { x: number; y: number; anchor: string } {
+    // Position label at ~25% or ~75% along the line to avoid node overlap
+    const t = which === 'start' ? 0.15 : 0.85
+
+    if (points.length === 4) {
+      // Bezier curve - calculate position at t
+      const mt = 1 - t
+      const x = mt * mt * mt * points[0].x +
+        3 * mt * mt * t * points[1].x +
+        3 * mt * t * t * points[2].x +
+        t * t * t * points[3].x
+      const y = mt * mt * mt * points[0].y +
+        3 * mt * mt * t * points[1].y +
+        3 * mt * t * t * points[2].y +
+        t * t * t * points[3].y
+
+      // Get tangent direction for text anchor
+      const dx = 3 * mt * mt * (points[1].x - points[0].x) +
+        6 * mt * t * (points[2].x - points[1].x) +
+        3 * t * t * (points[3].x - points[2].x)
+
+      return { x, y: y - 6, anchor: dx > 0 ? 'start' : 'end' }
+    }
+
+    // Straight line
+    const x = points[0].x + (points[1].x - points[0].x) * t
+    const y = points[0].y + (points[1].y - points[0].y) * t
+    const dx = points[1].x - points[0].x
+
+    return { x, y: y - 6, anchor: dx > 0 ? 'start' : 'end' }
+  }
+
+  /**
+   * Render endpoint labels stacked vertically with background
+   */
+  private renderEndpointLabels(lines: string[], x: number, y: number, anchor: string): string {
+    if (lines.length === 0) return ''
+
+    const lineHeight = 12
+    const padding = 3
+    const charWidth = 5.5 // Approximate character width for 9px font
+
+    // Calculate max width
+    const maxLen = Math.max(...lines.map(l => l.length))
+    const rectWidth = maxLen * charWidth + padding * 2
+    const rectHeight = lines.length * lineHeight + padding * 2
+
+    // Adjust rect position based on text anchor
+    let rectX = x - padding
+    if (anchor === 'middle') {
+      rectX = x - rectWidth / 2
+    } else if (anchor === 'end') {
+      rectX = x - rectWidth + padding
+    }
+
+    const rectY = y - lineHeight + 2
+
+    let result = `\n<rect x="${rectX}" y="${rectY}" width="${rectWidth}" height="${rectHeight}" rx="2" ry="2" fill="white" fill-opacity="0.85" />`
+
+    lines.forEach((line, i) => {
+      const textY = y + i * lineHeight
+      result += `\n<text x="${x}" y="${textY}" class="endpoint-label" text-anchor="${anchor}">${this.escapeXml(line)}</text>`
+    })
+
+    return result
   }
 
   private getLinkStrokeWidth(type: LinkType): number {
@@ -307,6 +406,61 @@ ${result}`
       case 'thick': return 3
       case 'double': return 2
       default: return 1.5
+    }
+  }
+
+  /**
+   * Get default link type based on redundancy
+   */
+  private getDefaultLinkType(redundancy?: string): LinkType {
+    switch (redundancy) {
+      case 'ha':
+      case 'vc':
+      case 'vss':
+      case 'vpc':
+      case 'mlag':
+        return 'double'
+      case 'stack':
+        return 'thick'
+      default:
+        return 'solid'
+    }
+  }
+
+  /**
+   * Get default arrow type based on redundancy
+   */
+  private getDefaultArrowType(redundancy?: string): 'none' | 'forward' | 'back' | 'both' {
+    switch (redundancy) {
+      case 'ha':
+      case 'vc':
+      case 'vss':
+      case 'vpc':
+      case 'mlag':
+      case 'stack':
+        return 'none'
+      default:
+        return 'forward'
+    }
+  }
+
+  /**
+   * Get stroke color based on redundancy type
+   */
+  private getRedundancyStroke(redundancy?: string): string | undefined {
+    switch (redundancy) {
+      case 'ha':
+        return '#dc2626' // Red for HA
+      case 'vc':
+      case 'vss':
+        return '#7c3aed' // Purple for VC/VSS
+      case 'vpc':
+      case 'mlag':
+        return '#2563eb' // Blue for vPC/MLAG
+      case 'stack':
+        return '#059669' // Green for stacking
+      default:
+        return undefined
     }
   }
 
