@@ -17,7 +17,7 @@ import {
   type LayoutDirection,
   type LinkEndpoint,
   getNodeId,
-} from '../models'
+} from '../models/index.js'
 
 // ============================================
 // Helper Functions

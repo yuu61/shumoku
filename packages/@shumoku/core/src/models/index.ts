@@ -2,4 +2,4 @@
  * Shumoku Models
  */
 
-export * from './types'
+export * from './types.js'

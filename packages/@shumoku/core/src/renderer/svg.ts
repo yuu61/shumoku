@@ -14,8 +14,8 @@ import type {
   NodeShape,
   LinkType,
   ThemeType,
-} from '../models'
-import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons'
+} from '../models/index.js'
+import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons/index.js'
 
 // ============================================
 // Theme Colors

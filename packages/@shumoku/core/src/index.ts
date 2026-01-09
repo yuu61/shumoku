@@ -3,19 +3,19 @@
  */
 
 // Models
-export * from './models'
+export * from './models/index.js'
 
 // Layout
-export * from './layout'
+export * from './layout/index.js'
 
 // Themes
-export * from './themes'
+export * from './themes/index.js'
 
 // Icons
-export * from './icons'
+export * from './icons/index.js'
 
 // Renderer
-export * from './renderer'
+export * from './renderer/index.js'
 
 // Version
 export const version = '0.0.0'

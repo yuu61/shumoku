@@ -2,9 +2,9 @@
  * Dark theme
  */
 
-import type { Theme } from './types'
-import { modernTheme } from './modern'
-import { DeviceType } from '../models'
+import type { Theme } from './types.js'
+import { modernTheme } from './modern.js'
+import { DeviceType } from '../models/index.js'
 
 export const darkTheme: Theme = {
   ...modernTheme,

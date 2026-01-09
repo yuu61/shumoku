@@ -2,5 +2,5 @@
  * Shumoku Renderers
  */
 
-export { SVGRenderer, svgRenderer } from './svg'
-export type { SVGRendererOptions } from './svg'
+export { SVGRenderer, svgRenderer } from './svg.js'
+export type { SVGRendererOptions } from './svg.js'

@@ -2,7 +2,7 @@
  * Theme system types
  */
 
-import type { DeviceType } from '../models'
+import type { DeviceType } from '../models/index.js'
 
 export interface ThemeColors {
   /**

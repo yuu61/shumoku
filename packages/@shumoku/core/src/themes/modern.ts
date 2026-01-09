@@ -2,8 +2,8 @@
  * Modern theme - Default light theme
  */
 
-import type { Theme } from './types'
-import { DeviceType } from '../models'
+import type { Theme } from './types.js'
+import { DeviceType } from '../models/index.js'
 
 export const modernTheme: Theme = {
   name: 'modern',

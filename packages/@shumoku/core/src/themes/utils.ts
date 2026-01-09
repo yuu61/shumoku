@@ -2,7 +2,7 @@
  * Theme utilities
  */
 
-import type { Theme, ThemeOptions, DeepPartial } from './types'
+import type { Theme, ThemeOptions, DeepPartial } from './types.js'
 
 /**
  * Merge theme with overrides
