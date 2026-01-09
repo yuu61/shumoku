@@ -4,31 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Shumoku is a modern network topology visualization library for Markdown. It enables network engineers to create interactive network diagrams directly in documentation. The project is a TypeScript monorepo using pnpm workspaces and Turborepo.
+Shumoku is a modern network topology visualization library for Markdown. It enables network engineers to create interactive network diagrams directly in documentation. The project is a TypeScript monorepo using bun workspaces and Turborepo.
 
 ## Commands
 
 ### Development
 ```bash
-pnpm install          # Install all dependencies
-pnpm build            # Build all packages (respects dependency order)
-pnpm dev              # Run all packages in dev mode
-pnpm typecheck        # Type check all packages
-pnpm lint             # Lint all packages
-pnpm format           # Format with Biome
-pnpm test             # Run tests across packages
+bun install           # Install all dependencies
+bun run build         # Build all packages (respects dependency order)
+bun run dev           # Run all packages in dev mode
+bun run typecheck     # Type check all packages
+bun run lint          # Lint all packages
+bun run format        # Format with Biome
+bun run test          # Run tests across packages
 ```
 
 ### Package-specific
 ```bash
 # Run playground dev server
-cd apps/playground && pnpm dev
+cd apps/playground && bun run dev
 
 # Run tests for core package only
-cd packages/@shumoku/core && pnpm test
+cd packages/@shumoku/core && bun run test
 
 # Watch mode for core development
-cd packages/@shumoku/core && pnpm dev
+cd packages/@shumoku/core && bun run dev
 ```
 
 ## Architecture
