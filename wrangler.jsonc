@@ -3,6 +3,7 @@
   "name": "shumoku",
   "compatibility_date": "2025-01-09",
   "assets": {
-    "directory": "./apps/playground/dist"
+    "directory": "./apps/playground/dist",
+    "not_found_handling": "single-page-application"
   }
 }
