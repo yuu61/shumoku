@@ -79,7 +79,6 @@ interface YamlLinkEndpoint {
   node: string
   port?: string
   ip?: string
-  vlan_id?: number
 }
 
 interface YamlLink {
@@ -91,6 +90,10 @@ interface YamlLink {
   arrow?: string
   bandwidth?: string
   redundancy?: string
+  /** Single VLAN ID or array of VLANs for trunk */
+  vlan?: number | number[]
+  /** Alias for vlan (array form) */
+  vlans?: number[]
   style?: YamlLinkStyle
 }
 
@@ -262,6 +265,7 @@ export class YamlParserV2 {
       arrow: this.parseArrowType(l.arrow),
       bandwidth: this.parseBandwidth(l.bandwidth),
       redundancy: this.parseRedundancyType(l.redundancy),
+      vlans: this.parseVlans(l.vlan, l.vlans),
       style: l.style ? {
         stroke: l.style.stroke,
         strokeWidth: l.style.strokeWidth,
@@ -272,7 +276,19 @@ export class YamlParserV2 {
     }))
   }
 
-  private parseLinkEndpoint(endpoint: string | YamlLinkEndpoint): string | { node: string; port?: string; ip?: string; vlan_id?: number } {
+  private parseVlans(vlan?: number | number[], vlans?: number[]): number[] | undefined {
+    // vlans takes precedence
+    if (vlans && vlans.length > 0) {
+      return vlans
+    }
+    // vlan can be single number or array
+    if (vlan !== undefined) {
+      return Array.isArray(vlan) ? vlan : [vlan]
+    }
+    return undefined
+  }
+
+  private parseLinkEndpoint(endpoint: string | YamlLinkEndpoint): string | { node: string; port?: string; ip?: string } {
     if (typeof endpoint === 'string') {
       return endpoint
     }
@@ -280,7 +296,6 @@ export class YamlParserV2 {
       node: endpoint.node,
       port: endpoint.port,
       ip: endpoint.ip,
-      vlan_id: endpoint.vlan_id,
     }
   }
 

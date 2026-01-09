@@ -440,7 +440,7 @@ export class SVGRendererV2 {
     const type = link.type || this.getDefaultLinkType(link.redundancy)
     const arrow = link.arrow ?? this.getDefaultArrowType(link.redundancy)
 
-    const stroke = link.style?.stroke || this.getRedundancyStroke(link.redundancy) || this.options.defaultLinkStroke
+    const stroke = link.style?.stroke || this.getVlanStroke(link.vlans) || this.options.defaultLinkStroke
     const strokeWidth = link.style?.strokeWidth || this.getBandwidthStrokeWidth(link.bandwidth) || this.getLinkStrokeWidth(type)
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
     const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
@@ -471,11 +471,22 @@ export class SVGRendererV2 {
 ${result}`
     }
 
-    // Center label
+    // Center label and VLANs
+    const midPoint = this.getMidPoint(points)
+    let labelYOffset = -8
+
     if (label) {
       const labelText = Array.isArray(label) ? label.join(' / ') : label
-      const midPoint = this.getMidPoint(points)
-      result += `\n<text x="${midPoint.x}" y="${midPoint.y - 8}" class="link-label" text-anchor="middle">${this.escapeXml(labelText)}</text>`
+      result += `\n<text x="${midPoint.x}" y="${midPoint.y + labelYOffset}" class="link-label" text-anchor="middle">${this.escapeXml(labelText)}</text>`
+      labelYOffset += 12
+    }
+
+    // VLANs (link-level, applies to both endpoints)
+    if (link.vlans && link.vlans.length > 0) {
+      const vlanText = link.vlans.length === 1
+        ? `VLAN ${link.vlans[0]}`
+        : `VLAN ${link.vlans.join(', ')}`
+      result += `\n<text x="${midPoint.x}" y="${midPoint.y + labelYOffset}" class="link-label" text-anchor="middle">${this.escapeXml(vlanText)}</text>`
     }
 
     // Get node center positions for label placement
@@ -503,11 +514,10 @@ ${result}`
     return `<g class="link-group">\n${result}\n</g>`
   }
 
-  private formatEndpointLabels(endpoint: { node: string; port?: string; ip?: string; vlan_id?: number }): string[] {
+  private formatEndpointLabels(endpoint: { node: string; port?: string; ip?: string }): string[] {
     const parts: string[] = []
     // Port is now rendered on the node itself, so don't include it here
     if (endpoint.ip) parts.push(endpoint.ip)
-    if (endpoint.vlan_id !== undefined) parts.push(`VLAN${endpoint.vlan_id}`)
     return parts
   }
 
@@ -680,23 +690,41 @@ ${result}`
   }
 
   /**
-   * Get stroke color based on redundancy type
+   * VLAN color palette - distinct colors for different VLANs
    */
-  private getRedundancyStroke(redundancy?: string): string | undefined {
-    switch (redundancy) {
-      case 'ha':
-        return '#dc2626' // Red for HA
-      case 'vc':
-      case 'vss':
-        return '#7c3aed' // Purple for VC/VSS
-      case 'vpc':
-      case 'mlag':
-        return '#2563eb' // Blue for vPC/MLAG
-      case 'stack':
-        return '#059669' // Green for stacking
-      default:
-        return undefined
+  private static readonly VLAN_COLORS = [
+    '#dc2626', // Red
+    '#ea580c', // Orange
+    '#ca8a04', // Yellow
+    '#16a34a', // Green
+    '#0891b2', // Cyan
+    '#2563eb', // Blue
+    '#7c3aed', // Violet
+    '#c026d3', // Magenta
+    '#db2777', // Pink
+    '#059669', // Emerald
+    '#0284c7', // Light Blue
+    '#4f46e5', // Indigo
+  ]
+
+  /**
+   * Get stroke color based on VLANs
+   */
+  private getVlanStroke(vlans?: number[]): string | undefined {
+    if (!vlans || vlans.length === 0) {
+      return undefined
     }
+
+    if (vlans.length === 1) {
+      // Single VLAN: use color based on VLAN ID
+      const colorIndex = vlans[0] % SVGRendererV2.VLAN_COLORS.length
+      return SVGRendererV2.VLAN_COLORS[colorIndex]
+    }
+
+    // Multiple VLANs (trunk): use a combined hash color
+    const hash = vlans.reduce((acc, v) => acc + v, 0)
+    const colorIndex = hash % SVGRendererV2.VLAN_COLORS.length
+    return SVGRendererV2.VLAN_COLORS[colorIndex]
   }
 
   private getLinkDasharray(type: LinkType): string {

@@ -243,6 +243,7 @@ links:
   - from:
       node: ocx1
       port: eth0
+      ip: 169.254.1.2/30
     to:
       node: rt1
       port: lan2
@@ -252,6 +253,7 @@ links:
   - from:
       node: ocx2
       port: eth0
+      ip: 169.254.2.2/30
     to:
       node: rt2
       port: lan2
@@ -261,6 +263,7 @@ links:
   # VPN Tunnels
   - from:
       node: vgw
+      port: tun0
       ip: 169.254.100.1/30
     to:
       node: rt1
@@ -270,6 +273,7 @@ links:
 
   - from:
       node: vgw
+      port: tun1
       ip: 169.254.101.1/30
     to:
       node: rt2
@@ -310,7 +314,7 @@ links:
     to:
       node: ex-vc
       port: ge-0/0/1
-      ip: 10.241.0.10/24
+      ip: 10.241.0.11/24
     label: "Standby"
     bandwidth: 10G
 
@@ -318,129 +322,166 @@ links:
   - from:
       node: ex-vc
       port: ae0
+      ip: 10.241.1.1/30
     to:
       node: venue-agg
       port: ae0
+      ip: 10.241.1.2/30
     label: "LACP Trunk"
     bandwidth: 40G
 
-  # Venue Agg to Wings (1G)
+  # Venue Agg to Wings (1G) - Trunk with multiple VLANs
   - from:
       node: venue-agg
       port: ge-0/0/48
-      vlan_id: 100
+      ip: 10.100.0.1/30
     to:
       node: sw02
       port: Gi1/0/48
-      vlan_id: 100
+      ip: 10.100.0.2/30
     label: "Trunk"
+    vlans: [10, 20, 30, 100]
     bandwidth: 1G
 
   - from:
       node: venue-agg
       port: ge-0/0/47
-      vlan_id: 100
+      ip: 10.100.1.1/30
     to:
       node: sw03
       port: Gi1/0/48
-      vlan_id: 100
+      ip: 10.100.1.2/30
     label: "Trunk"
+    vlans: [10, 20, 30, 100]
     bandwidth: 1G
 
   # East Wing cascade (1G)
   - from:
       node: sw02
       port: Gi1/0/24
+      ip: 10.100.2.1/30
     to:
       node: sw08
       port: Gi1/0/48
+      ip: 10.100.2.2/30
     label: "Cascade"
+    vlans: [10, 20]
     bandwidth: 1G
 
   - from:
       node: sw02
       port: Gi1/0/1
+      ip: 10.100.3.1/30
     to:
       node: ap-foyer-01
       port: eth0
+      ip: 10.100.3.2/30
+    vlan: 20
     bandwidth: 1G
 
   - from:
       node: sw08
       port: Gi1/0/1
+      ip: 10.100.4.1/30
     to:
       node: ap-track-a
       port: eth0
+      ip: 10.100.4.2/30
+    vlan: 20
     bandwidth: 1G
 
   # West Wing cascade (1G)
   - from:
       node: sw03
       port: Gi1/0/24
+      ip: 10.100.10.1/30
     to:
       node: sw04
       port: Gi1/0/48
+      ip: 10.100.10.2/30
     label: "Cascade"
+    vlans: [10, 30]
     bandwidth: 1G
 
   - from:
       node: sw03
       port: Gi1/0/23
+      ip: 10.100.11.1/30
     to:
       node: sw05
       port: Gi1/0/48
+      ip: 10.100.11.2/30
     label: "Branch"
+    vlans: [10, 30]
     bandwidth: 1G
 
   - from:
       node: sw04
       port: Gi1/0/24
+      ip: 10.100.12.1/30
     to:
       node: sw06
       port: Gi1/0/48
+      ip: 10.100.12.2/30
     label: "Cascade"
+    vlans: [10, 30]
     bandwidth: 1G
 
   - from:
       node: sw06
       port: Gi1/0/24
+      ip: 10.100.13.1/30
     to:
       node: sw07
       port: Gi1/0/48
+      ip: 10.100.13.2/30
     label: "Cascade"
+    vlans: [10, 30]
     bandwidth: 1G
 
-  # APs (1G)
+  # APs (1G) - Access ports with single VLAN
   - from:
       node: sw03
       port: Gi1/0/1
+      ip: 10.100.20.1/30
     to:
       node: ap-spon-01
       port: eth0
+      ip: 10.100.20.2/30
+    vlan: 30
     bandwidth: 1G
 
   - from:
       node: sw04
       port: Gi1/0/1
+      ip: 10.100.21.1/30
     to:
       node: ap-spon-02
       port: eth0
+      ip: 10.100.21.2/30
+    vlan: 30
     bandwidth: 1G
 
   - from:
       node: sw06
       port: Gi1/0/1
+      ip: 10.100.22.1/30
     to:
       node: ap-track-b
       port: eth0
+      ip: 10.100.22.2/30
+    vlan: 30
     bandwidth: 1G
 
   - from:
       node: sw07
       port: Gi1/0/1
+      ip: 10.100.23.1/30
     to:
       node: ap-track-c
       port: eth0
+      ip: 10.100.23.2/30
+    vlan: 30
     bandwidth: 1G
 `
 

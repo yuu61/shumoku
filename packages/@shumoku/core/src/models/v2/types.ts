@@ -124,7 +124,6 @@ export interface LinkEndpoint {
   node: string
   port?: string
   ip?: string      // e.g., "10.57.0.1/30"
-  vlan_id?: number
 }
 
 /**
@@ -177,6 +176,13 @@ export interface Link {
    * stack: Stacking
    */
   redundancy?: 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack'
+
+  /**
+   * VLANs carried on this link
+   * Single VLAN for access ports, multiple for trunk ports
+   * Both endpoints must agree on the same VLANs
+   */
+  vlans?: number[]
 
   /**
    * Custom style
@@ -471,11 +477,28 @@ export interface Bounds {
   height: number
 }
 
+/**
+ * Port position on a node edge
+ */
+export interface LayoutPort {
+  id: string
+  /** Port name (e.g., "eth0", "Gi0/1") */
+  label: string
+  /** Position relative to node center */
+  position: Position
+  /** Port box size */
+  size: Size
+  /** Which side of the node (for rendering) */
+  side: 'top' | 'bottom' | 'left' | 'right'
+}
+
 export interface LayoutNode {
   id: string
   position: Position
   size: Size
   node: Node
+  /** Ports on this node */
+  ports?: Map<string, LayoutPort>
 }
 
 export interface LayoutLink {
