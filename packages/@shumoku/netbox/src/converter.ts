@@ -293,7 +293,7 @@ function buildNodes(
       shape: 'rounded',
       type: deviceType as DeviceType,
       rank: tagConfig?.level,
-      model: device.model,  // Use dedicated model field
+      model: device.model?.toLowerCase(),  // Use dedicated model field (lowercase for icon lookup)
       vendor: device.manufacturer?.toLowerCase(),  // Use vendor field
     }
 
