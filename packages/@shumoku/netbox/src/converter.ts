@@ -53,10 +53,16 @@ export function convertToNetworkGraph(
   const showPorts = options.showPorts ?? true
   const colorByCableType = options.colorByCableType ?? true
 
-  // 1. Build device tag map
+  // 1. Build device tag map and info map
   const deviceTagMap = new Map<string, string>()
+  const deviceInfoMap = new Map<string, { model?: string; manufacturer?: string; ip?: string }>()
   for (const device of deviceResp.results) {
     deviceTagMap.set(device.name, resolvePrimaryTag(device.tags))
+    deviceInfoMap.set(device.name, {
+      model: device.device_type?.model,
+      manufacturer: device.device_type?.manufacturer?.name,
+      ip: device.primary_ip4?.address?.split('/')[0] ?? device.primary_ip6?.address?.split('/')[0],
+    })
   }
 
   // 2. Build port VLAN map
@@ -98,8 +104,10 @@ export function convertToNetworkGraph(
     const tagB = deviceTagMap.get(nameB) ?? 'other'
 
     // Register devices
-    registerDevice(devices, nameA, tagA, termA.name, portVlanMap.get(nameA)?.get(termA.name) ?? [])
-    registerDevice(devices, nameB, tagB, termB.name, portVlanMap.get(nameB)?.get(termB.name) ?? [])
+    const infoA = deviceInfoMap.get(nameA)
+    const infoB = deviceInfoMap.get(nameB)
+    registerDevice(devices, nameA, tagA, termA.name, portVlanMap.get(nameA)?.get(termA.name) ?? [], infoA)
+    registerDevice(devices, nameB, tagB, termB.name, portVlanMap.get(nameB)?.get(termB.name) ?? [], infoB)
 
     const levelA = getLevelByTag(tagA, tagMapping)
     const levelB = getLevelByTag(tagB, tagMapping)
@@ -188,7 +196,8 @@ function registerDevice(
   name: string,
   tag: string,
   port: string,
-  vlans: number[]
+  vlans: number[],
+  info?: { model?: string; manufacturer?: string; ip?: string }
 ): void {
   if (!devices.has(name)) {
     devices.set(name, {
@@ -196,6 +205,9 @@ function registerDevice(
       primaryTag: tag,
       ports: new Set(),
       portVlans: new Map(),
+      model: info?.model,
+      manufacturer: info?.manufacturer,
+      ip: info?.ip,
     })
   }
 
@@ -267,9 +279,22 @@ function buildNodes(
     const tagConfig = mapping[device.primaryTag]
     const deviceType = tagConfig?.type ?? 'generic'
 
+    // Build label lines
+    const labelLines: string[] = [`<b>${device.name}</b>`]
+
+    // Add model info if available
+    if (device.model) {
+      labelLines.push(device.model)
+    }
+
+    // Add IP if available
+    if (device.ip) {
+      labelLines.push(device.ip)
+    }
+
     const node: Node = {
       id: device.name,
-      label: [`<b>${device.name}</b>`],
+      label: labelLines,
       shape: 'rounded',
       type: deviceType as DeviceType,
       rank: tagConfig?.level,

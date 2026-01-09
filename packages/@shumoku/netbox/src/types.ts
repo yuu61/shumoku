@@ -12,9 +12,29 @@ export interface NetBoxTag {
   name: string
 }
 
+export interface NetBoxDeviceType {
+  model: string
+  manufacturer?: {
+    name: string
+    slug: string
+  }
+}
+
 export interface NetBoxDevice {
   name: string
   tags: NetBoxTag[]
+  device_type?: NetBoxDeviceType
+  primary_ip4?: {
+    address: string
+  }
+  primary_ip6?: {
+    address: string
+  }
+  serial?: string
+  role?: {
+    name: string
+    slug: string
+  }
 }
 
 export interface NetBoxDeviceResponse {
@@ -146,6 +166,9 @@ export interface DeviceData {
   primaryTag: string
   ports: Set<string>
   portVlans: Map<string, number[]>
+  model?: string
+  manufacturer?: string
+  ip?: string
 }
 
 export interface ConnectionData {
