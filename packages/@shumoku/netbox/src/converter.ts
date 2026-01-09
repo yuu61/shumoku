@@ -282,12 +282,7 @@ function buildNodes(
     // Build label lines
     const labelLines: string[] = [`<b>${device.name}</b>`]
 
-    // Add model info if available
-    if (device.model) {
-      labelLines.push(device.model)
-    }
-
-    // Add IP if available
+    // Add IP if available (in label since it's dynamic info)
     if (device.ip) {
       labelLines.push(device.ip)
     }
@@ -298,6 +293,8 @@ function buildNodes(
       shape: 'rounded',
       type: deviceType as DeviceType,
       rank: tagConfig?.level,
+      model: device.model,  // Use dedicated model field
+      vendor: device.manufacturer?.toLowerCase(),  // Use vendor field
     }
 
     if (groupByTag) {
@@ -405,6 +402,12 @@ export function toYaml(graph: NetworkGraph): string {
 
     if (node.type) {
       lines.push(`    type: ${node.type}`)
+    }
+    if (node.vendor) {
+      lines.push(`    vendor: ${node.vendor}`)
+    }
+    if (node.model) {
+      lines.push(`    model: ${node.model}`)
     }
     if (node.parent) {
       lines.push(`    parent: ${node.parent}`)
