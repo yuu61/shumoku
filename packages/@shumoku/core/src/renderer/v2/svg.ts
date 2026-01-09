@@ -441,35 +441,17 @@ export class SVGRendererV2 {
     const arrow = link.arrow ?? this.getDefaultArrowType(link.redundancy)
 
     const stroke = link.style?.stroke || this.getVlanStroke(link.vlans) || this.options.defaultLinkStroke
-    const strokeWidth = link.style?.strokeWidth || this.getBandwidthStrokeWidth(link.bandwidth) || this.getLinkStrokeWidth(type)
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
     const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
 
-    // Generate path - use bezier curve for smooth lines
-    let path: string
+    // Get bandwidth rendering config
+    const bandwidthConfig = this.getBandwidthConfig(link.bandwidth)
+    const strokeWidth = link.style?.strokeWidth || bandwidthConfig.strokeWidth || this.getLinkStrokeWidth(type)
 
-    if (points.length === 4) {
-      // Cubic bezier curve (start, control1, control2, end)
-      path = `M ${points[0].x} ${points[0].y} C ${points[1].x} ${points[1].y}, ${points[2].x} ${points[2].y}, ${points[3].x} ${points[3].y}`
-    } else if (points.length === 2) {
-      // Straight line
-      path = `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
-    } else {
-      // Polyline (fallback)
-      path = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
-    }
-
-    let result = `<path class="link" data-id="${id}" d="${path}"
-  fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
-  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''}
-  ${markerEnd ? `marker-end="${markerEnd}"` : ''} />`
-
-    // Double line effect
-    if (type === 'double') {
-      result = `<path class="link-double-outer" d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" />
-<path class="link-double-inner" d="${path}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" />
-${result}`
-    }
+    // Render link lines based on bandwidth (single or multiple parallel lines)
+    let result = this.renderBandwidthLines(
+      id, points, stroke, strokeWidth, dasharray, markerEnd, bandwidthConfig, type
+    )
 
     // Center label and VLANs
     const midPoint = this.getMidPoint(points)
@@ -649,18 +631,131 @@ ${result}`
   }
 
   /**
-   * Get stroke width based on bandwidth
+   * Bandwidth rendering configuration - line count represents speed
+   * 1G   → 1 line
+   * 10G  → 2 lines
+   * 25G  → 3 lines
+   * 40G  → 4 lines
+   * 100G → 5 lines
    */
-  private getBandwidthStrokeWidth(bandwidth?: string): number | undefined {
-    if (!bandwidth) return undefined
+  private getBandwidthConfig(bandwidth?: string): { lineCount: number; strokeWidth: number } {
+    const strokeWidth = 1.5
     switch (bandwidth) {
-      case '1G': return 1
-      case '10G': return 2
-      case '25G': return 3
-      case '40G': return 4
-      case '100G': return 5
-      default: return undefined
+      case '1G':
+        return { lineCount: 1, strokeWidth }
+      case '10G':
+        return { lineCount: 2, strokeWidth }
+      case '25G':
+        return { lineCount: 3, strokeWidth }
+      case '40G':
+        return { lineCount: 4, strokeWidth }
+      case '100G':
+        return { lineCount: 5, strokeWidth }
+      default:
+        return { lineCount: 1, strokeWidth }
     }
+  }
+
+  /**
+   * Render bandwidth lines (single or multiple parallel lines)
+   */
+  private renderBandwidthLines(
+    id: string,
+    points: { x: number; y: number }[],
+    stroke: string,
+    strokeWidth: number,
+    dasharray: string,
+    markerEnd: string,
+    config: { lineCount: number; strokeWidth: number },
+    type: LinkType
+  ): string {
+    const { lineCount } = config
+    const lineSpacing = 3 // Space between parallel lines
+
+    if (lineCount === 1) {
+      // Single line
+      const path = this.generatePath(points)
+      let result = `<path class="link" data-id="${id}" d="${path}"
+  fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
+  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''}
+  ${markerEnd ? `marker-end="${markerEnd}"` : ''} />`
+
+      // Double line effect for redundancy types
+      if (type === 'double') {
+        result = `<path class="link-double-outer" d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" />
+<path class="link-double-inner" d="${path}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" />
+${result}`
+      }
+      return result
+    }
+
+    // Multiple parallel lines
+    const paths: string[] = []
+    const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
+
+    for (const offset of offsets) {
+      const offsetPoints = this.offsetPoints(points, offset)
+      const path = this.generatePath(offsetPoints)
+      paths.push(`<path class="link" data-id="${id}" d="${path}"
+  fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
+  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} />`)
+    }
+
+    return paths.join('\n')
+  }
+
+  /**
+   * Generate SVG path string from points
+   */
+  private generatePath(points: { x: number; y: number }[]): string {
+    if (points.length === 4) {
+      // Cubic bezier curve
+      return `M ${points[0].x} ${points[0].y} C ${points[1].x} ${points[1].y}, ${points[2].x} ${points[2].y}, ${points[3].x} ${points[3].y}`
+    } else if (points.length === 2) {
+      // Straight line
+      return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+    } else {
+      // Polyline
+      return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
+    }
+  }
+
+  /**
+   * Calculate offsets for parallel lines (centered around 0)
+   */
+  private calculateLineOffsets(lineCount: number, spacing: number): number[] {
+    const offsets: number[] = []
+    const totalWidth = (lineCount - 1) * spacing
+    const startOffset = -totalWidth / 2
+
+    for (let i = 0; i < lineCount; i++) {
+      offsets.push(startOffset + i * spacing)
+    }
+    return offsets
+  }
+
+  /**
+   * Offset points perpendicular to the line direction
+   */
+  private offsetPoints(points: { x: number; y: number }[], offset: number): { x: number; y: number }[] {
+    if (points.length < 2) return points
+
+    // Calculate perpendicular direction from first to last point
+    const dx = points[points.length - 1].x - points[0].x
+    const dy = points[points.length - 1].y - points[0].y
+    const len = Math.sqrt(dx * dx + dy * dy)
+
+    if (len === 0) return points
+
+    // Perpendicular unit vector
+    const perpX = -dy / len
+    const perpY = dx / len
+
+    // Offset all points
+    return points.map(p => ({
+      x: p.x + perpX * offset,
+      y: p.y + perpY * offset,
+    }))
   }
 
   /**

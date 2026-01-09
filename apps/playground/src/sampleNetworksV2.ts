@@ -318,7 +318,7 @@ links:
     label: "Standby"
     bandwidth: 10G
 
-  # Core to Venue Agg (40G LACP)
+  # Core to Venue Agg (40G LACP) - 3 parallel lines
   - from:
       node: ex-vc
       port: ae0
@@ -327,10 +327,10 @@ links:
       node: venue-agg
       port: ae0
       ip: 10.241.1.2/30
-    label: "LACP Trunk"
+    label: "40G LACP"
     bandwidth: 40G
 
-  # Venue Agg to Wings (1G) - Trunk with multiple VLANs
+  # Venue Agg to Wings (10G) - Trunk with multiple VLANs
   - from:
       node: venue-agg
       port: ge-0/0/48
@@ -341,7 +341,7 @@ links:
       ip: 10.100.0.2/30
     label: "Trunk"
     vlans: [10, 20, 30, 100]
-    bandwidth: 1G
+    bandwidth: 10G
 
   - from:
       node: venue-agg
@@ -353,9 +353,9 @@ links:
       ip: 10.100.1.2/30
     label: "Trunk"
     vlans: [10, 20, 30, 100]
-    bandwidth: 1G
+    bandwidth: 10G
 
-  # East Wing cascade (1G)
+  # East Wing cascade (10G)
   - from:
       node: sw02
       port: Gi1/0/24
@@ -366,7 +366,7 @@ links:
       ip: 10.100.2.2/30
     label: "Cascade"
     vlans: [10, 20]
-    bandwidth: 1G
+    bandwidth: 10G
 
   - from:
       node: sw02
@@ -390,7 +390,7 @@ links:
     vlan: 20
     bandwidth: 1G
 
-  # West Wing cascade (1G)
+  # West Wing cascade (10G)
   - from:
       node: sw03
       port: Gi1/0/24
@@ -401,7 +401,7 @@ links:
       ip: 10.100.10.2/30
     label: "Cascade"
     vlans: [10, 30]
-    bandwidth: 1G
+    bandwidth: 10G
 
   - from:
       node: sw03
@@ -413,7 +413,7 @@ links:
       ip: 10.100.11.2/30
     label: "Branch"
     vlans: [10, 30]
-    bandwidth: 1G
+    bandwidth: 10G
 
   - from:
       node: sw04
@@ -425,7 +425,7 @@ links:
       ip: 10.100.12.2/30
     label: "Cascade"
     vlans: [10, 30]
-    bandwidth: 1G
+    bandwidth: 10G
 
   - from:
       node: sw06
@@ -437,7 +437,7 @@ links:
       ip: 10.100.13.2/30
     label: "Cascade"
     vlans: [10, 30]
-    bandwidth: 1G
+    bandwidth: 10G
 
   # APs (1G) - Access ports with single VLAN
   - from:
