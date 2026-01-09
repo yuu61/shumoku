@@ -25,10 +25,10 @@ export const NetworkSVG: React.FC<NetworkSVGProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
-  // Handle wheel zoom
+  // Handle wheel zoom (scroll down = zoom in, like diving into content)
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
-    const delta = e.deltaY * -0.001
+    const delta = e.deltaY * 0.001
     const newScale = Math.min(Math.max(0.2, scale + delta), 3)
     setScale(newScale)
   }, [scale])
@@ -97,25 +97,18 @@ export const NetworkSVG: React.FC<NetworkSVGProps> = ({
     const containerWidth = container.clientWidth
     const containerHeight = container.clientHeight
 
-    // Try to get SVG dimensions from the content
-    const svgMatch = svgContent.match(/width="(\d+(?:\.\d+)?)".*?height="(\d+(?:\.\d+)?)"/)
-    let svgWidth: number
-    let svgHeight: number
+    if (containerWidth === 0 || containerHeight === 0) return
 
-    if (svgMatch) {
-      // Use actual SVG dimensions (includes canvas settings)
-      svgWidth = parseFloat(svgMatch[1])
-      svgHeight = parseFloat(svgMatch[2])
-    } else {
-      // Fallback to layout bounds
-      svgWidth = layout.bounds.width
-      svgHeight = layout.bounds.height
-    }
+    // Use layout bounds for sizing
+    const svgWidth = layout.bounds.width
+    const svgHeight = layout.bounds.height
 
-    // Calculate scale to fit (allow scale up)
+    if (svgWidth === 0 || svgHeight === 0) return
+
+    // Calculate scale to fit within container
     const scaleX = containerWidth / svgWidth
     const scaleY = containerHeight / svgHeight
-    const fitScale = Math.min(scaleX, scaleY) * 0.9
+    const fitScale = Math.min(scaleX, scaleY, 1) * 0.85 // Cap at 1x, 85% to add margin
 
     // Center
     const centerX = (containerWidth - svgWidth * fitScale) / 2
@@ -151,8 +144,9 @@ export const NetworkSVG: React.FC<NetworkSVGProps> = ({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f8fafc',
         cursor: isDragging ? 'grabbing' : 'grab',
+        position: 'relative',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -161,6 +155,7 @@ export const NetworkSVG: React.FC<NetworkSVGProps> = ({
     >
       <div
         style={{
+          position: 'absolute',
           transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
           transformOrigin: '0 0',
         }}
