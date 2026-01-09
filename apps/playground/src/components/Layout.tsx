@@ -8,6 +8,7 @@ export default function Layout() {
       <header className="header">
         <div className="header-content">
           <Link to="/" className="logo">
+            <img src="/logo.svg" alt="Shumoku" className="logo-img" />
             <h1>Shumoku</h1>
           </Link>
           <nav className="main-nav">
