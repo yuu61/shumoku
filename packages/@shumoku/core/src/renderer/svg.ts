@@ -13,38 +13,82 @@ import type {
   Node,
   NodeShape,
   LinkType,
+  ThemeType,
 } from '../models'
 import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons'
+
+// ============================================
+// Theme Colors
+// ============================================
+
+interface ThemeColors {
+  backgroundColor: string
+  defaultNodeFill: string
+  defaultNodeStroke: string
+  defaultLinkStroke: string
+  labelColor: string
+  labelSecondaryColor: string
+  subgraphFill: string
+  subgraphStroke: string
+  subgraphLabelColor: string
+  portFill: string
+  portStroke: string
+  portLabelBg: string
+  portLabelColor: string
+  endpointLabelBg: string
+  endpointLabelStroke: string
+}
+
+const LIGHT_THEME: ThemeColors = {
+  backgroundColor: '#ffffff',
+  defaultNodeFill: '#e2e8f0',
+  defaultNodeStroke: '#64748b',
+  defaultLinkStroke: '#94a3b8',
+  labelColor: '#1e293b',
+  labelSecondaryColor: '#64748b',
+  subgraphFill: '#f8fafc',
+  subgraphStroke: '#cbd5e1',
+  subgraphLabelColor: '#374151',
+  portFill: '#475569',
+  portStroke: '#1e293b',
+  portLabelBg: '#1e293b',
+  portLabelColor: '#ffffff',
+  endpointLabelBg: '#ffffff',
+  endpointLabelStroke: '#cbd5e1',
+}
+
+const DARK_THEME: ThemeColors = {
+  backgroundColor: '#1e293b',
+  defaultNodeFill: '#334155',
+  defaultNodeStroke: '#64748b',
+  defaultLinkStroke: '#64748b',
+  labelColor: '#f1f5f9',
+  labelSecondaryColor: '#94a3b8',
+  subgraphFill: '#0f172a',
+  subgraphStroke: '#475569',
+  subgraphLabelColor: '#e2e8f0',
+  portFill: '#64748b',
+  portStroke: '#94a3b8',
+  portLabelBg: '#0f172a',
+  portLabelColor: '#f1f5f9',
+  endpointLabelBg: '#1e293b',
+  endpointLabelStroke: '#475569',
+}
 
 // ============================================
 // Renderer Options
 // ============================================
 
 export interface SVGRendererOptions {
-  /** Background color */
-  backgroundColor?: string
-  /** Default node fill */
-  defaultNodeFill?: string
-  /** Default node stroke */
-  defaultNodeStroke?: string
-  /** Default link stroke */
-  defaultLinkStroke?: string
   /** Font family */
   fontFamily?: string
   /** Include interactive elements */
   interactive?: boolean
-  /** Theme for icon selection ('light', 'dark', or 'default') */
-  theme?: IconThemeVariant
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
-  backgroundColor: '#ffffff',
-  defaultNodeFill: '#e2e8f0',
-  defaultNodeStroke: '#64748b',
-  defaultLinkStroke: '#94a3b8',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   interactive: true,
-  theme: 'default',
 }
 
 // ============================================
@@ -53,13 +97,34 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
 
 export class SVGRenderer {
   private options: Required<SVGRendererOptions>
+  private themeColors: ThemeColors = LIGHT_THEME
+  private iconTheme: IconThemeVariant = 'default'
 
   constructor(options?: SVGRendererOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
   }
 
-  render(_graph: NetworkGraph, layout: LayoutResult): string {
+  /**
+   * Get theme colors based on theme type
+   */
+  private getThemeColors(theme?: ThemeType): ThemeColors {
+    return theme === 'dark' ? DARK_THEME : LIGHT_THEME
+  }
+
+  /**
+   * Get icon theme variant based on theme type
+   */
+  private getIconTheme(theme?: ThemeType): IconThemeVariant {
+    return theme === 'dark' ? 'dark' : 'light'
+  }
+
+  render(graph: NetworkGraph, layout: LayoutResult): string {
     const { bounds } = layout
+
+    // Set theme colors based on graph settings
+    const theme = graph.settings?.theme
+    this.themeColors = this.getThemeColors(theme)
+    this.iconTheme = this.getIconTheme(theme)
 
     const parts: string[] = []
 
@@ -99,14 +164,14 @@ export class SVGRenderer {
   viewBox="${viewBox}"
   width="${width}"
   height="${height}"
-  style="background: ${this.options.backgroundColor}">`
+  style="background: ${this.themeColors.backgroundColor}">`
   }
 
   private renderDefs(): string {
     return `<defs>
   <!-- Arrow marker -->
   <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="${this.options.defaultLinkStroke}" />
+    <polygon points="0 0, 10 3.5, 0 7" fill="${this.themeColors.defaultLinkStroke}" />
   </marker>
   <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
     <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
@@ -123,13 +188,13 @@ export class SVGRenderer {
     return `<style>
   .node { cursor: pointer; }
   .node:hover rect, .node:hover circle, .node:hover polygon { filter: brightness(0.95); }
-  .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: #1e293b; }
+  .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: ${this.themeColors.labelColor}; }
   .node-label-bold { font-weight: bold; }
-  .node-icon { color: #475569; }
+  .node-icon { color: ${this.themeColors.labelSecondaryColor}; }
   .subgraph-icon { opacity: 0.9; }
-  .subgraph-label { font-family: ${this.options.fontFamily}; font-size: 14px; font-weight: 600; fill: #374151; }
-  .link-label { font-family: ${this.options.fontFamily}; font-size: 11px; fill: #64748b; }
-  .endpoint-label { font-family: ${this.options.fontFamily}; font-size: 9px; fill: #1e293b; }
+  .subgraph-label { font-family: ${this.options.fontFamily}; font-size: 14px; font-weight: 600; fill: ${this.themeColors.subgraphLabelColor}; }
+  .link-label { font-family: ${this.options.fontFamily}; font-size: 11px; fill: ${this.themeColors.labelSecondaryColor}; }
+  .endpoint-label { font-family: ${this.options.fontFamily}; font-size: 9px; fill: ${this.themeColors.labelColor}; }
 </style>`
   }
 
@@ -137,8 +202,8 @@ export class SVGRenderer {
     const { bounds, subgraph } = sg
     const style = subgraph.style || {}
 
-    const fill = style.fill || '#f8fafc'
-    const stroke = style.stroke || '#cbd5e1'
+    const fill = style.fill || this.themeColors.subgraphFill
+    const stroke = style.stroke || this.themeColors.subgraphStroke
     const strokeWidth = style.strokeWidth || 1
     const strokeDasharray = style.strokeDasharray || ''
     const labelPos = style.labelPosition || 'top'
@@ -170,7 +235,7 @@ export class SVGRenderer {
     if (hasIcon) {
       const iconEntry = getVendorIconEntry(subgraph.vendor!, iconKey!, subgraph.resource)
       if (iconEntry) {
-        const iconContent = iconEntry[this.options.theme] || iconEntry.default
+        const iconContent = iconEntry[this.iconTheme] || iconEntry.default
         const viewBox = iconEntry.viewBox || '0 0 48 48'
 
         // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
@@ -216,8 +281,8 @@ export class SVGRenderer {
     const h = size.height
 
     const style = node.style || {}
-    const fill = style.fill || this.options.defaultNodeFill
-    const stroke = style.stroke || this.options.defaultNodeStroke
+    const fill = style.fill || this.themeColors.defaultNodeFill
+    const stroke = style.stroke || this.themeColors.defaultNodeStroke
     const strokeWidth = style.strokeWidth || 1
     const strokeDasharray = style.strokeDasharray || ''
 
@@ -255,7 +320,7 @@ export class SVGRenderer {
       // Port box
       parts.push(`<rect class="port" data-port="${port.id}"
         x="${px - pw / 2}" y="${py - ph / 2}" width="${pw}" height="${ph}"
-        fill="#475569" stroke="#1e293b" stroke-width="1" rx="2" />`)
+        fill="${this.themeColors.portFill}" stroke="${this.themeColors.portStroke}" stroke-width="1" rx="2" />`)
 
       // Port label - position based on side
       let labelX = px
@@ -295,8 +360,8 @@ export class SVGRenderer {
       }
       const bgY = labelY - labelHeight + 3
 
-      parts.push(`<rect class="port-label-bg" x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="#1e293b" />`)
-      parts.push(`<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="#ffffff">${labelText}</text>`)
+      parts.push(`<rect class="port-label-bg" x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`)
+      parts.push(`<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`)
     })
 
     return parts.join('\n  ')
@@ -370,7 +435,7 @@ export class SVGRenderer {
     if (node.vendor && iconKey) {
       const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
       if (iconEntry) {
-        const vendorIcon = iconEntry[this.options.theme] || iconEntry.default
+        const vendorIcon = iconEntry[this.iconTheme] || iconEntry.default
         // Get viewBox from entry, or use defaults
         const viewBox = iconEntry.viewBox || '0 0 48 48'
 
@@ -456,7 +521,7 @@ export class SVGRenderer {
     const type = link.type || this.getDefaultLinkType(link.redundancy)
     const arrow = link.arrow ?? this.getDefaultArrowType(link.redundancy)
 
-    const stroke = link.style?.stroke || this.getVlanStroke(link.vlan) || this.options.defaultLinkStroke
+    const stroke = link.style?.stroke || this.getVlanStroke(link.vlan) || this.themeColors.defaultLinkStroke
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
     const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
 
@@ -629,7 +694,7 @@ export class SVGRenderer {
 
     const rectY = y - lineHeight + paddingY
 
-    let result = `\n<rect x="${rectX}" y="${rectY}" width="${rectWidth}" height="${rectHeight}" rx="2" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.5" />`
+    let result = `\n<rect x="${rectX}" y="${rectY}" width="${rectWidth}" height="${rectHeight}" rx="2" fill="${this.themeColors.endpointLabelBg}" stroke="${this.themeColors.endpointLabelStroke}" stroke-width="0.5" />`
 
     lines.forEach((line, i) => {
       const textY = y + i * lineHeight

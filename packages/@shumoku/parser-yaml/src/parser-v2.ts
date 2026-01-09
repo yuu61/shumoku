@@ -15,6 +15,7 @@ import type {
   NodeShape,
   LinkType,
   ArrowType,
+  ThemeType,
 } from '@shumoku/core/models'
 
 // Re-define DeviceType enum locally (same as v2.DeviceType)
@@ -379,12 +380,22 @@ export class YamlParser {
 
     return {
       direction: this.parseDirection(settings.direction),
-      theme: settings.theme,
+      theme: this.parseTheme(settings.theme),
       nodeSpacing: settings.nodeSpacing,
       rankSpacing: settings.rankSpacing,
       subgraphPadding: settings.subgraphPadding,
       canvas: this.parseCanvasSettings(settings.canvas),
     }
+  }
+
+  private parseTheme(theme?: string): ThemeType | undefined {
+    if (!theme) return undefined
+    const normalized = theme.toLowerCase()
+    if (normalized === 'light' || normalized === 'dark') {
+      return normalized
+    }
+    // Default to light for unknown values (backwards compatibility with 'modern')
+    return 'light'
   }
 
   private parseCanvasSettings(canvas?: YamlCanvasSettings): CanvasSettings | undefined {

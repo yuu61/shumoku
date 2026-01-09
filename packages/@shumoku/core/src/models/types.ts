@@ -373,6 +373,11 @@ export function paperSizeToPixels(
 // Graph Types
 // ============================================
 
+/**
+ * Theme type for diagram appearance
+ */
+export type ThemeType = 'light' | 'dark'
+
 export interface GraphSettings {
   /**
    * Default layout direction
@@ -380,9 +385,9 @@ export interface GraphSettings {
   direction?: LayoutDirection
 
   /**
-   * Theme name
+   * Theme for diagram appearance (light or dark)
    */
-  theme?: string
+  theme?: ThemeType
 
   /**
    * Node spacing

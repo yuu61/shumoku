@@ -7,7 +7,7 @@ name: "Enterprise Network"
 description: "Enterprise network with HA routers, firewall, DMZ and campus"
 
 settings:
-  theme: modern
+  theme: light
 
 subgraphs:
   # Cloud Layer
