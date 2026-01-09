@@ -9,11 +9,12 @@ import type {
   LayoutNode,
   LayoutLink,
   LayoutSubgraph,
+  LayoutPort,
   Node,
   NodeShape,
   LinkType,
-} from '../../models'
-import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../../icons'
+} from '../models'
+import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons'
 
 // ============================================
 // Renderer Options
@@ -239,7 +240,7 @@ export class SVGRenderer {
   private renderPorts(
     nodeX: number,
     nodeY: number,
-    ports?: Map<string, import('../../models/v2').LayoutPort>
+    ports?: Map<string, LayoutPort>
   ): string {
     if (!ports || ports.size === 0) return ''
 

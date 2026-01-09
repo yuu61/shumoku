@@ -1,5 +1,6 @@
 /**
- * Network diagram renderers
+ * Shumoku Renderers
  */
 
-export * from './v2'
+export { SVGRenderer, svgRenderer } from './svg'
+export type { SVGRendererOptions } from './svg'

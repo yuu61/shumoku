@@ -313,7 +313,7 @@ function generateTypeScript(iconSets: IconSet[]): string {
     ' * DO NOT EDIT - Run build-icons.ts to regenerate',
     ' */',
     '',
-    "import { DeviceType } from '../models/v2'",
+    "import { DeviceType } from '../models'",
     '',
     "export type IconThemeVariant = 'light' | 'dark' | 'default'",
     '',

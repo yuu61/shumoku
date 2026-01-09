@@ -1,5 +1,5 @@
 /**
- * Network topology data models
+ * Shumoku Models
  */
 
-export * from './v2'
+export * from './types'
