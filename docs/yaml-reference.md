@@ -315,109 +315,12 @@ links:
 
 ---
 
-## ベンダーアイコン一覧
+## ベンダーアイコン
 
-### Yamaha
+詳細は [vendor-icons.md](./vendor-icons.md) を参照。
 
-| model | 説明 |
-|-------|------|
-| `rtx3510` | RTX3510 ルーター |
-
-```yaml
-vendor: yamaha
-model: rtx3510
-```
-
-### Aruba
-
-| service/model | 説明 |
-|---------------|------|
-| `access-switch` | アクセススイッチ |
-| `ap500-series` | AP500 シリーズ |
-| `ap500-series-microbranch` | AP500 マイクロブランチ |
-| `ap600-series` | AP600 シリーズ |
-| `core-agg-leaf-switch` | コア/アグリ/リーフスイッチ |
-| `gateway-branch` | ブランチゲートウェイ |
-| `gateway-campus` | キャンパスゲートウェイ |
-| `gateway-headend` | ヘッドエンドゲートウェイ |
-| `edgeconnect-enterprise-appliance` | EdgeConnect アプライアンス |
-| `edgeconnect-enterprise-cloud` | EdgeConnect クラウド |
-| `edgeconnect-enterprise-virtual` | EdgeConnect 仮想 |
-| `outdor-ap` | 屋外 AP |
-| `uxi-sensor-classic` | UXI センサー (クラシック) |
-| `uxi-sensor-new` | UXI センサー (新型) |
-| `central-apis` | Central APIs |
-| `central-client-insights` | Central Client Insights |
-| `central-netconductor` | Central NetConductor |
-| `central-network-insights` | Central Network Insights |
-| `central-network-management` | Central Network Management |
-| `clearpass-policy-manager` | ClearPass Policy Manager |
-| `fabric-composer` | Fabric Composer |
-| `orchestrator` | Orchestrator |
-| `cloud` | クラウド |
-| `firewall` | ファイアウォール |
-| `router` | ルーター |
-| `server-single` | サーバー (単体) |
-| `server-multi` | サーバー (複数) |
-| `virtual-machine` | 仮想マシン |
-| `desktop` | デスクトップ |
-| `laptop` | ラップトップ |
-| `tablet` | タブレット |
-| `mobile-1` | モバイル 1 |
-| `mobile-2` | モバイル 2 |
-| `ip-phone` | IP 電話 |
-| `printer` | プリンター |
-| `workstation` | ワークステーション |
-| `game-console` | ゲームコンソール |
-| `iot-camera` | IoT カメラ |
-| `iot-sensor` | IoT センサー |
-
-```yaml
-vendor: aruba
-service: access-switch
-```
-
-### AWS (524 アイコン)
-
-主要サービス:
-
-| service | 説明 |
-|---------|------|
-| `ec2` | Elastic Compute Cloud |
-| `vpc` | Virtual Private Cloud |
-| `lambda` | Lambda |
-| `rds` | Relational Database Service |
-| `s3` / `simplestorageservice` | Simple Storage Service |
-| `dynamodb` | DynamoDB |
-| `apigateway` | API Gateway |
-| `cloudfront` | CloudFront |
-| `route53` | Route 53 |
-| `elasticloadbalancing` | Elastic Load Balancing |
-| `elasticache` | ElastiCache |
-| `cloudwatch` | CloudWatch |
-| `iam` / `identityaccessmanagement` | IAM |
-| `sns` / `simplenotificationservice` | SNS |
-| `sqs` / `simplequeueservice` | SQS |
-| `ecs` / `elasticcontainerservice` | ECS |
-| `eks` / `elastickubernetesservice` | EKS |
-| `aurora` | Aurora |
-| `redshift` | Redshift |
-| `glue` | Glue |
-| `athena` | Athena |
-| `emr` | EMR |
-| `transitgateway` | Transit Gateway |
-| `directconnect` | Direct Connect |
-| `networkfirewall` | Network Firewall |
-| `waf` | WAF |
-| `shield` | Shield |
-| `iot` | IoT |
-| `iotcore` | IoT Core |
-
-```yaml
-vendor: aws
-service: ec2
-resource: instances  # オプション
-```
-
-**注**: AWS は `service` と `resource` の組み合わせでアイコンを指定します。
-利用可能な全アイコンは `packages/@shumoku/core/src/icons/aws/` を参照してください。
+| ベンダー | 使用例 |
+|---------|--------|
+| Yamaha | `vendor: yamaha`, `model: rtx3510` |
+| Aruba | `vendor: aruba`, `service: access-switch` |
+| AWS | `vendor: aws`, `service: ec2`, `resource: instances` |
