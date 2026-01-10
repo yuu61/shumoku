@@ -143,6 +143,8 @@ nodes:
       - "<b>FW-1 (Active)</b>"
       - "Mgmt: 10.0.100.1"
     type: firewall
+    vendor: juniper
+    model: SRX4100
     parent: security
 
   - id: fw2
@@ -150,6 +152,8 @@ nodes:
       - "<b>FW-2 (Standby)</b>"
       - "Mgmt: 10.0.100.2"
     type: firewall
+    vendor: juniper
+    model: SRX4100
     parent: security
 
   # ========== DMZ ==========
@@ -181,6 +185,8 @@ nodes:
       - "Mgmt: 10.1.0.1"
       - "Inter-VLAN Routing"
     type: l3-switch
+    vendor: juniper
+    model: QFX5120-48T
     parent: noc
 
   - id: dist-sw
@@ -189,6 +195,8 @@ nodes:
       - "Mgmt: 10.1.0.2"
       - "Uplink: 40G"
     type: l3-switch
+    vendor: juniper
+    model: EX4400-48T
     parent: noc
 
   # ========== Building A ==========
@@ -197,6 +205,8 @@ nodes:
       - "<b>SW-A1 (Floor 1)</b>"
       - "Mgmt: 10.10.0.1"
     type: l2-switch
+    vendor: juniper
+    model: EX2300-24P
     parent: building-a
 
   - id: sw-a2
@@ -204,6 +214,8 @@ nodes:
       - "<b>SW-A2 (Floor 2)</b>"
       - "Mgmt: 10.10.0.2"
     type: l2-switch
+    vendor: juniper
+    model: EX2300-24P
     parent: building-a
 
   - id: ap-a1
@@ -226,6 +238,8 @@ nodes:
       - "<b>SW-B1 (Floor 1)</b>"
       - "Mgmt: 10.20.0.1"
     type: l2-switch
+    vendor: yamaha
+    model: swx2310_28gt
     parent: building-b
 
   - id: sw-b2
@@ -233,6 +247,8 @@ nodes:
       - "<b>SW-B2 (Floor 2)</b>"
       - "Mgmt: 10.20.0.2"
     type: l2-switch
+    vendor: yamaha
+    model: swx2310_28gt
     parent: building-b
 
   - id: ap-b1

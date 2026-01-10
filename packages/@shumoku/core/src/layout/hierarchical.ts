@@ -18,6 +18,7 @@ import {
   type LinkEndpoint,
   getNodeId,
 } from '../models/index.js'
+import { getVendorIconEntry } from '../icons/index.js'
 
 // ============================================
 // Helper Functions
@@ -952,9 +953,56 @@ export class HierarchicalLayout {
     const lines = Array.isArray(node.label) ? node.label.length : 1
     const baseHeight = 40
     const lineHeight = 16
-    // Add extra height for icon if device type or vendor icon is specified
-    const hasIcon = node.type || (node.vendor && (node.service || node.model))
-    const iconHeight = hasIcon ? 36 : 0
+
+    // Calculate actual icon height based on vendor icon or default
+    let iconHeight = 0
+    const iconKey = node.service || node.model
+    if (node.vendor && iconKey) {
+      const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
+      if (iconEntry) {
+        const defaultIconSize = 40
+        const iconPadding = 16
+        const maxIconWidth = this.options.nodeWidth - iconPadding
+        const vendorIcon = iconEntry.default
+        const viewBox = iconEntry.viewBox || '0 0 48 48'
+
+        // Check for PNG-based icons with embedded viewBox
+        if (vendorIcon.startsWith('<svg')) {
+          const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
+          if (viewBoxMatch) {
+            const vbWidth = parseInt(viewBoxMatch[1])
+            const vbHeight = parseInt(viewBoxMatch[2])
+            const aspectRatio = vbWidth / vbHeight
+            let calcHeight = defaultIconSize
+            if (Math.round(defaultIconSize * aspectRatio) > maxIconWidth) {
+              calcHeight = Math.round(maxIconWidth / aspectRatio)
+            }
+            iconHeight = calcHeight
+          } else {
+            iconHeight = defaultIconSize
+          }
+        } else {
+          // Parse viewBox for aspect ratio
+          const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
+          if (vbMatch) {
+            const vbWidth = parseInt(vbMatch[3])
+            const vbHeight = parseInt(vbMatch[4])
+            const aspectRatio = vbWidth / vbHeight
+            let calcHeight = defaultIconSize
+            if (Math.round(defaultIconSize * aspectRatio) > maxIconWidth) {
+              calcHeight = Math.round(maxIconWidth / aspectRatio)
+            }
+            iconHeight = calcHeight
+          } else {
+            iconHeight = defaultIconSize
+          }
+        }
+      }
+    } else if (node.type) {
+      // Default device type icon (fixed size)
+      iconHeight = 36
+    }
+
     return Math.max(this.options.nodeHeight, baseHeight + (lines - 1) * lineHeight + iconHeight)
   }
 

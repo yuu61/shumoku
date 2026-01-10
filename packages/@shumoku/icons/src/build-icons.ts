@@ -141,7 +141,7 @@ function scanVendorIconFolder(folderPath: string, vendorName: string): Record<st
       const content = fs.readFileSync(filePath, 'utf-8')
       const iconName = vendorName === 'aruba'
         ? normalizeArubaIconName(file)
-        : file.replace('.svg', '')
+        : file.replace('.svg', '').toLowerCase()
       const { content: svgContent, viewBox } = extractSvgContent(content)
 
       if (svgContent) {
@@ -150,7 +150,7 @@ function scanVendorIconFolder(folderPath: string, vendorName: string): Record<st
     } else if (file.endsWith('.png')) {
       const iconName = vendorName === 'aruba'
         ? normalizeArubaIconName(file)
-        : file.replace('.png', '')
+        : file.replace('.png', '').toLowerCase()
       const imageContent = convertPngToImageTag(filePath)
       icons[iconName] = { default: imageContent }
     }

@@ -287,13 +287,13 @@ export class SVGRenderer {
     const strokeDasharray = style.strokeDasharray || ''
 
     const shape = this.renderNodeShape(node.shape, x, y, w, h, fill, stroke, strokeWidth, strokeDasharray)
-    const icon = this.renderNodeIcon(node, x, y, h)
-    const label = this.renderNodeLabel(node, x, y, h, !!icon)
+    const iconResult = this.renderNodeIcon(node, x, y, w, h)
+    const label = this.renderNodeLabel(node, x, y, h, iconResult.height)
     const portsRendered = this.renderPorts(x, y, ports)
 
     return `<g class="node" data-id="${id}" transform="translate(0,0)">
   ${shape}
-  ${icon}
+  ${iconResult.svg}
   ${label}
   ${portsRendered}
 </g>`
@@ -426,9 +426,13 @@ export class SVGRenderer {
     }
   }
 
-  private renderNodeIcon(node: Node, x: number, y: number, h: number): string {
-    const iconSize = 40
-    const iconY = y - h / 2 + 12 // Position near top of node
+  /**
+   * Calculate icon dimensions for a node
+   */
+  private calculateIconInfo(node: Node, w: number): { width: number; height: number; svg: string } | null {
+    const defaultIconSize = 40
+    const iconPadding = 16
+    const maxIconWidth = w - iconPadding
 
     // Try vendor-specific icon first (service for cloud, model for hardware)
     const iconKey = node.service || node.model
@@ -436,23 +440,27 @@ export class SVGRenderer {
       const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
       if (iconEntry) {
         const vendorIcon = iconEntry[this.iconTheme] || iconEntry.default
-        // Get viewBox from entry, or use defaults
         const viewBox = iconEntry.viewBox || '0 0 48 48'
 
         // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
         if (vendorIcon.startsWith('<svg')) {
-          // Extract viewBox to calculate aspect ratio
           const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
           if (viewBoxMatch) {
             const vbWidth = parseInt(viewBoxMatch[1])
             const vbHeight = parseInt(viewBoxMatch[2])
             const aspectRatio = vbWidth / vbHeight
-            const iconWidth = Math.round(iconSize * aspectRatio)
-            return `<g class="node-icon" transform="translate(${x - iconWidth / 2}, ${iconY})">
-      <svg width="${iconWidth}" height="${iconSize}" viewBox="0 0 ${vbWidth} ${vbHeight}">
-        ${vendorIcon.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')}
-      </svg>
-    </g>`
+            let iconWidth = Math.round(defaultIconSize * aspectRatio)
+            let iconHeight = defaultIconSize
+            if (iconWidth > maxIconWidth) {
+              iconWidth = maxIconWidth
+              iconHeight = Math.round(maxIconWidth / aspectRatio)
+            }
+            const innerSvg = vendorIcon.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')
+            return {
+              width: iconWidth,
+              height: iconHeight,
+              svg: `<svg width="${iconWidth}" height="${iconHeight}" viewBox="0 0 ${vbWidth} ${vbHeight}">${innerSvg}</svg>`,
+            }
           }
         }
 
@@ -462,43 +470,57 @@ export class SVGRenderer {
           const vbWidth = parseInt(vbMatch[3])
           const vbHeight = parseInt(vbMatch[4])
           const aspectRatio = vbWidth / vbHeight
-          // Keep square for 1:1 aspect ratio icons
-          const iconWidth = Math.abs(aspectRatio - 1) < 0.01 ? iconSize : Math.round(iconSize * aspectRatio)
-          return `<g class="node-icon" transform="translate(${x - iconWidth / 2}, ${iconY})">
-      <svg width="${iconWidth}" height="${iconSize}" viewBox="${viewBox}">
-        ${vendorIcon}
-      </svg>
-    </g>`
+          let iconWidth = Math.abs(aspectRatio - 1) < 0.01 ? defaultIconSize : Math.round(defaultIconSize * aspectRatio)
+          let iconHeight = defaultIconSize
+          if (iconWidth > maxIconWidth) {
+            iconWidth = maxIconWidth
+            iconHeight = Math.round(maxIconWidth / aspectRatio)
+          }
+          return {
+            width: iconWidth,
+            height: iconHeight,
+            svg: `<svg width="${iconWidth}" height="${iconHeight}" viewBox="${viewBox}">${vendorIcon}</svg>`,
+          }
         }
 
         // Fallback: use viewBox directly
-        return `<g class="node-icon" transform="translate(${x - iconSize / 2}, ${iconY})">
-      <svg width="${iconSize}" height="${iconSize}" viewBox="${viewBox}">
-        ${vendorIcon}
-      </svg>
-    </g>`
+        return {
+          width: defaultIconSize,
+          height: defaultIconSize,
+          svg: `<svg width="${defaultIconSize}" height="${defaultIconSize}" viewBox="${viewBox}">${vendorIcon}</svg>`,
+        }
       }
     }
 
     // Fall back to device type icon
     const iconPath = getDeviceIcon(node.type)
-    if (!iconPath) return ''
+    if (!iconPath) return null
 
-    // Default icons use 24x24 viewBox
-    return `<g class="node-icon" transform="translate(${x - iconSize / 2}, ${iconY})">
-      <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="currentColor">
-        ${iconPath}
-      </svg>
-    </g>`
+    return {
+      width: defaultIconSize,
+      height: defaultIconSize,
+      svg: `<svg width="${defaultIconSize}" height="${defaultIconSize}" viewBox="0 0 24 24" fill="currentColor">${iconPath}</svg>`,
+    }
   }
 
-  private renderNodeLabel(node: Node, x: number, y: number, _h: number, hasIcon: boolean): string {
+  private renderNodeIcon(node: Node, x: number, y: number, w: number, h: number): { svg: string; height: number } {
+    const iconInfo = this.calculateIconInfo(node, w)
+    if (!iconInfo) return { svg: '', height: 0 }
+
+    const iconY = y - h / 2 + 12 // Position near top of node
+    const svg = `<g class="node-icon" transform="translate(${x - iconInfo.width / 2}, ${iconY})">
+      ${iconInfo.svg}
+    </g>`
+    return { svg, height: iconInfo.height }
+  }
+
+  private renderNodeLabel(node: Node, x: number, y: number, _h: number, iconHeight: number): string {
     const labels = Array.isArray(node.label) ? node.label : [node.label]
     const lineHeight = 16
     const totalHeight = labels.length * lineHeight
 
-    // Shift labels down if there's an icon
-    const iconOffset = hasIcon ? 28 : 0
+    // Shift labels down based on actual icon height (with small padding)
+    const iconOffset = iconHeight > 0 ? iconHeight - 8 : 0
     const startY = y - totalHeight / 2 + lineHeight / 2 + 4 + iconOffset
 
     const lines = labels.map((line, i) => {
