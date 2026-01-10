@@ -5,7 +5,12 @@
   "description": "Modern network topology visualization library for Markdown",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/shumoku.git"
+    "url": "https://github.com/konoe-akitoshi/shumoku.git"
+  },
+  "author": "konoe-akitoshi",
+  "homepage": "https://shumoku.packof.me/",
+  "bugs": {
+    "url": "https://github.com/konoe-akitoshi/shumoku/issues"
   },
   "license": "MIT",
   "packageManager": "bun@1.3.4",

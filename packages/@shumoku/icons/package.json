@@ -2,6 +2,16 @@
   "name": "@shumoku/icons",
   "version": "0.1.0",
   "description": "Vendor-specific icons for Shumoku network diagrams",
+  "author": "konoe-akitoshi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/konoe-akitoshi/shumoku.git",
+    "directory": "packages/@shumoku/icons"
+  },
+  "homepage": "https://shumoku.packof.me/",
+  "bugs": {
+    "url": "https://github.com/konoe-akitoshi/shumoku/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,14 +31,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shumoku/core": "workspace:*"
+    "@shumoku/core": "^0.1.0"
   },
   "devDependencies": {
     "sharp": "^0.33.5",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
-    "@shumoku/core": "workspace:*"
+    "@shumoku/core": "^0.1.0"
   },
   "keywords": [
     "network",
@@ -36,7 +46,11 @@
     "icons",
     "aws",
     "aruba",
-    "yamaha"
+    "yamaha",
+    "juniper"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
