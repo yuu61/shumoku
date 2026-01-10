@@ -15,8 +15,8 @@ build
 .next
 .turbo
 
-# Generated files
-**/generated-icons.ts
+# Generated files (icons package only - core's generated-icons.ts is static and committed)
+packages/@shumoku/icons/src/generated-icons.ts
 
 # Environment variables
 .env
