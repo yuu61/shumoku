@@ -40,7 +40,7 @@
     },
     "packages/@shumoku/core": {
       "name": "@shumoku/core",
-      "version": "0.0.0",
+      "version": "0.1.1",
       "dependencies": {
         "elkjs": "^0.11.0",
         "pixi.js": "^8.5.2",
@@ -61,16 +61,16 @@
     },
     "packages/@shumoku/icons": {
       "name": "@shumoku/icons",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
-        "@shumoku/core": "workspace:*",
+        "@shumoku/core": "^0.1.0",
       },
       "devDependencies": {
         "sharp": "^0.33.5",
         "typescript": "^5.8.3",
       },
       "peerDependencies": {
-        "@shumoku/core": "workspace:*",
+        "@shumoku/core": "^0.1.0",
       },
     },
     "packages/@shumoku/netbox": {
@@ -90,9 +90,9 @@
     },
     "packages/@shumoku/parser-yaml": {
       "name": "@shumoku/parser-yaml",
-      "version": "0.0.0",
+      "version": "0.1.1",
       "dependencies": {
-        "@shumoku/core": "workspace:*",
+        "@shumoku/core": "^0.1.0",
         "js-yaml": "^4.1.0",
       },
       "devDependencies": {
@@ -100,6 +100,17 @@
         "@types/node": "^20.11.0",
         "typescript": "^5.6.3",
         "vitest": "^2.1.5",
+      },
+    },
+    "packages/shumoku": {
+      "name": "shumoku",
+      "version": "0.1.0",
+      "dependencies": {
+        "@shumoku/core": "^0.1.1",
+        "@shumoku/parser-yaml": "^0.1.1",
+      },
+      "optionalDependencies": {
+        "@shumoku/icons": "^0.1.1",
       },
     },
   },
@@ -835,6 +846,8 @@
     "shebang-command": ["shebang-command@2.0.0", "", { "dependencies": { "shebang-regex": "^3.0.0" } }, "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA=="],
 
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
+
+    "shumoku": ["shumoku@workspace:packages/shumoku"],
 
     "siginfo": ["siginfo@2.0.0", "", {}, "sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g=="],
 
