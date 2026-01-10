@@ -8,10 +8,12 @@ Modern network topology visualization library for TypeScript/JavaScript.
 npm install shumoku
 ```
 
-For vendor icons (Yamaha, Aruba, AWS, Juniper):
+This includes all core functionality plus 900+ vendor icons (Yamaha, Aruba, AWS, Juniper).
+
+For NetBox integration (optional):
 
 ```bash
-npm install shumoku @shumoku/icons
+npm install @shumoku/netbox
 ```
 
 ## Quick Start
@@ -26,6 +28,8 @@ nodes:
   - id: router
     label: "Core Router"
     type: router
+    vendor: yamaha
+    model: rtx3510
 
   - id: switch
     label: "Main Switch"
@@ -54,20 +58,17 @@ const svg = renderer.render(layout)
 
 - **YAML-based definitions** - Simple, readable network topology definitions
 - **Automatic layout** - Hierarchical layout powered by ELK.js
-- **Vendor icons** - Built-in icons for Yamaha, Aruba, AWS, Juniper (500+ icons)
+- **Vendor icons** - Built-in icons for Yamaha, Aruba, AWS, Juniper (900+ icons)
 - **SVG export** - High-quality vector output
 - **TypeScript** - Full type safety
 
-## Packages
+## Included Packages
 
 This package bundles:
 
 - [`@shumoku/core`](https://www.npmjs.com/package/@shumoku/core) - Core library (models, layout, renderer)
 - [`@shumoku/parser-yaml`](https://www.npmjs.com/package/@shumoku/parser-yaml) - YAML parser
-
-Optional:
-
-- [`@shumoku/icons`](https://www.npmjs.com/package/@shumoku/icons) - Vendor-specific icons
+- [`@shumoku/icons`](https://www.npmjs.com/package/@shumoku/icons) - Vendor-specific icons (900+)
 
 ## Documentation
 

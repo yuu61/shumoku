@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import VendorIconsContent from '../components/VendorIconsContent'
 import gettingStarted from '../../../../docs/getting-started.md?raw'
 import yamlReference from '../../../../docs/yaml-reference.md?raw'
 import apiReference from '../../../../docs/api-reference.md?raw'
 import examples from '../../../../docs/examples.md?raw'
-import vendorIcons from '../../../../docs/vendor-icons.md?raw'
 import netbox from '../../../../docs/netbox.md?raw'
 
 const docs: Record<string, { title: string; content: string }> = {
@@ -26,10 +26,6 @@ const docs: Record<string, { title: string; content: string }> = {
     title: 'Examples',
     content: examples,
   },
-  'vendor-icons': {
-    title: 'Vendor Icons',
-    content: vendorIcons,
-  },
   'netbox': {
     title: 'NetBox Integration',
     content: netbox,
@@ -41,12 +37,13 @@ export default function DocsPage() {
   const [activeDoc, setActiveDoc] = useState(docId || 'getting-started')
 
   useEffect(() => {
-    if (docId && docs[docId]) {
+    if (docId) {
       setActiveDoc(docId)
     }
   }, [docId])
 
-  const currentDoc = docs[activeDoc] || docs['getting-started']
+  const currentDoc = docs[activeDoc]
+  const isVendorIcons = activeDoc === 'vendor-icons'
 
   return (
     <div className="docs-page">
@@ -116,9 +113,17 @@ export default function DocsPage() {
         </nav>
       </aside>
       <main className="docs-content">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {currentDoc.content}
-        </ReactMarkdown>
+        {isVendorIcons ? (
+          <VendorIconsContent />
+        ) : currentDoc ? (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {currentDoc.content}
+          </ReactMarkdown>
+        ) : (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {docs['getting-started'].content}
+          </ReactMarkdown>
+        )}
       </main>
     </div>
   )

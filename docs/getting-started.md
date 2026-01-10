@@ -4,22 +4,16 @@ Shumoku を使ってネットワーク図を作成する方法を説明します
 
 ## Installation
 
-### npm
-
 ```bash
-# 基本インストール
 npm install shumoku
-
-# ベンダーアイコン付き (Yamaha, Aruba, AWS, Juniper)
-npm install shumoku @shumoku/icons
 ```
 
-### 個別パッケージ
+900+ のベンダーアイコン（Yamaha, Aruba, AWS, Juniper）が含まれています。
 
-必要なパッケージだけインストールすることもできます：
+### NetBox 連携（オプション）
 
 ```bash
-npm install @shumoku/core @shumoku/parser-yaml
+npm install @shumoku/netbox
 ```
 
 ## Basic Usage
@@ -33,6 +27,8 @@ nodes:
   - id: router
     label: "Core Router"
     type: router
+    vendor: yamaha
+    model: rtx3510
 
   - id: switch
     label: "Main Switch"
@@ -73,24 +69,7 @@ const svg = renderer.render(layout)
 document.getElementById('diagram').innerHTML = svg
 ```
 
-### 3. ベンダーアイコンを使用（オプション）
-
-```typescript
-import { registerAllIcons } from '@shumoku/icons'
-
-// アイコンを登録
-registerAllIcons()
-
-// YAML で vendor と model を指定
-const yaml = `
-nodes:
-  - id: router
-    label: "RTX3510"
-    type: router
-    vendor: yamaha
-    model: rtx3510
-`
-```
+ベンダーアイコンは `shumoku` をインポートした時点で自動的に登録されます。
 
 ## Next Steps
 
@@ -98,3 +77,4 @@ nodes:
 - [Vendor Icons](/docs/vendor-icons) - 利用可能なベンダーアイコン一覧
 - [Examples](/docs/examples) - サンプルネットワーク集
 - [API Reference](/docs/api-reference) - TypeScript API リファレンス
+- [NetBox](/docs/netbox) - NetBox 連携

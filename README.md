@@ -23,11 +23,15 @@ Modern network topology visualization library for TypeScript/JavaScript.
 ## Installation
 
 ```bash
-# Basic installation
 npm install shumoku
+```
 
-# With vendor icons (Yamaha, Aruba, AWS, Juniper)
-npm install shumoku @shumoku/icons
+This includes all core functionality plus 900+ vendor icons (Yamaha, Aruba, AWS, Juniper).
+
+For NetBox integration (optional):
+
+```bash
+npm install @shumoku/netbox
 ```
 
 ## Quick Start

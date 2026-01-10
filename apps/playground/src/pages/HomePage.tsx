@@ -71,11 +71,10 @@ export default function HomePage() {
         <div className="code-block">
           <pre>
             <code>
-{`# 基本インストール
-npm install shumoku
+{`npm install shumoku
 
-# ベンダーアイコン付き
-npm install shumoku @shumoku/icons`}
+# NetBox 連携（オプション）
+npm install @shumoku/netbox`}
             </code>
           </pre>
         </div>

@@ -4,10 +4,9 @@ export * from '@shumoku/core'
 // Re-export parser
 export * from '@shumoku/parser-yaml'
 
-// Optional: Try to load and register vendor icons if available
-try {
-  const icons = await import('@shumoku/icons')
-  icons.registerAllIcons()
-} catch {
-  // @shumoku/icons is optional, ignore if not installed
-}
+// Import icons for side effects (auto-registration)
+// Note: Icon types are already exported from @shumoku/core
+import '@shumoku/icons'
+
+// Re-export only the vendorIconSets from icons (not conflicting exports)
+export { vendorIconSets } from '@shumoku/icons'
