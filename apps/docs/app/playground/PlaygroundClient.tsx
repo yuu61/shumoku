@@ -5,6 +5,7 @@ import type { LayoutResult } from 'shumoku'
 import { HierarchicalLayout, SVGRenderer, parser } from 'shumoku'
 import { enterpriseNetwork, simpleNetwork } from '@/lib/sampleNetworks'
 import { cn } from '@/lib/cn'
+import { InteractivePreview } from './InteractivePreview'
 
 export default function PlaygroundClient() {
   const [yamlContent, setYamlContent] = useState<string>(enterpriseNetwork)
@@ -178,27 +179,7 @@ export default function PlaygroundClient() {
         </div>
 
         {/* Preview */}
-        <div className="flex w-1/2 flex-col">
-          <div className={cn(
-            'px-4 py-2',
-            'border-b border-neutral-200 dark:border-neutral-700',
-            'bg-neutral-50 dark:bg-neutral-800'
-          )}>
-            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Preview</span>
-          </div>
-          <div className="relative flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-            {svgContent ? (
-              <div
-                className="h-full w-full overflow-auto p-4"
-                dangerouslySetInnerHTML={{ __html: svgContent }}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-neutral-400 dark:text-neutral-500">
-                Click "Render" to generate diagram
-              </div>
-            )}
-          </div>
-        </div>
+        <InteractivePreview svgContent={svgContent} className="w-1/2" />
       </div>
     </div>
   )
