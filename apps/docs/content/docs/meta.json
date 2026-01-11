@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "---Introduction---",
+    "index",
+    "---Reference---",
+    "yaml-reference",
+    "api-reference",
+    "---Resources---",
+    "vendor-icons",
+    "examples",
+    "---Integrations---",
+    "netbox"
+  ]
+}

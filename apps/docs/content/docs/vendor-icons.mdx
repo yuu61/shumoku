@@ -1,0 +1,63 @@
+---
+title: Vendor Icons
+description: Shumoku で使用可能なベンダーアイコン一覧
+---
+
+## インストール
+
+<Tabs items={['npm', 'yarn', 'pnpm', 'bun']}>
+  <Tab value="npm">
+    ```bash
+    npm install @shumoku/icons
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add @shumoku/icons
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @shumoku/icons
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bun add @shumoku/icons
+    ```
+  </Tab>
+</Tabs>
+
+```typescript
+import { registerAllIcons } from '@shumoku/icons'
+
+// アイコンを登録
+registerAllIcons()
+```
+
+## 使用方法
+
+### ハードウェアベンダー (Yamaha, Juniper 等)
+
+```yaml
+nodes:
+  - id: router-1
+    type: router
+    vendor: yamaha
+    model: rtx3510
+```
+
+### クラウドベンダー (AWS 等)
+
+```yaml
+nodes:
+  - id: instance-1
+    type: server
+    vendor: aws
+    service: ec2
+    resource: instance
+```
+
+## アイコン一覧
+
+<VendorIcons />
