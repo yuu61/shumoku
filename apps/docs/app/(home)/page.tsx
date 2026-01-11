@@ -1,5 +1,12 @@
 import Link from 'next/link'
 import { cn } from '@/lib/cn'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  openGraph: {
+    images: '/og',
+  },
+}
 
 export default function HomePage() {
   return (
