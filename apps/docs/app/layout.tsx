@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://shumoku.dev'),
+  metadataBase: new URL('https://shumoku.packof.me'),
   title: {
     default: 'Shumoku',
     template: '%s | Shumoku',
