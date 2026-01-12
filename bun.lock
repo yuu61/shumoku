@@ -6,10 +6,10 @@
       "name": "shumoku",
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
-        "@changesets/cli": "^2.27.1",
-        "@types/node": "^20.11.0",
-        "turbo": "^2.2.3",
-        "typescript": "^5.6.3",
+        "@changesets/cli": "^2.29.8",
+        "@types/node": "^20.19.28",
+        "turbo": "^2.7.3",
+        "typescript": "^5.9.3",
       },
     },
     "apps/docs": {
