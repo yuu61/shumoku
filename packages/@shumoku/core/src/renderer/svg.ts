@@ -165,19 +165,24 @@ export class SVGRenderer {
     // Styles
     parts.push(this.renderStyles())
 
-    // Subgraphs (background, render first)
+    // Layer 1: Subgraphs (background)
     layout.subgraphs.forEach((sg) => {
       parts.push(this.renderSubgraph(sg))
     })
 
-    // Links
+    // Layer 2: Node backgrounds (shapes)
+    layout.nodes.forEach((node) => {
+      parts.push(this.renderNodeBackground(node))
+    })
+
+    // Layer 3: Links (on top of node backgrounds)
     layout.links.forEach((link) => {
       parts.push(this.renderLink(link, layout.nodes))
     })
 
-    // Nodes
+    // Layer 4: Node foregrounds (content + ports, on top of links)
     layout.nodes.forEach((node) => {
-      parts.push(this.renderNode(node))
+      parts.push(this.renderNodeForeground(node))
     })
 
     // Legend (if enabled) - use already calculated legendSettings
@@ -463,8 +468,9 @@ export class SVGRenderer {
 </g>`
   }
 
-  private renderNode(layoutNode: LayoutNode): string {
-    const { id, position, size, node, ports } = layoutNode
+  /** Render node background (shape only) */
+  private renderNodeBackground(layoutNode: LayoutNode): string {
+    const { id, position, size, node } = layoutNode
     const x = position.x
     const y = position.y
     const w = size.width
@@ -477,15 +483,26 @@ export class SVGRenderer {
     const strokeDasharray = style.strokeDasharray || ''
 
     const shape = this.renderNodeShape(node.shape, x, y, w, h, fill, stroke, strokeWidth, strokeDasharray)
+
+    return `<g class="node-bg" data-id="${id}">${shape}</g>`
+  }
+
+  /** Render node foreground (content + ports) */
+  private renderNodeForeground(layoutNode: LayoutNode): string {
+    const { id, position, size, node, ports } = layoutNode
+    const x = position.x
+    const y = position.y
+    const w = size.width
+
     const content = this.renderNodeContent(node, x, y, w)
     const portsRendered = this.renderPorts(x, y, ports)
 
-    return `<g class="node" data-id="${id}" transform="translate(0,0)">
-  ${shape}
+    return `<g class="node-fg" data-id="${id}">
   ${content}
   ${portsRendered}
 </g>`
   }
+
 
   /**
    * Render ports on a node
@@ -1002,19 +1019,11 @@ ${result}`
   }
 
   /**
-   * Generate SVG path string from points
+   * Generate SVG path string from points (always polyline for orthogonal routing)
    */
   private generatePath(points: { x: number; y: number }[]): string {
-    if (points.length === 4) {
-      // Cubic bezier curve
-      return `M ${points[0].x} ${points[0].y} C ${points[1].x} ${points[1].y}, ${points[2].x} ${points[2].y}, ${points[3].x} ${points[3].y}`
-    } else if (points.length === 2) {
-      // Straight line
-      return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
-    } else {
-      // Polyline
-      return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
-    }
+    if (points.length < 2) return ''
+    return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
   }
 
   /**
