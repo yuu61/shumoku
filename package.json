@@ -5,7 +5,7 @@
   "description": "Modern network topology visualization library for Markdown",
   "repository": {
     "type": "git",
-    "url": "https://github.com/konoe-akitoshi/shumoku.git"
+    "url": "git+https://github.com/konoe-akitoshi/shumoku.git"
   },
   "author": "konoe-akitoshi",
   "homepage": "https://shumoku.packof.me/",

@@ -1,11 +1,11 @@
 {
   "name": "@shumoku/icons",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Vendor-specific icons for Shumoku network diagrams",
   "author": "konoe-akitoshi",
   "repository": {
     "type": "git",
-    "url": "https://github.com/konoe-akitoshi/shumoku.git",
+    "url": "git+https://github.com/konoe-akitoshi/shumoku.git",
     "directory": "packages/@shumoku/icons"
   },
   "homepage": "https://shumoku.packof.me/",
@@ -31,14 +31,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shumoku/core": "^0.1.0"
+    "@shumoku/core": "^0.2.0"
   },
   "devDependencies": {
     "sharp": "^0.33.5",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
-    "@shumoku/core": "^0.1.0"
+    "@shumoku/core": "^0.2.0"
   },
   "keywords": [
     "network",
