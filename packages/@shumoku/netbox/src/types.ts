@@ -68,14 +68,43 @@ export interface NetBoxVlan {
 }
 
 export interface NetBoxInterface {
+  id: number
   name: string
   device: {
+    id: number
     name: string
+  }
+  type?: {
+    value: string  // e.g., '1000base-t', '10gbase-x-sfpp', '25gbase-x-sfp28'
+    label: string
+  }
+  enabled: boolean
+  mac_address?: string
+  mtu?: number
+  mode?: {
+    value: string  // 'access', 'tagged', 'tagged-all'
+    label: string
   }
   untagged_vlan: NetBoxVlan | null
   tagged_vlans: NetBoxVlan[]
   speed: number | null  // kbps
-  duplex: string | null
+  duplex?: {
+    value: string  // 'half', 'full', 'auto'
+    label: string
+  } | null
+  description?: string
+  cable?: {
+    id: number
+    label: string
+  }
+  connected_endpoints?: Array<{
+    id: number
+    name: string
+    device: {
+      id: number
+      name: string
+    }
+  }>
 }
 
 export interface NetBoxInterfaceResponse {
@@ -95,9 +124,22 @@ export interface NetBoxTermination {
 }
 
 export interface NetBoxCable {
+  id: number
   type: string
   a_terminations: NetBoxTermination[]
   b_terminations: NetBoxTermination[]
+  status?: {
+    value: string
+    label: string
+  }
+  label?: string
+  color?: string  // Hex color without #
+  length?: number
+  length_unit?: {
+    value: string  // 'm', 'cm', 'ft', 'in'
+    label: string
+  }
+  description?: string
 }
 
 export interface NetBoxCableResponse {
@@ -505,6 +547,9 @@ export interface ConnectionData {
   dstLevel: number
   dstTag: string
   cableType: string
+  cableColor?: string   // Hex color from cable
+  cableLabel?: string   // Label from cable
+  cableLength?: string  // Length with unit from cable
   speed: number | null  // kbps from interface
   vlans: number[]       // VLANs from both endpoints
 }

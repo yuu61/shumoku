@@ -13,17 +13,23 @@ import { HierarchicalLayout } from '@shumoku/core/layout'
 import { SVGRenderer } from '@shumoku/core/renderer'
 import '@shumoku/icons' // Register vendor icons
 import { NetBoxClient } from './client.js'
+import type { QueryParams } from './client.js'
 import { convertToNetworkGraph, toYaml } from './converter.js'
-import type { ConverterOptions } from './types.js'
+import type { ConverterOptions, GroupBy } from './types.js'
 
 interface CliOptions {
   url?: string
   token?: string
   output: string
   theme?: 'light' | 'dark'
+  site?: string
+  role?: string
+  status?: string
+  tag?: string
+  groupBy?: GroupBy
   noPorts?: boolean
-  noGroups?: boolean
   noColors?: boolean
+  colorByStatus?: boolean
 }
 
 function parseArgs(args: string[]): CliOptions {
@@ -50,14 +56,32 @@ function parseArgs(args: string[]): CliOptions {
       case '--theme':
         options.theme = args[++i] as 'light' | 'dark'
         break
+      case '--site':
+      case '-s':
+        options.site = args[++i]
+        break
+      case '--role':
+      case '-r':
+        options.role = args[++i]
+        break
+      case '--status':
+        options.status = args[++i]
+        break
+      case '--tag':
+        options.tag = args[++i]
+        break
+      case '--group-by':
+      case '-g':
+        options.groupBy = args[++i] as GroupBy
+        break
       case '--no-ports':
         options.noPorts = true
         break
-      case '--no-groups':
-        options.noGroups = true
-        break
       case '--no-colors':
         options.noColors = true
+        break
+      case '--color-by-status':
+        options.colorByStatus = true
         break
       case '--help':
       case '-h':
@@ -76,15 +100,28 @@ netbox-to-shumoku - Convert NetBox topology to Shumoku YAML/SVG
 Usage:
   netbox-to-shumoku [options]
 
-Options:
+Connection Options:
   -u, --url <url>       NetBox API URL (or set NETBOX_URL env var)
   -t, --token <token>   NetBox API token (or set NETBOX_TOKEN env var)
+
+Output Options:
   -o, --output <file>   Output file (default: topology.yaml)
                         Use .svg extension for direct SVG output
   --theme <theme>       Theme: light or dark (default: light)
+
+Filtering Options:
+  -s, --site <slug>     Filter by site slug
+  -r, --role <slug>     Filter by device role slug
+  --status <status>     Filter by status (active, planned, staged, failed, offline)
+  --tag <slug>          Filter by tag slug
+
+Display Options:
+  -g, --group-by <type> Group devices: tag, site, location, prefix, none (default: tag)
   --no-ports            Don't include port names in links
-  --no-groups           Don't group devices into subgraphs
   --no-colors           Don't color links by cable type
+  --color-by-status     Color devices by their status
+
+Other:
   -h, --help            Show this help message
 
 Examples:
@@ -93,8 +130,11 @@ Examples:
   export NETBOX_TOKEN=abc123
   netbox-to-shumoku --output topology.yaml
 
-  # With explicit credentials
-  netbox-to-shumoku -u https://netbox.example.com -t abc123 -o topology.svg
+  # Filter by site and group by location
+  netbox-to-shumoku --site tokyo-dc --group-by location -o tokyo.svg
+
+  # Show device status colors
+  netbox-to-shumoku --color-by-status --output topology.svg
 
   # Generate dark theme SVG
   netbox-to-shumoku --theme dark --output topology.svg
@@ -120,13 +160,25 @@ async function main(): Promise<void> {
   const client = new NetBoxClient({ url, token })
 
   try {
+    // Build query parameters for filtering
+    const queryParams: QueryParams = {}
+    if (options.site) queryParams.site = options.site
+    if (options.role) queryParams.role = options.role
+    if (options.status) queryParams.status = options.status
+    if (options.tag) queryParams.tag = options.tag
+
+    const hasFilters = Object.keys(queryParams).length > 0
+    if (hasFilters) {
+      console.log('Filters:', queryParams)
+    }
+
     // Fetch data from NetBox
     console.log('Fetching devices...')
-    const devices = await client.fetchDevices()
+    const devices = await client.fetchDevices(queryParams)
     console.log(`  Found ${devices.results.length} devices`)
 
     console.log('Fetching interfaces...')
-    const interfaces = await client.fetchInterfaces()
+    const interfaces = await client.fetchInterfaces(hasFilters ? { site: options.site } : undefined)
     console.log(`  Found ${interfaces.results.length} interfaces`)
 
     console.log('Fetching cables...')
@@ -138,8 +190,9 @@ async function main(): Promise<void> {
     const converterOptions: ConverterOptions = {
       theme: options.theme ?? 'light',
       showPorts: !options.noPorts,
-      groupByTag: !options.noGroups,
+      groupBy: options.groupBy ?? 'tag',
       colorByCableType: !options.noColors,
+      colorByStatus: options.colorByStatus,
     }
 
     const graph = convertToNetworkGraph(

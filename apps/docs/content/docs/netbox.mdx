@@ -47,13 +47,33 @@ npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_API_TOKEN --
 
 ### CLI オプション
 
+**接続オプション:**
 | オプション | 説明 |
 |-----------|------|
-| `--url, -u` | NetBox の URL（必須） |
-| `--token, -t` | API トークン（必須） |
-| `--output, -o` | 出力ファイル（省略時は標準出力） |
-| `--site, -s` | サイトでフィルタリング |
-| `--role, -r` | デバイスロールでフィルタリング |
+| `--url, -u` | NetBox の URL（必須、または NETBOX_URL 環境変数） |
+| `--token, -t` | API トークン（必須、または NETBOX_TOKEN 環境変数） |
+
+**出力オプション:**
+| オプション | 説明 |
+|-----------|------|
+| `--output, -o` | 出力ファイル（.yaml または .svg、デフォルト: topology.yaml） |
+| `--theme` | テーマ: light または dark |
+
+**フィルタリングオプション:**
+| オプション | 説明 |
+|-----------|------|
+| `--site, -s` | サイト slug でフィルタリング |
+| `--role, -r` | デバイスロール slug でフィルタリング |
+| `--status` | ステータスでフィルタリング（active, planned, staged, failed, offline） |
+| `--tag` | タグ slug でフィルタリング |
+
+**表示オプション:**
+| オプション | 説明 |
+|-----------|------|
+| `--group-by, -g` | グループ化方法: tag, site, location, prefix, none（デフォルト: tag） |
+| `--no-ports` | ポート名をリンクに表示しない |
+| `--no-colors` | ケーブルタイプによる色分けをしない |
+| `--color-by-status` | デバイスをステータスで色分け |
 
 ## ライブラリとしての使用
 

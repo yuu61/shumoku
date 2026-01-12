@@ -151,6 +151,13 @@ export function convertToNetworkGraph(
     const levelA = getLevelByTag(tagA, tagMapping)
     const levelB = getLevelByTag(tagB, tagMapping)
 
+    // Extract cable attributes
+    const cableColor = cable.color ? `#${cable.color}` : undefined
+    const cableLabel = cable.label
+    const cableLength = cable.length && cable.length_unit
+      ? `${cable.length}${cable.length_unit.value}`
+      : undefined
+
     // Normalize direction: lower level -> higher level
     let conn: ConnectionData
     if (levelA <= levelB) {
@@ -163,6 +170,9 @@ export function convertToNetworkGraph(
         dstLevel: levelB,
         dstTag: tagB,
         cableType: cable.type,
+        cableColor,
+        cableLabel,
+        cableLength,
         speed: linkSpeed,
         vlans: combinedVlans,
       }
@@ -176,6 +186,9 @@ export function convertToNetworkGraph(
         dstLevel: levelA,
         dstTag: tagA,
         cableType: cable.type,
+        cableColor,
+        cableLabel,
+        cableLength,
         speed: linkSpeed,
         vlans: combinedVlans,
       }
@@ -623,15 +636,32 @@ function buildLinks(
       link.vlan = conn.vlans
     }
 
-    // Apply cable type styling (color and line type)
-    if (colorByCableType && conn.cableType) {
-      const cableStyle = CABLE_STYLES[conn.cableType]
-      if (cableStyle) {
-        link.style = { stroke: cableStyle.color }
-        if (cableStyle.type) {
-          link.type = cableStyle.type
+    // Apply cable styling
+    if (colorByCableType) {
+      // Priority: cable.color from NetBox > cable type default color
+      if (conn.cableColor) {
+        link.style = { stroke: conn.cableColor }
+      } else if (conn.cableType) {
+        const cableStyle = CABLE_STYLES[conn.cableType]
+        if (cableStyle) {
+          link.style = { stroke: cableStyle.color }
+          if (cableStyle.type) {
+            link.type = cableStyle.type
+          }
         }
       }
+    }
+
+    // Build label from cable attributes
+    const labelParts: string[] = []
+    if (conn.cableLabel) {
+      labelParts.push(conn.cableLabel)
+    }
+    if (conn.cableLength) {
+      labelParts.push(conn.cableLength)
+    }
+    if (labelParts.length > 0) {
+      link.label = labelParts.join(' ')
     }
 
     return link

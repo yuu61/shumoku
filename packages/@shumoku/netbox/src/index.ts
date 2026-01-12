@@ -3,7 +3,7 @@
  * NetBox API client and Shumoku converter
  */
 
-export { NetBoxClient } from './client.js'
+export { NetBoxClient, type QueryParams } from './client.js'
 export { convertToNetworkGraph, convertToNetworkGraphWithVMs, toYaml } from './converter.js'
 export type {
   // NetBox API types

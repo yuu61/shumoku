@@ -11,7 +11,25 @@ import type {
   NetBoxVMInterfaceResponse,
   NetBoxPrefixResponse,
   NetBoxIPAddressResponse,
+  NetBoxSiteResponse,
+  NetBoxLocationResponse,
 } from './types.js'
+
+/**
+ * Query parameters for filtering API requests
+ */
+export interface QueryParams {
+  site?: string        // Filter by site slug
+  site_id?: number     // Filter by site ID
+  location?: string    // Filter by location slug
+  location_id?: number // Filter by location ID
+  role?: string        // Filter by role slug
+  status?: string      // Filter by status (active, planned, staged, failed, offline)
+  tag?: string         // Filter by tag slug
+  manufacturer?: string // Filter by manufacturer slug
+  device_type?: string // Filter by device type slug
+  q?: string           // Search query
+}
 
 export class NetBoxClient {
   private baseUrl: string
@@ -43,31 +61,49 @@ export class NetBoxClient {
   }
 
   /**
+   * Build query string from parameters
+   */
+  private buildQueryString(params?: QueryParams): string {
+    const searchParams = new URLSearchParams({ limit: '0' })
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          searchParams.set(key, String(value))
+        }
+      }
+    }
+
+    return searchParams.toString()
+  }
+
+  /**
    * Make GET request to NetBox DCIM API
    */
-  private async getDcim<T>(endpoint: string): Promise<T> {
-    return this.get<T>(`dcim/${endpoint}`)
+  private async getDcim<T>(endpoint: string, params?: QueryParams): Promise<T> {
+    return this.get<T>(`dcim/${endpoint}`, params)
   }
 
   /**
    * Make GET request to NetBox Virtualization API
    */
-  private async getVirtualization<T>(endpoint: string): Promise<T> {
-    return this.get<T>(`virtualization/${endpoint}`)
+  private async getVirtualization<T>(endpoint: string, params?: QueryParams): Promise<T> {
+    return this.get<T>(`virtualization/${endpoint}`, params)
   }
 
   /**
    * Make GET request to NetBox IPAM API
    */
-  private async getIpam<T>(endpoint: string): Promise<T> {
-    return this.get<T>(`ipam/${endpoint}`)
+  private async getIpam<T>(endpoint: string, params?: QueryParams): Promise<T> {
+    return this.get<T>(`ipam/${endpoint}`, params)
   }
 
   /**
    * Make GET request to NetBox API
    */
-  private async get<T>(path: string): Promise<T> {
-    const url = `${this.baseUrl}/api/${path}/?limit=0`
+  private async get<T>(path: string, params?: QueryParams): Promise<T> {
+    const queryString = this.buildQueryString(params)
+    const url = `${this.baseUrl}/api/${path}/?${queryString}`
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.timeout)
@@ -93,52 +129,66 @@ export class NetBoxClient {
   }
 
   /**
-   * Fetch all devices
+   * Fetch devices with optional filtering
    */
-  async fetchDevices(): Promise<NetBoxDeviceResponse> {
-    return this.getDcim<NetBoxDeviceResponse>('devices')
+  async fetchDevices(params?: QueryParams): Promise<NetBoxDeviceResponse> {
+    return this.getDcim<NetBoxDeviceResponse>('devices', params)
   }
 
   /**
-   * Fetch all interfaces
+   * Fetch interfaces with optional filtering
    */
-  async fetchInterfaces(): Promise<NetBoxInterfaceResponse> {
-    return this.getDcim<NetBoxInterfaceResponse>('interfaces')
+  async fetchInterfaces(params?: QueryParams): Promise<NetBoxInterfaceResponse> {
+    return this.getDcim<NetBoxInterfaceResponse>('interfaces', params)
   }
 
   /**
-   * Fetch all cables
+   * Fetch cables
    */
   async fetchCables(): Promise<NetBoxCableResponse> {
     return this.getDcim<NetBoxCableResponse>('cables')
   }
 
   /**
-   * Fetch all virtual machines
+   * Fetch sites with optional filtering
    */
-  async fetchVirtualMachines(): Promise<NetBoxVirtualMachineResponse> {
-    return this.getVirtualization<NetBoxVirtualMachineResponse>('virtual-machines')
+  async fetchSites(params?: QueryParams): Promise<NetBoxSiteResponse> {
+    return this.getDcim<NetBoxSiteResponse>('sites', params)
   }
 
   /**
-   * Fetch all VM interfaces
+   * Fetch locations with optional filtering
    */
-  async fetchVMInterfaces(): Promise<NetBoxVMInterfaceResponse> {
-    return this.getVirtualization<NetBoxVMInterfaceResponse>('interfaces')
+  async fetchLocations(params?: QueryParams): Promise<NetBoxLocationResponse> {
+    return this.getDcim<NetBoxLocationResponse>('locations', params)
   }
 
   /**
-   * Fetch all IP prefixes
+   * Fetch virtual machines with optional filtering
    */
-  async fetchPrefixes(): Promise<NetBoxPrefixResponse> {
-    return this.getIpam<NetBoxPrefixResponse>('prefixes')
+  async fetchVirtualMachines(params?: QueryParams): Promise<NetBoxVirtualMachineResponse> {
+    return this.getVirtualization<NetBoxVirtualMachineResponse>('virtual-machines', params)
   }
 
   /**
-   * Fetch all IP addresses
+   * Fetch VM interfaces with optional filtering
    */
-  async fetchIPAddresses(): Promise<NetBoxIPAddressResponse> {
-    return this.getIpam<NetBoxIPAddressResponse>('ip-addresses')
+  async fetchVMInterfaces(params?: QueryParams): Promise<NetBoxVMInterfaceResponse> {
+    return this.getVirtualization<NetBoxVMInterfaceResponse>('interfaces', params)
+  }
+
+  /**
+   * Fetch IP prefixes with optional filtering
+   */
+  async fetchPrefixes(params?: QueryParams): Promise<NetBoxPrefixResponse> {
+    return this.getIpam<NetBoxPrefixResponse>('prefixes', params)
+  }
+
+  /**
+   * Fetch IP addresses with optional filtering
+   */
+  async fetchIPAddresses(params?: QueryParams): Promise<NetBoxIPAddressResponse> {
+    return this.getIpam<NetBoxIPAddressResponse>('ip-addresses', params)
   }
 
   /**
