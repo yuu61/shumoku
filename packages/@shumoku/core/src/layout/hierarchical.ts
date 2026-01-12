@@ -128,10 +128,10 @@ const DEFAULT_OPTIONS: Required<HierarchicalLayoutOptions> = {
   direction: 'TB',
   nodeWidth: 180,
   nodeHeight: 60,
-  nodeSpacing: 120,     // Horizontal spacing between nodes
-  rankSpacing: 180,     // Vertical spacing between layers
-  subgraphPadding: 60,  // Padding inside subgraphs
-  subgraphLabelHeight: 28,
+  nodeSpacing: 40,      // Horizontal spacing between nodes
+  rankSpacing: 60,      // Vertical spacing between layers
+  subgraphPadding: 24,  // Padding inside subgraphs
+  subgraphLabelHeight: 24,
 }
 
 // ============================================
@@ -148,17 +148,82 @@ export class HierarchicalLayout {
   }
 
   /**
+   * Calculate dynamic spacing based on graph complexity
+   * More complex graphs get tighter spacing, simpler graphs get more spacious
+   */
+  private calculateDynamicSpacing(graph: NetworkGraph): { nodeSpacing: number; rankSpacing: number; subgraphPadding: number } {
+    const nodeCount = graph.nodes.length
+    const linkCount = graph.links.length
+    const subgraphCount = graph.subgraphs?.length || 0
+
+    // Count total ports and find max port label length
+    let portCount = 0
+    let maxPortLabelLength = 0
+    for (const link of graph.links) {
+      if (typeof link.from !== 'string' && link.from.port) {
+        portCount++
+        maxPortLabelLength = Math.max(maxPortLabelLength, link.from.port.length)
+      }
+      if (typeof link.to !== 'string' && link.to.port) {
+        portCount++
+        maxPortLabelLength = Math.max(maxPortLabelLength, link.to.port.length)
+      }
+    }
+
+    // Average ports per node (affects node width)
+    const avgPortsPerNode = nodeCount > 0 ? portCount / nodeCount : 0
+
+    // Complexity score: weighted sum
+    // - Nodes: base complexity
+    // - Links: connection density
+    // - Ports: affects node width, so need more horizontal space
+    // - Subgraphs: add hierarchy overhead
+    const complexity = nodeCount * 1.0 +
+                       linkCount * 0.8 +
+                       portCount * 0.3 +
+                       subgraphCount * 2
+
+    // Port density factor: more ports per node = need more spacing
+    const portDensityFactor = Math.min(1.5, 1 + avgPortsPerNode * 0.1)
+
+    // Base spacing: starts at 60, decreases with complexity, min 20
+    const rawSpacing = Math.max(20, Math.min(60, 80 - complexity * 1.2))
+    const baseSpacing = rawSpacing * portDensityFactor
+
+    // Port label consideration for spacing
+    // Port labels are positioned outside the node with labelOffset=12, labelHeight=12
+    // Total port label protrusion from node edge: ~24-28px
+    const portLabelProtrusion = portCount > 0 ? 28 : 0
+
+    // Port label width affects rank spacing (horizontal labels)
+    const portLabelWidth = maxPortLabelLength * PORT_LABEL_FONT_SIZE * CHAR_WIDTH_RATIO
+    const minRankSpacing = Math.max(portLabelWidth, portLabelProtrusion) + 16
+
+    // Subgraph padding must accommodate port labels extending outside nodes
+    const minSubgraphPadding = portLabelProtrusion + 8
+
+    return {
+      nodeSpacing: Math.round(baseSpacing),
+      rankSpacing: Math.round(Math.max(baseSpacing * 1.5, minRankSpacing)),
+      subgraphPadding: Math.round(Math.max(baseSpacing * 0.6, minSubgraphPadding)),
+    }
+  }
+
+  /**
    * Get effective options by merging graph settings with defaults
+   * Uses dynamic spacing if not explicitly set
    */
   private getEffectiveOptions(graph: NetworkGraph): Required<HierarchicalLayoutOptions> {
     const settings = graph.settings
+    const dynamicSpacing = this.calculateDynamicSpacing(graph)
 
     return {
       ...this.options,
       direction: settings?.direction || this.options.direction,
-      nodeSpacing: settings?.nodeSpacing || this.options.nodeSpacing,
-      rankSpacing: settings?.rankSpacing || this.options.rankSpacing,
-      subgraphPadding: settings?.subgraphPadding || this.options.subgraphPadding,
+      // Use explicit settings if provided, otherwise use dynamic values
+      nodeSpacing: settings?.nodeSpacing || dynamicSpacing.nodeSpacing,
+      rankSpacing: settings?.rankSpacing || dynamicSpacing.rankSpacing,
+      subgraphPadding: settings?.subgraphPadding || dynamicSpacing.subgraphPadding,
     }
   }
 
@@ -281,17 +346,6 @@ export class HierarchicalLayout {
       }
     }
 
-    // Build subgraph children map
-    const subgraphChildren = new Map<string, string[]>()
-    for (const sg of subgraphMap.values()) {
-      subgraphChildren.set(sg.id, [])
-    }
-    for (const sg of subgraphMap.values()) {
-      if (sg.parent && subgraphMap.has(sg.parent)) {
-        subgraphChildren.get(sg.parent)!.push(sg.id)
-      }
-    }
-
     // Create ELK node for regular nodes
     const createElkNode_ = (node: Node): ElkNode => {
       const portInfo = nodePorts.get(node.id)
@@ -380,11 +434,9 @@ export class HierarchicalLayout {
     const createSubgraphNode = (subgraph: Subgraph): ElkNode => {
       const childNodes: ElkNode[] = []
 
-      // Add child subgraphs
-      const childSgIds = subgraphChildren.get(subgraph.id) || []
-      for (const childId of childSgIds) {
-        const childSg = subgraphMap.get(childId)
-        if (childSg) {
+      // Add child subgraphs (nested subgraphs)
+      for (const childSg of subgraphMap.values()) {
+        if (childSg.parent === subgraph.id) {
           childNodes.push(createSubgraphNode(childSg))
         }
       }
@@ -519,14 +571,23 @@ export class HierarchicalLayout {
         return edge
       })
 
+    // Dynamic edge spacing based on node spacing
+    const edgeNodeSpacing = Math.max(10, Math.round(options.nodeSpacing * 0.4))
+    const edgeEdgeSpacing = Math.max(8, Math.round(options.nodeSpacing * 0.25))
+
     // Root graph
     const rootLayoutOptions: LayoutOptions = {
       'elk.algorithm': 'layered',
       'elk.direction': elkDirection,
+      // Spacing (dynamic based on graph complexity)
       'elk.spacing.nodeNode': String(options.nodeSpacing),
       'elk.layered.spacing.nodeNodeBetweenLayers': String(options.rankSpacing),
-      'elk.spacing.edgeNode': '50',
-      'elk.spacing.edgeEdge': '20',
+      'elk.spacing.edgeNode': String(edgeNodeSpacing),
+      'elk.spacing.edgeEdge': String(edgeEdgeSpacing),
+      // Compaction (minimize wasted space)
+      'elk.layered.compaction.postCompaction.strategy': 'EDGE_LENGTH',
+      'elk.layered.compaction.connectedComponents': 'true',
+      // Layout strategies
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.edgeRouting': 'SPLINES',
@@ -1114,7 +1175,7 @@ export class HierarchicalLayout {
     // - For icon/label: add horizontal padding
     // - For ports: already has edge margins built in
     const paddedContentWidth = Math.max(labelWidth, 0) + NODE_HORIZONTAL_PADDING
-    const baseNodeWidth = Math.max(this.options.nodeWidth, paddedContentWidth, portWidth)
+    const baseNodeWidth = Math.max(paddedContentWidth, portWidth)
 
     // 4. Calculate icon width with max limit (60% of base node width)
     const maxIconWidth = Math.round(baseNodeWidth * MAX_ICON_WIDTH_RATIO)
@@ -1152,7 +1213,7 @@ export class HierarchicalLayout {
     // - Icon and label need padding
     // - Ports already have edge margins
     const paddedIconLabelWidth = Math.max(iconWidth, labelWidth) + NODE_HORIZONTAL_PADDING
-    return Math.max(this.options.nodeWidth, paddedIconLabelWidth, portWidth)
+    return Math.max(paddedIconLabelWidth, portWidth)
   }
 
   /**
@@ -1337,10 +1398,27 @@ export class HierarchicalLayout {
     let maxX = -Infinity, maxY = -Infinity
 
     nodes.forEach((node) => {
-      minX = Math.min(minX, node.position.x - node.size.width / 2)
-      minY = Math.min(minY, node.position.y - node.size.height / 2)
-      maxX = Math.max(maxX, node.position.x + node.size.width / 2)
-      maxY = Math.max(maxY, node.position.y + node.size.height / 2)
+      let left = node.position.x - node.size.width / 2
+      let right = node.position.x + node.size.width / 2
+      let top = node.position.y - node.size.height / 2
+      let bottom = node.position.y + node.size.height / 2
+
+      // Include port positions (ports extend outside node bounds)
+      if (node.ports) {
+        node.ports.forEach((port) => {
+          const portX = node.position.x + port.position.x
+          const portY = node.position.y + port.position.y
+          left = Math.min(left, portX - port.size.width / 2)
+          right = Math.max(right, portX + port.size.width / 2)
+          top = Math.min(top, portY - port.size.height / 2)
+          bottom = Math.max(bottom, portY + port.size.height / 2)
+        })
+      }
+
+      minX = Math.min(minX, left)
+      minY = Math.min(minY, top)
+      maxX = Math.max(maxX, right)
+      maxY = Math.max(maxY, bottom)
     })
 
     subgraphs.forEach((sg) => {
@@ -1610,7 +1688,9 @@ export class HierarchicalLayout {
   private recalculateSubgraphBounds(result: LayoutResult, graph: NetworkGraph): void {
     if (!graph.subgraphs) return
 
-    const padding = this.options.subgraphPadding
+    // Use dynamic padding that accounts for port labels
+    const dynamicSpacing = this.calculateDynamicSpacing(graph)
+    const padding = dynamicSpacing.subgraphPadding
     const labelHeight = this.options.subgraphLabelHeight
 
     // Build node-to-subgraph mapping
@@ -1634,15 +1714,27 @@ export class HierarchicalLayout {
 
       if (childNodes.length === 0) return
 
-      // Calculate bounding box of all child nodes
+      // Calculate bounding box of all child nodes including port positions
       let minX = Infinity, minY = Infinity
       let maxX = -Infinity, maxY = -Infinity
 
       for (const node of childNodes) {
-        const left = node.position.x - node.size.width / 2
-        const right = node.position.x + node.size.width / 2
-        const top = node.position.y - node.size.height / 2
-        const bottom = node.position.y + node.size.height / 2
+        let left = node.position.x - node.size.width / 2
+        let right = node.position.x + node.size.width / 2
+        let top = node.position.y - node.size.height / 2
+        let bottom = node.position.y + node.size.height / 2
+
+        // Expand bounds to include port positions (ports are outside the node)
+        if (node.ports) {
+          node.ports.forEach((port) => {
+            const portX = node.position.x + port.position.x
+            const portY = node.position.y + port.position.y
+            left = Math.min(left, portX - port.size.width / 2)
+            right = Math.max(right, portX + port.size.width / 2)
+            top = Math.min(top, portY - port.size.height / 2)
+            bottom = Math.max(bottom, portY + port.size.height / 2)
+          })
+        }
 
         minX = Math.min(minX, left)
         minY = Math.min(minY, top)
@@ -1659,15 +1751,27 @@ export class HierarchicalLayout {
       }
     })
 
-    // Update overall bounds
+    // Update overall bounds (including ports)
     let minX = Infinity, minY = Infinity
     let maxX = -Infinity, maxY = -Infinity
 
     result.nodes.forEach((node) => {
-      const left = node.position.x - node.size.width / 2
-      const right = node.position.x + node.size.width / 2
-      const top = node.position.y - node.size.height / 2
-      const bottom = node.position.y + node.size.height / 2
+      let left = node.position.x - node.size.width / 2
+      let right = node.position.x + node.size.width / 2
+      let top = node.position.y - node.size.height / 2
+      let bottom = node.position.y + node.size.height / 2
+
+      // Include port positions
+      if (node.ports) {
+        node.ports.forEach((port) => {
+          const portX = node.position.x + port.position.x
+          const portY = node.position.y + port.position.y
+          left = Math.min(left, portX - port.size.width / 2)
+          right = Math.max(right, portX + port.size.width / 2)
+          top = Math.min(top, portY - port.size.height / 2)
+          bottom = Math.max(bottom, portY + port.size.height / 2)
+        })
+      }
 
       minX = Math.min(minX, left)
       minY = Math.min(minY, top)
