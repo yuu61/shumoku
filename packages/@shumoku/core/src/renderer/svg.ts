@@ -338,7 +338,7 @@ export class SVGRenderer {
   private renderBandwidthLegendIcon(lineCount: number): string {
     const lineSpacing = 3
     const lineWidth = 24
-    const strokeWidth = 1.5
+    const strokeWidth = 2
     const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
 
     const lines = offsets.map(offset => {
@@ -923,7 +923,7 @@ export class SVGRenderer {
     switch (type) {
       case 'thick': return 3
       case 'double': return 2
-      default: return 1.5
+      default: return 2
     }
   }
 
@@ -936,7 +936,7 @@ export class SVGRenderer {
    * 100G → 5 lines
    */
   private getBandwidthConfig(bandwidth?: string): { lineCount: number; strokeWidth: number } {
-    const strokeWidth = 1.5
+    const strokeWidth = 2
     switch (bandwidth) {
       case '1G':
         return { lineCount: 1, strokeWidth }
