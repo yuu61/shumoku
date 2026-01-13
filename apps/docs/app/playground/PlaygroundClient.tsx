@@ -74,14 +74,17 @@ export default function PlaygroundClient() {
     .toolbar button { padding: 6px; border: none; background: none; cursor: pointer; border-radius: 4px; color: #666; }
     .toolbar button:hover { background: #f0f0f0; }
     .zoom-text { min-width: 50px; text-align: center; font-size: 13px; color: #666; }
-    .container { width: 100%; height: calc(100vh - 45px); overflow: hidden; cursor: grab; background: repeating-conic-gradient(#f8f8f8 0% 25%, transparent 0% 50%) 50% / 20px 20px; }
+    .container { position: relative; width: 100%; height: calc(100vh - 45px); overflow: hidden; cursor: grab; background: repeating-conic-gradient(#f8f8f8 0% 25%, transparent 0% 50%) 50% / 20px 20px; }
     .container.dragging { cursor: grabbing; }
-    .container svg { width: 100%; height: 100%; }
+    .container > svg { width: 100%; height: 100%; }
+    .branding { position: absolute; bottom: 16px; right: 16px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; font-size: 13px; font-family: system-ui, sans-serif; color: #555; text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 100; }
+    .branding:hover { color: #222; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .branding-icon { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
   </style>
 </head>
 <body>
   <div class="toolbar">
-    <span class="toolbar-title">Network Diagram</span>
+    <span class="toolbar-title">Shumoku Diagram</span>
     <div class="toolbar-buttons">
       <button id="btn-out" title="Zoom Out"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M20 12H4"/></svg></button>
       <span class="zoom-text" id="zoom">100%</span>
@@ -90,7 +93,13 @@ export default function PlaygroundClient() {
       <button id="btn-reset" title="Reset"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
     </div>
   </div>
-  <div class="container" id="container">${svgContent}</div>
+  <div class="container" id="container">
+    ${svgContent}
+    <a class="branding" href="https://shumoku.packof.me" target="_blank" rel="noopener">
+      <svg class="branding-icon" viewBox="0 0 1024 1024" fill="none"><rect x="64" y="64" width="896" height="896" rx="200" fill="#7FE4C1"/><g transform="translate(90,40) scale(1.25)"><path fill="#1F2328" d="M380 340H450V505H700V555H510V645H450V645H380Z"/></g></svg>
+      <span>Made with Shumoku</span>
+    </a>
+  </div>
   <script>${INTERACTIVE_IIFE}<\/script>
   <script>
     (function() {
