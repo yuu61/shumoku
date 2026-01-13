@@ -17,7 +17,9 @@ export default function PlaygroundClient() {
   const [svgContent, setSvgContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState(false)
+  const [showOpenMenu, setShowOpenMenu] = useState(false)
   const [showDownloadMenu, setShowDownloadMenu] = useState(false)
+  const openMenuRef = useRef<HTMLDivElement>(null)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
 
   // Store graph and layout for Open Viewer
@@ -27,6 +29,9 @@ export default function PlaygroundClient() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (openMenuRef.current && !openMenuRef.current.contains(e.target as Node)) {
+        setShowOpenMenu(false)
+      }
       if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) {
         setShowDownloadMenu(false)
       }
@@ -95,14 +100,20 @@ export default function PlaygroundClient() {
     setShowDownloadMenu(false)
   }
 
-  const handleOpenViewer = () => {
+  const handleOpen = (format: 'svg' | 'html') => {
     if (!graphRef.current || !layoutRef.current) return
-    const htmlOutput = html.render(graphRef.current, layoutRef.current)
     const win = window.open('', '_blank')
-    if (win) {
+    if (!win) return
+
+    if (format === 'svg') {
+      const svgOutput = svg.render(graphRef.current, layoutRef.current)
+      win.document.write(`<!DOCTYPE html><html><head><title>${graphRef.current.name || 'Network Diagram'}</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5}</style></head><body>${svgOutput}</body></html>`)
+    } else {
+      const htmlOutput = html.render(graphRef.current, layoutRef.current)
       win.document.write(htmlOutput)
-      win.document.close()
     }
+    win.document.close()
+    setShowOpenMenu(false)
   }
 
   return (
@@ -145,18 +156,54 @@ export default function PlaygroundClient() {
             {isRendering ? 'Rendering...' : 'Render'}
           </button>
 
-          <button
-            onClick={handleOpenViewer}
-            disabled={!svgContent}
-            className={cn(
-              'rounded px-4 py-2 text-sm font-medium',
-              'border border-neutral-300 dark:border-neutral-600',
-              'bg-white dark:bg-neutral-800',
-              'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
+          <div className="relative" ref={openMenuRef}>
+            <button
+              onClick={() => setShowOpenMenu(!showOpenMenu)}
+              disabled={!svgContent}
+              className={cn(
+                'flex items-center gap-1 rounded px-4 py-2 text-sm font-medium',
+                'border border-neutral-300 dark:border-neutral-600',
+                'bg-white dark:bg-neutral-800',
+                'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
+              )}
+            >
+              Open
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M3 5l3 3 3-3" />
+              </svg>
+            </button>
+            {showOpenMenu && (
+              <div
+                className={cn(
+                  'absolute right-0 top-full z-10 mt-1 w-40',
+                  'rounded border border-neutral-200 dark:border-neutral-600',
+                  'bg-white dark:bg-neutral-800',
+                  'shadow-lg',
+                )}
+              >
+                <button
+                  onClick={() => handleOpen('svg')}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
+                    'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+                  )}
+                >
+                  <span className="text-neutral-500">.svg</span>
+                  <span>Pure SVG</span>
+                </button>
+                <button
+                  onClick={() => handleOpen('html')}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
+                    'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+                  )}
+                >
+                  <span className="text-neutral-500">.html</span>
+                  <span>Interactive</span>
+                </button>
+              </div>
             )}
-          >
-            Open Viewer
-          </button>
+          </div>
 
           <div className="relative" ref={downloadMenuRef}>
             <button
