@@ -12,33 +12,96 @@ import { InteractivePreview } from './InteractivePreview'
 // Set IIFE once at module load
 html.setIIFE(INTERACTIVE_IIFE)
 
-export default function PlaygroundClient() {
-  const [yamlContent, setYamlContent] = useState<string>(enterpriseNetwork)
-  const [svgContent, setSvgContent] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isRendering, setIsRendering] = useState(false)
-  const [showOpenMenu, setShowOpenMenu] = useState(false)
-  const [showDownloadMenu, setShowDownloadMenu] = useState(false)
-  const openMenuRef = useRef<HTMLDivElement>(null)
-  const downloadMenuRef = useRef<HTMLDivElement>(null)
+// Format dropdown component
+function FormatDropdown({
+  label,
+  disabled,
+  onSelect,
+}: {
+  label: string
+  disabled: boolean
+  onSelect: (format: 'svg' | 'html') => void
+}) {
+  const [show, setShow] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
-  // Store graph and layout for Open Viewer
-  const graphRef = useRef<NetworkGraph | null>(null)
-  const layoutRef = useRef<LayoutResult | null>(null)
-
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (openMenuRef.current && !openMenuRef.current.contains(e.target as Node)) {
-        setShowOpenMenu(false)
-      }
-      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) {
-        setShowDownloadMenu(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setShow(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setShow(!show)}
+        disabled={disabled}
+        className={cn(
+          'flex items-center gap-1 rounded px-4 py-2 text-sm font-medium',
+          'border border-neutral-300 dark:border-neutral-600',
+          'bg-white dark:bg-neutral-800',
+          'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
+        )}
+      >
+        {label}
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <path d="M3 5l3 3 3-3" />
+        </svg>
+      </button>
+      {show && (
+        <div
+          className={cn(
+            'absolute right-0 top-full z-10 mt-1 w-40',
+            'rounded border border-neutral-200 dark:border-neutral-600',
+            'bg-white dark:bg-neutral-800',
+            'shadow-lg',
+          )}
+        >
+          <button
+            onClick={() => {
+              onSelect('svg')
+              setShow(false)
+            }}
+            className={cn(
+              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+            )}
+          >
+            <span className="text-neutral-500">.svg</span>
+            <span>Pure SVG</span>
+          </button>
+          <button
+            onClick={() => {
+              onSelect('html')
+              setShow(false)
+            }}
+            className={cn(
+              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+            )}
+          >
+            <span className="text-neutral-500">.html</span>
+            <span>Interactive</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function PlaygroundClient() {
+  const [yamlContent, setYamlContent] = useState<string>(enterpriseNetwork)
+  const [svgContent, setSvgContent] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isRendering, setIsRendering] = useState(false)
+
+  // Store graph and layout for export
+  const graphRef = useRef<NetworkGraph | null>(null)
+  const layoutRef = useRef<LayoutResult | null>(null)
 
   const handleParseAndRender = async () => {
     setIsRendering(true)
@@ -77,27 +140,21 @@ export default function PlaygroundClient() {
   const handleDownload = (format: 'svg' | 'html') => {
     if (!graphRef.current || !layoutRef.current) return
     const date = new Date().toISOString().slice(0, 10)
+    const name = graphRef.current.name?.replace(/\s+/g, '-').toLowerCase() || 'network-diagram'
 
-    if (format === 'svg') {
-      const svgOutput = svg.render(graphRef.current, layoutRef.current)
-      const blob = new Blob([svgOutput], { type: 'image/svg+xml;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `network-diagram-${date}.svg`
-      a.click()
-      URL.revokeObjectURL(url)
-    } else {
-      const htmlOutput = html.render(graphRef.current, layoutRef.current)
-      const blob = new Blob([htmlOutput], { type: 'text/html;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `network-diagram-${date}.html`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-    setShowDownloadMenu(false)
+    const content =
+      format === 'svg'
+        ? svg.render(graphRef.current, layoutRef.current)
+        : html.render(graphRef.current, layoutRef.current)
+    const blob = new Blob([content], {
+      type: format === 'svg' ? 'image/svg+xml;charset=utf-8' : 'text/html;charset=utf-8',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${name}-${date}.${format}`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleOpen = (format: 'svg' | 'html') => {
@@ -107,13 +164,14 @@ export default function PlaygroundClient() {
 
     if (format === 'svg') {
       const svgOutput = svg.render(graphRef.current, layoutRef.current)
-      win.document.write(`<!DOCTYPE html><html><head><title>${graphRef.current.name || 'Network Diagram'}</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5}</style></head><body>${svgOutput}</body></html>`)
+      const title = graphRef.current.name || 'Network Diagram'
+      win.document.write(
+        `<!DOCTYPE html><html><head><title>${title}</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5}</style></head><body>${svgOutput}</body></html>`,
+      )
     } else {
-      const htmlOutput = html.render(graphRef.current, layoutRef.current)
-      win.document.write(htmlOutput)
+      win.document.write(html.render(graphRef.current, layoutRef.current))
     }
     win.document.close()
-    setShowOpenMenu(false)
   }
 
   return (
@@ -156,103 +214,8 @@ export default function PlaygroundClient() {
             {isRendering ? 'Rendering...' : 'Render'}
           </button>
 
-          <div className="relative" ref={openMenuRef}>
-            <button
-              onClick={() => setShowOpenMenu(!showOpenMenu)}
-              disabled={!svgContent}
-              className={cn(
-                'flex items-center gap-1 rounded px-4 py-2 text-sm font-medium',
-                'border border-neutral-300 dark:border-neutral-600',
-                'bg-white dark:bg-neutral-800',
-                'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
-              )}
-            >
-              Open
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                <path d="M3 5l3 3 3-3" />
-              </svg>
-            </button>
-            {showOpenMenu && (
-              <div
-                className={cn(
-                  'absolute right-0 top-full z-10 mt-1 w-40',
-                  'rounded border border-neutral-200 dark:border-neutral-600',
-                  'bg-white dark:bg-neutral-800',
-                  'shadow-lg',
-                )}
-              >
-                <button
-                  onClick={() => handleOpen('svg')}
-                  className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
-                    'hover:bg-neutral-100 dark:hover:bg-neutral-700',
-                  )}
-                >
-                  <span className="text-neutral-500">.svg</span>
-                  <span>Pure SVG</span>
-                </button>
-                <button
-                  onClick={() => handleOpen('html')}
-                  className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
-                    'hover:bg-neutral-100 dark:hover:bg-neutral-700',
-                  )}
-                >
-                  <span className="text-neutral-500">.html</span>
-                  <span>Interactive</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="relative" ref={downloadMenuRef}>
-            <button
-              onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-              disabled={!svgContent}
-              className={cn(
-                'flex items-center gap-1 rounded px-4 py-2 text-sm font-medium',
-                'border border-neutral-300 dark:border-neutral-600',
-                'bg-white dark:bg-neutral-800',
-                'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
-              )}
-            >
-              Download
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                <path d="M3 5l3 3 3-3" />
-              </svg>
-            </button>
-            {showDownloadMenu && (
-              <div
-                className={cn(
-                  'absolute right-0 top-full z-10 mt-1 w-40',
-                  'rounded border border-neutral-200 dark:border-neutral-600',
-                  'bg-white dark:bg-neutral-800',
-                  'shadow-lg',
-                )}
-              >
-                <button
-                  onClick={() => handleDownload('svg')}
-                  className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
-                    'hover:bg-neutral-100 dark:hover:bg-neutral-700',
-                  )}
-                >
-                  <span className="text-neutral-500">.svg</span>
-                  <span>Pure SVG</span>
-                </button>
-                <button
-                  onClick={() => handleDownload('html')}
-                  className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
-                    'hover:bg-neutral-100 dark:hover:bg-neutral-700',
-                  )}
-                >
-                  <span className="text-neutral-500">.html</span>
-                  <span>Interactive</span>
-                </button>
-              </div>
-            )}
-          </div>
+          <FormatDropdown label="Open" disabled={!svgContent} onSelect={handleOpen} />
+          <FormatDropdown label="Download" disabled={!svgContent} onSelect={handleDownload} />
         </div>
       </div>
 
