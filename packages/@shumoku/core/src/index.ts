@@ -10,9 +10,6 @@ export * from './icons/index.js'
 export * from './layout/index.js'
 // Models
 export * from './models/index.js'
-
-// Renderer
-export * from './renderer/index.js'
 // Themes
 export * from './themes/index.js'
 

@@ -3,14 +3,8 @@
  * Renders NetworkGraph to SVG
  */
 
-import {
-  DEFAULT_ICON_SIZE,
-  ICON_LABEL_GAP,
-  LABEL_LINE_HEIGHT,
-  MAX_ICON_WIDTH_RATIO,
-} from '../constants.js'
-import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons/index.js'
 import type {
+  IconThemeVariant,
   LayoutLink,
   LayoutNode,
   LayoutPort,
@@ -23,7 +17,17 @@ import type {
   Node,
   NodeShape,
   ThemeType,
-} from '../models/index.js'
+} from '@shumoku/core'
+import {
+  DEFAULT_ICON_SIZE,
+  getDeviceIcon,
+  getVendorIconEntry,
+  ICON_LABEL_GAP,
+  LABEL_LINE_HEIGHT,
+  MAX_ICON_WIDTH_RATIO,
+} from '@shumoku/core'
+
+import type { DataAttributeOptions, RenderMode } from './types.js'
 
 // ============================================
 // Theme Colors
@@ -90,13 +94,26 @@ const DARK_THEME: ThemeColors = {
 export interface SVGRendererOptions {
   /** Font family */
   fontFamily?: string
-  /** Include interactive elements */
+  /** Include interactive elements (deprecated, use renderMode) */
   interactive?: boolean
+  /**
+   * Render mode
+   * - 'static': Pure SVG without interactive data attributes (default)
+   * - 'interactive': SVG with data attributes for runtime interactivity
+   */
+  renderMode?: RenderMode
+  /**
+   * Data attributes to include in interactive mode
+   * Only used when renderMode is 'interactive'
+   */
+  dataAttributes?: DataAttributeOptions
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   interactive: true,
+  renderMode: 'static',
+  dataAttributes: { device: true, link: true, metadata: true },
 }
 
 // ============================================
@@ -110,6 +127,20 @@ export class SVGRenderer {
 
   constructor(options?: SVGRendererOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
+  }
+
+  /** Check if interactive mode is enabled */
+  private get isInteractive(): boolean {
+    return this.options.renderMode === 'interactive'
+  }
+
+  /** Get data attribute options with defaults */
+  private get dataAttrs(): Required<DataAttributeOptions> {
+    return {
+      device: this.options.dataAttributes?.device ?? true,
+      link: this.options.dataAttributes?.link ?? true,
+      metadata: this.options.dataAttributes?.metadata ?? true,
+    }
   }
 
   /**
@@ -170,19 +201,22 @@ export class SVGRenderer {
       parts.push(this.renderSubgraph(sg))
     }
 
-    // Layer 2: Node backgrounds (shapes)
-    for (const node of layout.nodes.values()) {
-      parts.push(this.renderNodeBackground(node))
-    }
-
-    // Layer 3: Links (on top of node backgrounds)
+    // Layer 2: Links (below nodes)
     for (const link of layout.links.values()) {
       parts.push(this.renderLink(link, layout.nodes))
     }
 
-    // Layer 4: Node foregrounds (content + ports, on top of links)
+    // Layer 3: Nodes (bg + fg as one unit, without ports)
     for (const node of layout.nodes.values()) {
-      parts.push(this.renderNodeForeground(node))
+      parts.push(this.renderNode(node))
+    }
+
+    // Layer 4: Ports (separate layer on top of nodes)
+    for (const node of layout.nodes.values()) {
+      const portsRendered = this.renderPorts(node.id, node.position.x, node.position.y, node.ports)
+      if (portsRendered) {
+        parts.push(portsRendered)
+      }
     }
 
     // Legend (if enabled) - use already calculated legendSettings
@@ -389,9 +423,23 @@ export class SVGRenderer {
   }
 
   private renderStyles(): string {
-    return `<style>
-  .node { cursor: pointer; }
-  .node:hover rect, .node:hover circle, .node:hover polygon { filter: brightness(0.95); }
+    // CSS variables for interactive runtime theming
+    const cssVars = this.isInteractive
+      ? `
+  :root {
+    --shumoku-bg: ${this.themeColors.backgroundColor};
+    --shumoku-surface: ${this.themeColors.subgraphFill};
+    --shumoku-text: ${this.themeColors.labelColor};
+    --shumoku-text-secondary: ${this.themeColors.labelSecondaryColor};
+    --shumoku-border: ${this.themeColors.subgraphStroke};
+    --shumoku-node-fill: ${this.themeColors.defaultNodeFill};
+    --shumoku-node-stroke: ${this.themeColors.defaultNodeStroke};
+    --shumoku-link-stroke: ${this.themeColors.defaultLinkStroke};
+    --shumoku-font: ${this.options.fontFamily};
+  }`
+      : ''
+
+    return `<style>${cssVars}
   .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: ${this.themeColors.labelColor}; }
   .node-label-bold { font-weight: bold; }
   .node-icon { color: ${this.themeColors.labelSecondaryColor}; }
@@ -478,6 +526,19 @@ export class SVGRenderer {
   }
 
   /** Render node background (shape only) */
+  /** Render complete node (bg + fg as one unit) */
+  private renderNode(layoutNode: LayoutNode): string {
+    const { id, node } = layoutNode
+    const dataAttrs = this.buildNodeDataAttributes(node)
+    const bg = this.renderNodeBackground(layoutNode)
+    const fg = this.renderNodeForeground(layoutNode)
+
+    return `<g class="node" data-id="${id}"${dataAttrs}>
+${bg}
+${fg}
+</g>`
+  }
+
   private renderNodeBackground(layoutNode: LayoutNode): string {
     const { id, position, size, node } = layoutNode
     const x = position.x
@@ -503,32 +564,71 @@ export class SVGRenderer {
       strokeDasharray,
     )
 
-    return `<g class="node-bg" data-id="${id}">${shape}</g>`
+    // Build data attributes for interactive mode
+    const dataAttrs = this.buildNodeDataAttributes(node)
+
+    return `<g class="node-bg" data-id="${id}"${dataAttrs}>${shape}</g>`
   }
 
-  /** Render node foreground (content + ports) */
+  /** Build data attributes for a node (interactive mode only) */
+  private buildNodeDataAttributes(node: Node): string {
+    if (!this.isInteractive || !this.dataAttrs.device) return ''
+
+    const attrs: string[] = []
+
+    if (node.type) attrs.push(`data-device-type="${this.escapeXml(node.type)}"`)
+    if (node.vendor) attrs.push(`data-device-vendor="${this.escapeXml(node.vendor)}"`)
+    if (node.model) attrs.push(`data-device-model="${this.escapeXml(node.model)}"`)
+    if (node.service) attrs.push(`data-device-service="${this.escapeXml(node.service)}"`)
+    if (node.resource) attrs.push(`data-device-resource="${this.escapeXml(node.resource)}"`)
+
+    // Include full metadata as JSON
+    if (this.dataAttrs.metadata) {
+      const deviceInfo = {
+        id: node.id,
+        label: node.label,
+        type: node.type,
+        vendor: node.vendor,
+        model: node.model,
+        service: node.service,
+        resource: node.resource,
+        metadata: node.metadata,
+      }
+      attrs.push(`data-device-json="${this.escapeXml(JSON.stringify(deviceInfo))}"`)
+    }
+
+    return attrs.length > 0 ? ` ${attrs.join(' ')}` : ''
+  }
+
+  /** Render node foreground (content only, ports rendered separately) */
   private renderNodeForeground(layoutNode: LayoutNode): string {
-    const { id, position, size, node, ports } = layoutNode
+    const { id, position, size, node } = layoutNode
     const x = position.x
     const y = position.y
     const w = size.width
 
     const content = this.renderNodeContent(node, x, y, w)
-    const portsRendered = this.renderPorts(x, y, ports)
 
-    return `<g class="node-fg" data-id="${id}">
+    // Include data attributes for interactive mode (same as node-bg)
+    const dataAttrs = this.buildNodeDataAttributes(node)
+
+    return `<g class="node-fg" data-id="${id}"${dataAttrs}>
   ${content}
-  ${portsRendered}
 </g>`
   }
 
   /**
-   * Render ports on a node
+   * Render ports on a node (as separate groups)
    */
-  private renderPorts(nodeX: number, nodeY: number, ports?: Map<string, LayoutPort>): string {
+  private renderPorts(
+    nodeId: string,
+    nodeX: number,
+    nodeY: number,
+    ports?: Map<string, LayoutPort>,
+  ): string {
     if (!ports || ports.size === 0) return ''
 
-    const parts: string[] = []
+    const groups: string[] = []
 
     for (const port of ports.values()) {
       const px = nodeX + port.position.x
@@ -536,8 +636,13 @@ export class SVGRenderer {
       const pw = port.size.width
       const ph = port.size.height
 
+      // Port data attribute for interactive mode
+      const portDeviceAttr = this.isInteractive ? ` data-port-device="${nodeId}"` : ''
+
+      const parts: string[] = []
+
       // Port box
-      parts.push(`<rect class="port" data-port="${port.id}"
+      parts.push(`<rect class="port-box"
         x="${px - pw / 2}" y="${py - ph / 2}" width="${pw}" height="${ph}"
         fill="${this.themeColors.portFill}" stroke="${this.themeColors.portStroke}" stroke-width="1" rx="2" />`)
 
@@ -585,9 +690,14 @@ export class SVGRenderer {
       parts.push(
         `<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`,
       )
+
+      // Wrap in a group with data attributes
+      groups.push(`<g class="port" data-port="${port.id}"${portDeviceAttr}>
+  ${parts.join('\n  ')}
+</g>`)
     }
 
-    return parts.join('\n  ')
+    return groups.join('\n')
   }
 
   private renderNodeShape(
@@ -848,7 +958,49 @@ export class SVGRenderer {
       result += this.renderEndpointLabels(toLabels, labelPos.x, labelPos.y, labelPos.anchor)
     }
 
-    return `<g class="link-group">\n${result}\n</g>`
+    // Build data attributes for interactive mode
+    const dataAttrs = this.buildLinkDataAttributes(layoutLink)
+
+    return `<g class="link-group" data-link-id="${id}"${dataAttrs}>\n${result}\n</g>`
+  }
+
+  /** Build data attributes for a link (interactive mode only) */
+  private buildLinkDataAttributes(layoutLink: LayoutLink): string {
+    if (!this.isInteractive || !this.dataAttrs.link) return ''
+
+    const { link, fromEndpoint, toEndpoint } = layoutLink
+    const attrs: string[] = []
+
+    // Basic link attributes
+    if (link.bandwidth) attrs.push(`data-link-bandwidth="${this.escapeXml(link.bandwidth)}"`)
+    if (link.vlan && link.vlan.length > 0) {
+      attrs.push(`data-link-vlan="${link.vlan.join(',')}"`)
+    }
+    if (link.redundancy) attrs.push(`data-link-redundancy="${this.escapeXml(link.redundancy)}"`)
+
+    // Endpoint info
+    const fromStr = fromEndpoint.port
+      ? `${fromEndpoint.node}:${fromEndpoint.port}`
+      : fromEndpoint.node
+    const toStr = toEndpoint.port ? `${toEndpoint.node}:${toEndpoint.port}` : toEndpoint.node
+    attrs.push(`data-link-from="${this.escapeXml(fromStr)}"`)
+    attrs.push(`data-link-to="${this.escapeXml(toStr)}"`)
+
+    // Include full metadata as JSON
+    if (this.dataAttrs.metadata) {
+      const linkInfo = {
+        id: layoutLink.id,
+        from: fromEndpoint,
+        to: toEndpoint,
+        bandwidth: link.bandwidth,
+        vlan: link.vlan,
+        redundancy: link.redundancy,
+        label: link.label,
+      }
+      attrs.push(`data-link-json="${this.escapeXml(JSON.stringify(linkInfo))}"`)
+    }
+
+    return attrs.length > 0 ? ` ${attrs.join(' ')}` : ''
   }
 
   private formatEndpointLabels(endpoint: { node: string; port?: string; ip?: string }): string[] {
@@ -1035,36 +1187,45 @@ export class SVGRenderer {
     const { lineCount } = config
     const lineSpacing = 3 // Space between parallel lines
 
+    // Generate line paths
+    const lines: string[] = []
+    const basePath = this.generatePath(points)
+
     if (lineCount === 1) {
       // Single line
-      const path = this.generatePath(points)
-      let result = `<path class="link" data-id="${id}" d="${path}"
+      let linePath = `<path class="link" data-id="${id}" d="${basePath}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
   ${dasharray ? `stroke-dasharray="${dasharray}"` : ''}
-  ${markerEnd ? `marker-end="${markerEnd}"` : ''} />`
+  ${markerEnd ? `marker-end="${markerEnd}"` : ''} pointer-events="none" />`
 
       // Double line effect for redundancy types
       if (type === 'double') {
-        result = `<path class="link-double-outer" d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" />
-<path class="link-double-inner" d="${path}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" />
-${result}`
+        linePath = `<path class="link-double-outer" d="${basePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" pointer-events="none" />
+<path class="link-double-inner" d="${basePath}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" pointer-events="none" />
+${linePath}`
       }
-      return result
-    }
-
-    // Multiple parallel lines
-    const paths: string[] = []
-    const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
-
-    for (const offset of offsets) {
-      const offsetPoints = this.offsetPoints(points, offset)
-      const path = this.generatePath(offsetPoints)
-      paths.push(`<path class="link" data-id="${id}" d="${path}"
+      lines.push(linePath)
+    } else {
+      // Multiple parallel lines
+      const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
+      for (const offset of offsets) {
+        const offsetPoints = this.offsetPoints(points, offset)
+        const path = this.generatePath(offsetPoints)
+        lines.push(`<path class="link" data-id="${id}" d="${path}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
-  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} />`)
+  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} pointer-events="none" />`)
+      }
     }
 
-    return paths.join('\n')
+    // Calculate hit area width (same as actual lines, hidden underneath)
+    const hitWidth = lineCount === 1 ? strokeWidth : (lineCount - 1) * lineSpacing + strokeWidth
+
+    // Wrap all lines in a group with transparent hit area on top
+    return `<g class="link-lines">
+${lines.join('\n')}
+<path class="link-hit-area" d="${basePath}"
+  fill="none" stroke="${stroke}" stroke-width="${hitWidth}" opacity="0" />
+</g>`
   }
 
   /**
@@ -1329,5 +1490,13 @@ ${result}`
   }
 }
 
-// Default instance
-export const svgRenderer = new SVGRenderer()
+// Namespace-style API
+export interface RenderOptions extends SVGRendererOptions {}
+
+/**
+ * Render NetworkGraph to SVG string
+ */
+export function render(graph: NetworkGraph, layout: LayoutResult, options?: RenderOptions): string {
+  const renderer = new SVGRenderer(options)
+  return renderer.render(graph, layout)
+}

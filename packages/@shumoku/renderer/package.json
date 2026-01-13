@@ -1,24 +1,25 @@
 {
-  "name": "@shumoku/netbox",
-  "version": "0.2.2",
-  "description": "NetBox API client and Shumoku converter",
+  "name": "@shumoku/renderer",
+  "version": "0.2.0",
+  "description": "SVG and HTML renderers for Shumoku network diagrams",
   "license": "MIT",
   "author": "konoe-akitoshi",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/konoe-akitoshi/shumoku.git",
-    "directory": "packages/@shumoku/netbox"
+    "directory": "packages/@shumoku/renderer"
   },
   "homepage": "https://shumoku.packof.me/",
   "bugs": {
     "url": "https://github.com/konoe-akitoshi/shumoku/issues"
   },
   "keywords": [
-    "netbox",
     "network",
     "topology",
     "diagram",
-    "shumoku"
+    "visualization",
+    "svg",
+    "renderer"
   ],
   "type": "module",
   "main": "./dist/index.js",
@@ -28,31 +29,33 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
-  },
-  "bin": {
-    "netbox-to-shumoku": "./dist/cli.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./iife": "./dist/shumoku-interactive.iife.js",
+    "./iife-string": "./dist/iife-string.js"
   },
   "files": [
     "dist",
     "src"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && bun run build:css && bun run build:iife && bun run build:iife-string",
+    "build:css": "bun src/build-css.ts",
+    "build:iife": "bun src/build-iife.ts",
+    "build:iife-string": "bun src/build-iife-string.ts",
     "dev": "tsc --watch",
-    "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@shumoku/core": "^0.2.0",
-    "@shumoku/icons": "^0.2.0",
-    "@shumoku/renderer": "^0.2.0"
+    "@shumoku/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.0.7",
+    "@types/node": "^20.11.0",
+    "jsdom": "^26.1.0",
     "typescript": "^5.6.3",
-    "vitest": "^4.0.17"
+    "vitest": "^3.1.1"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 
 interface InteractivePreviewProps {
@@ -11,28 +11,21 @@ interface InteractivePreviewProps {
 interface ViewBox {
   x: number
   y: number
-  width: number
-  height: number
+  w: number
+  h: number
 }
-
-const MIN_SCALE = 0.1
-const MAX_SCALE = 10
-const ZOOM_FACTOR = 1.2
 
 export function InteractivePreview({ svgContent, className }: InteractivePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [viewBox, setViewBox] = useState<ViewBox>({ x: 0, y: 0, width: 0, height: 0 })
-  const [originalViewBox, setOriginalViewBox] = useState<ViewBox>({
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-  })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0, viewBoxX: 0, viewBoxY: 0 })
+  const scaleDisplayRef = useRef<HTMLSpanElement>(null)
 
-  // Parse SVG and extract original viewBox
-  const svgData = useMemo(() => {
+  // ViewBox state (using refs to avoid re-renders)
+  const vbRef = useRef<ViewBox>({ x: 0, y: 0, w: 0, h: 0 })
+  const origVbRef = useRef<ViewBox>({ x: 0, y: 0, w: 0, h: 0 })
+  const dragRef = useRef({ active: false, x: 0, y: 0, vx: 0, vy: 0 })
+
+  // Build the SVG with full width/height
+  const svgHtml = useMemo(() => {
     if (!svgContent) return null
 
     const parser = new DOMParser()
@@ -40,197 +33,127 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
     const svg = doc.querySelector('svg')
     if (!svg) return null
 
-    const width = Number.parseFloat(svg.getAttribute('width') || '0')
-    const height = Number.parseFloat(svg.getAttribute('height') || '0')
-    const existingViewBox = svg.getAttribute('viewBox')
+    // Ensure SVG fills container
+    svg.setAttribute('width', '100%')
+    svg.setAttribute('height', '100%')
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
 
-    let vb: ViewBox
-    if (existingViewBox) {
-      const parts = existingViewBox.split(/\s+|,/).map(Number)
-      vb = { x: parts[0], y: parts[1], width: parts[2], height: parts[3] }
-    } else {
-      vb = { x: 0, y: 0, width, height }
-    }
-
-    // Remove width/height attributes and viewBox from SVG for manipulation
-    svg.removeAttribute('width')
-    svg.removeAttribute('height')
-    svg.removeAttribute('viewBox')
-
-    return {
-      svgElement: svg.outerHTML,
-      originalViewBox: vb,
-      width,
-      height,
-    }
+    return svg.outerHTML
   }, [svgContent])
 
-  const handleFit = useCallback(() => {
-    if (!containerRef.current || !svgData) return
+  // Update viewBox on SVG element
+  const updateViewBox = useCallback(() => {
+    const svg = containerRef.current?.querySelector('svg')
+    if (!svg) return
+    const vb = vbRef.current
+    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`)
+
+    // Update scale display
+    if (scaleDisplayRef.current) {
+      const scale = origVbRef.current.w / vb.w
+      scaleDisplayRef.current.textContent = `${Math.round(scale * 100)}%`
+    }
+  }, [])
+
+  // Fit view to container
+  const fitView = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+    const orig = origVbRef.current
+    const cw = container.clientWidth || 800
+    const ch = container.clientHeight || 600
+    const scale = Math.min(cw / orig.w, ch / orig.h) * 0.9
+    vbRef.current = {
+      w: cw / scale,
+      h: ch / scale,
+      x: orig.x + (orig.w - cw / scale) / 2,
+      y: orig.y + (orig.h - ch / scale) / 2,
+    }
+    updateViewBox()
+  }, [updateViewBox])
+
+  // Initialize pan/zoom after SVG is rendered
+  useEffect(() => {
+    if (!svgHtml || !containerRef.current) return
 
     const container = containerRef.current
-    const containerWidth = container.clientWidth
-    const containerHeight = container.clientHeight
-    const { originalViewBox: ovb } = svgData
+    const svg = container.querySelector('svg')
+    if (!svg) return
 
-    const scaleX = containerWidth / ovb.width
-    const scaleY = containerHeight / ovb.height
-    const scale = Math.min(scaleX, scaleY) * 0.9 // 90% to add some padding
-
-    const newWidth = containerWidth / scale
-    const newHeight = containerHeight / scale
-
-    const newX = ovb.x + (ovb.width - newWidth) / 2
-    const newY = ovb.y + (ovb.height - newHeight) / 2
-
-    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight })
-  }, [svgData])
-
-  // Initialize viewBox when SVG changes
-  useEffect(() => {
-    if (svgData) {
-      setOriginalViewBox(svgData.originalViewBox)
-      // Auto-fit on load
-      setTimeout(() => handleFit(), 0)
+    // Parse original viewBox
+    const w = parseFloat(svg.getAttribute('width') || '') || 800
+    const h = parseFloat(svg.getAttribute('height') || '') || 600
+    const existing = svg.getAttribute('viewBox')
+    if (existing) {
+      const p = existing.split(/\s+|,/).map(Number)
+      origVbRef.current = { x: p[0] || 0, y: p[1] || 0, w: p[2] || w, h: p[3] || h }
+    } else {
+      origVbRef.current = { x: 0, y: 0, w, h }
     }
-  }, [svgData, handleFit])
 
-  const currentScale = useMemo(() => {
-    if (originalViewBox.width === 0) return 1
-    return originalViewBox.width / viewBox.width
-  }, [originalViewBox.width, viewBox.width])
+    // Initial fit
+    fitView()
 
-  const handleZoomIn = useCallback(() => {
-    if (!containerRef.current) return
-    const _container = containerRef.current
-    const centerX = viewBox.x + viewBox.width / 2
-    const centerY = viewBox.y + viewBox.height / 2
+    // Wheel zoom
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const vb = vbRef.current
+      const orig = origVbRef.current
+      const rect = container.getBoundingClientRect()
+      const mx = (e.clientX - rect.left) / rect.width
+      const my = (e.clientY - rect.top) / rect.height
+      const px = vb.x + vb.w * mx
+      const py = vb.y + vb.h * my
+      const f = e.deltaY > 0 ? 1 / 1.2 : 1.2
+      const nw = vb.w / f
+      const nh = vb.h / f
+      const scale = orig.w / nw
+      if (scale < 0.1 || scale > 10) return
+      vbRef.current = { x: px - nw * mx, y: py - nh * my, w: nw, h: nh }
+      updateViewBox()
+    }
 
-    const newWidth = viewBox.width / ZOOM_FACTOR
-    const newHeight = viewBox.height / ZOOM_FACTOR
+    // Mouse drag pan
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 0) {
+        dragRef.current = { active: true, x: e.clientX, y: e.clientY, vx: vbRef.current.x, vy: vbRef.current.y }
+        container.style.cursor = 'grabbing'
+      }
+    }
 
-    if (originalViewBox.width / newWidth > MAX_SCALE) return
+    const handleMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current
+      if (!drag.active) return
+      const vb = vbRef.current
+      const sx = vb.w / container.clientWidth
+      const sy = vb.h / container.clientHeight
+      vbRef.current = { ...vb, x: drag.vx - (e.clientX - drag.x) * sx, y: drag.vy - (e.clientY - drag.y) * sy }
+      updateViewBox()
+    }
 
-    setViewBox({
-      x: centerX - newWidth / 2,
-      y: centerY - newHeight / 2,
-      width: newWidth,
-      height: newHeight,
-    })
-  }, [viewBox, originalViewBox])
+    const handleMouseUp = () => {
+      dragRef.current.active = false
+      container.style.cursor = ''
+    }
 
-  const handleZoomOut = useCallback(() => {
-    const centerX = viewBox.x + viewBox.width / 2
-    const centerY = viewBox.y + viewBox.height / 2
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    container.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
 
-    const newWidth = viewBox.width * ZOOM_FACTOR
-    const newHeight = viewBox.height * ZOOM_FACTOR
-
-    if (originalViewBox.width / newWidth < MIN_SCALE) return
-
-    setViewBox({
-      x: centerX - newWidth / 2,
-      y: centerY - newHeight / 2,
-      width: newWidth,
-      height: newHeight,
-    })
-  }, [viewBox, originalViewBox])
+    return () => {
+      container.removeEventListener('wheel', handleWheel)
+      container.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [svgHtml, fitView, updateViewBox])
 
   const handleReset = useCallback(() => {
-    if (svgData) {
-      setViewBox(svgData.originalViewBox)
-    }
-  }, [svgData])
-
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault()
-      if (!containerRef.current || viewBox.width === 0) return
-
-      const container = containerRef.current
-      const rect = container.getBoundingClientRect()
-
-      // Mouse position relative to container (0-1)
-      const mouseXRatio = (e.clientX - rect.left) / rect.width
-      const mouseYRatio = (e.clientY - rect.top) / rect.height
-
-      // Mouse position in viewBox coordinates
-      const mouseX = viewBox.x + viewBox.width * mouseXRatio
-      const mouseY = viewBox.y + viewBox.height * mouseYRatio
-
-      const zoomFactor = e.deltaY > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR
-      const newWidth = viewBox.width * zoomFactor
-      const newHeight = viewBox.height * zoomFactor
-
-      // Check scale limits
-      const newScale = originalViewBox.width / newWidth
-      if (newScale < MIN_SCALE || newScale > MAX_SCALE) return
-
-      // Keep mouse position fixed
-      setViewBox({
-        x: mouseX - newWidth * mouseXRatio,
-        y: mouseY - newHeight * mouseYRatio,
-        width: newWidth,
-        height: newHeight,
-      })
-    },
-    [viewBox, originalViewBox],
-  )
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return
-      setIsDragging(true)
-      setDragStart({
-        x: e.clientX,
-        y: e.clientY,
-        viewBoxX: viewBox.x,
-        viewBoxY: viewBox.y,
-      })
-    },
-    [viewBox],
-  )
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isDragging || !containerRef.current) return
-
-      const container = containerRef.current
-      const dx = e.clientX - dragStart.x
-      const dy = e.clientY - dragStart.y
-
-      // Convert screen pixels to viewBox units
-      const scaleX = viewBox.width / container.clientWidth
-      const scaleY = viewBox.height / container.clientHeight
-
-      setViewBox((prev) => ({
-        ...prev,
-        x: dragStart.viewBoxX - dx * scaleX,
-        y: dragStart.viewBoxY - dy * scaleY,
-      }))
-    },
-    [isDragging, dragStart, viewBox.width, viewBox.height],
-  )
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  const handleMouseLeave = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  // Build the final SVG with viewBox
-  const renderedSvg = useMemo(() => {
-    if (!svgData || viewBox.width === 0) return null
-
-    const viewBoxStr = `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`
-    // Insert viewBox into SVG
-    return svgData.svgElement.replace(
-      '<svg',
-      `<svg viewBox="${viewBoxStr}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"`,
-    )
-  }, [svgData, viewBox])
+    const orig = origVbRef.current
+    vbRef.current = { ...orig }
+    updateViewBox()
+  }, [updateViewBox])
 
   return (
     <div className={cn('relative flex flex-col', className)}>
@@ -244,67 +167,16 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
       >
         <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Preview</span>
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleZoomOut}
-            disabled={!svgContent}
-            className={cn(
-              'rounded p-1.5 text-neutral-600 dark:text-neutral-400',
-              'hover:bg-neutral-200 dark:hover:bg-neutral-700',
-              'disabled:opacity-30 disabled:cursor-not-allowed',
-            )}
-            title="Zoom Out"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-            </svg>
-          </button>
           <span
+            ref={scaleDisplayRef}
             className={cn(
               'min-w-[3.5rem] text-center text-xs tabular-nums',
               'text-neutral-500 dark:text-neutral-400',
             )}
           >
-            {Math.round(currentScale * 100)}%
+            100%
           </span>
-          <button
-            onClick={handleZoomIn}
-            disabled={!svgContent}
-            className={cn(
-              'rounded p-1.5 text-neutral-600 dark:text-neutral-400',
-              'hover:bg-neutral-200 dark:hover:bg-neutral-700',
-              'disabled:opacity-30 disabled:cursor-not-allowed',
-            )}
-            title="Zoom In"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-          </button>
           <div className="mx-1 h-4 w-px bg-neutral-300 dark:bg-neutral-600" />
-          <button
-            onClick={handleFit}
-            disabled={!svgContent}
-            className={cn(
-              'rounded p-1.5 text-neutral-600 dark:text-neutral-400',
-              'hover:bg-neutral-200 dark:hover:bg-neutral-700',
-              'disabled:opacity-30 disabled:cursor-not-allowed',
-            )}
-            title="Fit to View"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-              />
-            </svg>
-          </button>
           <button
             onClick={handleReset}
             disabled={!svgContent}
@@ -333,7 +205,7 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
         className={cn(
           'relative flex-1 overflow-hidden',
           'bg-neutral-100 dark:bg-neutral-800',
-          isDragging ? 'cursor-grabbing' : svgContent ? 'cursor-grab' : 'cursor-default',
+          svgContent ? 'cursor-grab' : 'cursor-default',
         )}
         style={{
           backgroundImage: `
@@ -345,16 +217,11 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
           backgroundSize: '20px 20px',
           backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
         }}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
       >
-        {renderedSvg ? (
+        {svgHtml ? (
           <div
             className="h-full w-full select-none [&>svg]:h-full [&>svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: renderedSvg }}
+            dangerouslySetInnerHTML={{ __html: svgHtml }}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-neutral-400 dark:text-neutral-500">

@@ -10,7 +10,7 @@
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { HierarchicalLayout } from '@shumoku/core/layout'
-import { SVGRenderer } from '@shumoku/core/renderer'
+import { svg } from '@shumoku/renderer'
 import '@shumoku/icons' // Register vendor icons
 import type { QueryParams } from './client.js'
 import { NetBoxClient } from './client.js'
@@ -219,10 +219,9 @@ async function main(): Promise<void> {
       const layoutResult = await layout.layoutAsync(graph)
 
       console.log('Rendering SVG...')
-      const renderer = new SVGRenderer()
-      const svg = renderer.render(graph, layoutResult)
+      const svgOutput = svg.render(graph, layoutResult)
 
-      writeFileSync(outputPath, svg, 'utf-8')
+      writeFileSync(outputPath, svgOutput, 'utf-8')
       console.log(`SVG written to: ${outputPath}`)
     } else {
       // Generate YAML
