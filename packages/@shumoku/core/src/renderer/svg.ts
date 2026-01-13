@@ -198,19 +198,22 @@ export class SVGRenderer {
       parts.push(this.renderSubgraph(sg))
     }
 
-    // Layer 2: Node backgrounds (shapes)
-    for (const node of layout.nodes.values()) {
-      parts.push(this.renderNodeBackground(node))
-    }
-
-    // Layer 3: Links (on top of node backgrounds)
+    // Layer 2: Links (below nodes)
     for (const link of layout.links.values()) {
       parts.push(this.renderLink(link, layout.nodes))
     }
 
-    // Layer 4: Node foregrounds (content + ports, on top of links)
+    // Layer 3: Nodes (bg + fg as one unit, without ports)
     for (const node of layout.nodes.values()) {
-      parts.push(this.renderNodeForeground(node))
+      parts.push(this.renderNode(node))
+    }
+
+    // Layer 4: Ports (separate layer on top of nodes)
+    for (const node of layout.nodes.values()) {
+      const portsRendered = this.renderPorts(node.id, node.position.x, node.position.y, node.ports)
+      if (portsRendered) {
+        parts.push(portsRendered)
+      }
     }
 
     // Legend (if enabled) - use already calculated legendSettings
@@ -522,6 +525,19 @@ export class SVGRenderer {
   }
 
   /** Render node background (shape only) */
+  /** Render complete node (bg + fg as one unit) */
+  private renderNode(layoutNode: LayoutNode): string {
+    const { id, node } = layoutNode
+    const dataAttrs = this.buildNodeDataAttributes(node)
+    const bg = this.renderNodeBackground(layoutNode)
+    const fg = this.renderNodeForeground(layoutNode)
+
+    return `<g class="node" data-id="${id}"${dataAttrs}>
+${bg}
+${fg}
+</g>`
+  }
+
   private renderNodeBackground(layoutNode: LayoutNode): string {
     const { id, position, size, node } = layoutNode
     const x = position.x
@@ -583,27 +599,25 @@ export class SVGRenderer {
     return attrs.length > 0 ? ` ${attrs.join(' ')}` : ''
   }
 
-  /** Render node foreground (content + ports) */
+  /** Render node foreground (content only, ports rendered separately) */
   private renderNodeForeground(layoutNode: LayoutNode): string {
-    const { id, position, size, node, ports } = layoutNode
+    const { id, position, size, node } = layoutNode
     const x = position.x
     const y = position.y
     const w = size.width
 
     const content = this.renderNodeContent(node, x, y, w)
-    const portsRendered = this.renderPorts(id, x, y, ports)
 
     // Include data attributes for interactive mode (same as node-bg)
     const dataAttrs = this.buildNodeDataAttributes(node)
 
     return `<g class="node-fg" data-id="${id}"${dataAttrs}>
   ${content}
-  ${portsRendered}
 </g>`
   }
 
   /**
-   * Render ports on a node
+   * Render ports on a node (as separate groups)
    */
   private renderPorts(
     nodeId: string,
@@ -613,7 +627,7 @@ export class SVGRenderer {
   ): string {
     if (!ports || ports.size === 0) return ''
 
-    const parts: string[] = []
+    const groups: string[] = []
 
     for (const port of ports.values()) {
       const px = nodeX + port.position.x
@@ -624,8 +638,10 @@ export class SVGRenderer {
       // Port data attribute for interactive mode
       const portDeviceAttr = this.isInteractive ? ` data-port-device="${nodeId}"` : ''
 
+      const parts: string[] = []
+
       // Port box
-      parts.push(`<rect class="port" data-port="${port.id}"${portDeviceAttr}
+      parts.push(`<rect class="port-box"
         x="${px - pw / 2}" y="${py - ph / 2}" width="${pw}" height="${ph}"
         fill="${this.themeColors.portFill}" stroke="${this.themeColors.portStroke}" stroke-width="1" rx="2" />`)
 
@@ -668,14 +684,19 @@ export class SVGRenderer {
       const bgY = labelY - labelHeight + 3
 
       parts.push(
-        `<rect class="port-label-bg" data-port="${port.id}"${portDeviceAttr} x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`,
+        `<rect class="port-label-bg" x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`,
       )
       parts.push(
-        `<text class="port-label" data-port="${port.id}"${portDeviceAttr} x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`,
+        `<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`,
       )
+
+      // Wrap in a group with data attributes
+      groups.push(`<g class="port" data-port="${port.id}"${portDeviceAttr}>
+  ${parts.join('\n  ')}
+</g>`)
     }
 
-    return parts.join('\n  ')
+    return groups.join('\n')
   }
 
   private renderNodeShape(
@@ -1165,42 +1186,45 @@ export class SVGRenderer {
     const { lineCount } = config
     const lineSpacing = 3 // Space between parallel lines
 
+    // Generate line paths
+    const lines: string[] = []
+    const basePath = this.generatePath(points)
+
     if (lineCount === 1) {
       // Single line
-      const path = this.generatePath(points)
-      let result = `<path class="link" data-id="${id}" d="${path}"
+      let linePath = `<path class="link" data-id="${id}" d="${basePath}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
   ${dasharray ? `stroke-dasharray="${dasharray}"` : ''}
-  ${markerEnd ? `marker-end="${markerEnd}"` : ''} />`
+  ${markerEnd ? `marker-end="${markerEnd}"` : ''} pointer-events="none" />`
 
       // Double line effect for redundancy types
       if (type === 'double') {
-        result = `<path class="link-double-outer" d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" />
-<path class="link-double-inner" d="${path}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" />
-${result}`
+        linePath = `<path class="link-double-outer" d="${basePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" pointer-events="none" />
+<path class="link-double-inner" d="${basePath}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" pointer-events="none" />
+${linePath}`
       }
-      return result
-    }
-
-    // Multiple parallel lines
-    const paths: string[] = []
-    const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
-
-    // Add invisible hit area covering all parallel lines
-    const totalWidth = (lineCount - 1) * lineSpacing + strokeWidth + 4
-    const basePath = this.generatePath(points)
-    paths.push(`<path class="link-hit-area" d="${basePath}"
-  fill="none" stroke="transparent" stroke-width="${totalWidth}" pointer-events="stroke" />`)
-
-    for (const offset of offsets) {
-      const offsetPoints = this.offsetPoints(points, offset)
-      const path = this.generatePath(offsetPoints)
-      paths.push(`<path class="link" data-id="${id}" d="${path}"
+      lines.push(linePath)
+    } else {
+      // Multiple parallel lines
+      const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
+      for (const offset of offsets) {
+        const offsetPoints = this.offsetPoints(points, offset)
+        const path = this.generatePath(offsetPoints)
+        lines.push(`<path class="link" data-id="${id}" d="${path}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
-  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} />`)
+  ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} pointer-events="none" />`)
+      }
     }
 
-    return paths.join('\n')
+    // Calculate hit area width (same as actual lines, hidden underneath)
+    const hitWidth = lineCount === 1 ? strokeWidth : (lineCount - 1) * lineSpacing + strokeWidth
+
+    // Wrap all lines in a group with transparent hit area on top
+    return `<g class="link-lines">
+${lines.join('\n')}
+<path class="link-hit-area" d="${basePath}"
+  fill="none" stroke="${stroke}" stroke-width="${hitWidth}" opacity="0" />
+</g>`
   }
 
   /**
