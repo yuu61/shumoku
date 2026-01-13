@@ -2,49 +2,49 @@
  * Dark theme
  */
 
-import type { Theme } from './types.js'
-import { modernTheme } from './modern.js'
 import { DeviceType } from '../models/index.js'
+import { modernTheme } from './modern.js'
+import type { Theme } from './types.js'
 
 export const darkTheme: Theme = {
   ...modernTheme,
   name: 'dark',
   variant: 'dark',
-  
+
   colors: {
     ...modernTheme.colors,
-    
+
     // Backgrounds (inverted)
     background: '#0f172a',
     surface: '#1e293b',
     surfaceHover: '#334155',
-    
+
     // Text (inverted)
     text: '#f1f5f9',
     textSecondary: '#94a3b8',
     textDisabled: '#475569',
-    
+
     // Primary (adjusted for dark)
     primary: '#60a5fa',
     primaryHover: '#3b82f6',
     primaryActive: '#2563eb',
-    
+
     // Secondary (adjusted for dark)
     secondary: '#a78bfa',
     secondaryHover: '#8b5cf6',
     secondaryActive: '#7c3aed',
-    
+
     // Status (adjusted for dark)
     success: '#34d399',
     warning: '#fbbf24',
     error: '#f87171',
     info: '#60a5fa',
-    
+
     // Links
     link: '#60a5fa',
     linkHover: '#3b82f6',
     linkDown: '#f87171',
-    
+
     // Device colors (adjusted for dark)
     devices: {
       [DeviceType.Router]: '#60a5fa',
@@ -58,7 +58,7 @@ export const darkTheme: Theme = {
       [DeviceType.Internet]: '#818cf8',
       [DeviceType.Generic]: '#64748b',
     },
-    
+
     // Module colors (adjusted for dark)
     modules: {
       core: '#1e3a8a',
@@ -68,15 +68,15 @@ export const darkTheme: Theme = {
       cloud: '#312e81',
       default: '#374151',
     },
-    
+
     // Grid
     grid: '#334155',
     guideline: '#60a5fa',
   },
-  
+
   shadows: {
     ...modernTheme.shadows,
-    
+
     // Darker shadows for dark theme
     small: {
       color: '#000000',

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { HeroSection, FeaturesSection, CTASection } from '@/components/home'
+import { CTASection, FeaturesSection, HeroSection } from '@/components/home'
 
 export const metadata: Metadata = {
   openGraph: {

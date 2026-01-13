@@ -1,11 +1,11 @@
-import { RootProvider } from 'fumadocs-ui/provider/next';
-import './global.css';
-import { Inter } from 'next/font/google';
-import type { Metadata } from 'next';
+import { RootProvider } from 'fumadocs-ui/provider/next'
+import './global.css'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 
 const inter = Inter({
   subsets: ['latin'],
-});
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://shumoku.packof.me'),
@@ -13,7 +13,8 @@ export const metadata: Metadata = {
     default: 'Shumoku',
     template: '%s | Shumoku',
   },
-  description: 'Network diagrams, as code. YAML でネットワーク構成を定義し、美しい SVG ダイアグラムを自動生成',
+  description:
+    'Network diagrams, as code. YAML でネットワーク構成を定義し、美しい SVG ダイアグラムを自動生成',
   openGraph: {
     title: 'Shumoku',
     description: 'Network diagrams, as code.',
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
   },
-};
+}
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
@@ -32,5 +33,5 @@ export default function Layout({ children }: LayoutProps<'/'>) {
         <RootProvider>{children}</RootProvider>
       </body>
     </html>
-  );
+  )
 }

@@ -70,7 +70,6 @@ function DiagramPreview() {
   return (
     <div className="relative order-last lg:order-none -mt-2 sm:-mt-6 lg:mt-0">
       <div className="relative mx-auto max-w-md sm:max-w-lg lg:max-w-none h-[68vw] sm:h-[60vw] lg:h-auto rounded-t-2xl lg:rounded-2xl rounded-b-none overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200/70 dark:border-neutral-800/70 shadow-2xl">
-{/* biome-ignore lint/performance/noImgElement: SVG with responsive height */}
         <img
           src="/hero-diagram.svg"
           alt="Network diagram example"

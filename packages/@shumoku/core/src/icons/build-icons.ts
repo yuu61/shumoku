@@ -3,9 +3,9 @@
  * Run with: bun src/icons/build-icons.ts
  */
 
-import * as fs from 'fs'
-import * as path from 'path'
-import { fileURLToPath } from 'url'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -111,7 +111,9 @@ function generateTypeScript(icons: Record<string, string>): string {
   lines.push('/**')
   lines.push(' * Register vendor icons (called by @shumoku/icons)')
   lines.push(' */')
-  lines.push('export function registerVendorIcons(vendor: string, icons: Record<string, IconEntry>): void {')
+  lines.push(
+    'export function registerVendorIcons(vendor: string, icons: Record<string, IconEntry>): void {',
+  )
   lines.push('  vendorIconRegistry[vendor] = icons')
   lines.push('}')
   lines.push('')
@@ -125,7 +127,9 @@ function generateTypeScript(icons: Record<string, string>): string {
   lines.push('  resource?: string')
   lines.push('): IconEntry | undefined {')
   lines.push("  if (vendor === 'default' || !vendor) {")
-  lines.push('    const content = defaultIcons[service] || (resource ? defaultIcons[resource] : undefined)')
+  lines.push(
+    '    const content = defaultIcons[service] || (resource ? defaultIcons[resource] : undefined)',
+  )
   lines.push('    return content ? { default: content } : undefined')
   lines.push('  }')
   lines.push('')
@@ -135,7 +139,9 @@ function generateTypeScript(icons: Record<string, string>): string {
   lines.push('  const key = resource ? `${service}/${resource}` : service')
   lines.push('  const entry = vendorIcons[key]')
   lines.push('  if (!entry) {')
-  lines.push("    const serviceKey = Object.keys(vendorIcons).find(k => k.startsWith(service + '/'))")
+  lines.push(
+    "    const serviceKey = Object.keys(vendorIcons).find(k => k.startsWith(service + '/'))",
+  )
   lines.push('    if (serviceKey) return vendorIcons[serviceKey]')
   lines.push('    return undefined')
   lines.push('  }')

@@ -3,9 +3,9 @@
  * Run with: npx tsx src/build-icons.ts
  */
 
-import * as fs from 'fs'
-import * as path from 'path'
-import { fileURLToPath } from 'url'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -84,7 +84,9 @@ async function convertPngToOptimizedImageTag(filePath: string): Promise<string> 
   return `<svg viewBox="0 0 ${normalizedWidth} ${normalizedHeight}" width="100%" height="100%"><image href="data:image/png;base64,${base64}" width="${normalizedWidth}" height="${normalizedHeight}" preserveAspectRatio="xMidYMid meet"/></svg>`
 }
 
-function parseAWSFilename(filename: string): { key: string; variant: 'default' | 'light' | 'dark' } | null {
+function parseAWSFilename(
+  filename: string,
+): { key: string; variant: 'default' | 'light' | 'dark' } | null {
   let name = filename.replace(/\.svg$/i, '')
 
   let variant: 'default' | 'light' | 'dark' = 'default'
@@ -142,7 +144,10 @@ function normalizeArubaIconName(filename: string): string {
   return name.toLowerCase().replace(/\s+/g, '-')
 }
 
-async function scanVendorIconFolder(folderPath: string, vendorName: string): Promise<Record<string, IconEntry>> {
+async function scanVendorIconFolder(
+  folderPath: string,
+  vendorName: string,
+): Promise<Record<string, IconEntry>> {
   const icons: Record<string, IconEntry> = {}
 
   if (!fs.existsSync(folderPath)) {
@@ -156,18 +161,20 @@ async function scanVendorIconFolder(folderPath: string, vendorName: string): Pro
 
     if (file.endsWith('.svg')) {
       const content = fs.readFileSync(filePath, 'utf-8')
-      const iconName = vendorName === 'aruba'
-        ? normalizeArubaIconName(file)
-        : file.replace('.svg', '').toLowerCase()
+      const iconName =
+        vendorName === 'aruba'
+          ? normalizeArubaIconName(file)
+          : file.replace('.svg', '').toLowerCase()
       const { content: svgContent, viewBox } = extractSvgContent(content)
 
       if (svgContent) {
         icons[iconName] = { default: svgContent, viewBox }
       }
     } else if (file.endsWith('.png')) {
-      const iconName = vendorName === 'aruba'
-        ? normalizeArubaIconName(file)
-        : file.replace('.png', '').toLowerCase()
+      const iconName =
+        vendorName === 'aruba'
+          ? normalizeArubaIconName(file)
+          : file.replace('.png', '').toLowerCase()
       try {
         const imageContent = await convertPngToOptimizedImageTag(filePath)
         icons[iconName] = { default: imageContent }
@@ -305,7 +312,9 @@ function generateTypeScript(iconSets: VendorIconSet[]): string {
   lines.push('  const key = resource ? `${service}/${resource}` : service')
   lines.push('  const entry = vendorIcons[key]')
   lines.push('  if (!entry) {')
-  lines.push("    const serviceKey = Object.keys(vendorIcons).find(k => k.startsWith(service + '/'))")
+  lines.push(
+    "    const serviceKey = Object.keys(vendorIcons).find(k => k.startsWith(service + '/'))",
+  )
   lines.push('    if (serviceKey) {')
   lines.push('      return vendorIcons[serviceKey]')
   lines.push('    }')

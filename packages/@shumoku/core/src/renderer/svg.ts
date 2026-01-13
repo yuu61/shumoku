@@ -3,27 +3,27 @@
  * Renders NetworkGraph to SVG
  */
 
-import type {
-  NetworkGraph,
-  LayoutResult,
-  LayoutNode,
-  LayoutLink,
-  LayoutSubgraph,
-  LayoutPort,
-  Node,
-  NodeShape,
-  LinkType,
-  ThemeType,
-  LegendSettings,
-  LinkBandwidth,
-} from '../models/index.js'
-import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons/index.js'
 import {
   DEFAULT_ICON_SIZE,
   ICON_LABEL_GAP,
   LABEL_LINE_HEIGHT,
   MAX_ICON_WIDTH_RATIO,
 } from '../constants.js'
+import { getDeviceIcon, getVendorIconEntry, type IconThemeVariant } from '../icons/index.js'
+import type {
+  LayoutLink,
+  LayoutNode,
+  LayoutPort,
+  LayoutResult,
+  LayoutSubgraph,
+  LegendSettings,
+  LinkBandwidth,
+  LinkType,
+  NetworkGraph,
+  Node,
+  NodeShape,
+  ThemeType,
+} from '../models/index.js'
 
 // ============================================
 // Theme Colors
@@ -166,24 +166,24 @@ export class SVGRenderer {
     parts.push(this.renderStyles())
 
     // Layer 1: Subgraphs (background)
-    layout.subgraphs.forEach((sg) => {
+    for (const sg of layout.subgraphs.values()) {
       parts.push(this.renderSubgraph(sg))
-    })
+    }
 
     // Layer 2: Node backgrounds (shapes)
-    layout.nodes.forEach((node) => {
+    for (const node of layout.nodes.values()) {
       parts.push(this.renderNodeBackground(node))
-    })
+    }
 
     // Layer 3: Links (on top of node backgrounds)
-    layout.links.forEach((link) => {
+    for (const link of layout.links.values()) {
       parts.push(this.renderLink(link, layout.nodes))
-    })
+    }
 
     // Layer 4: Node foregrounds (content + ports, on top of links)
-    layout.nodes.forEach((node) => {
+    for (const node of layout.nodes.values()) {
       parts.push(this.renderNodeForeground(node))
-    })
+    }
 
     // Legend (if enabled) - use already calculated legendSettings
     if (legendSettings.enabled && legendWidth > 0) {
@@ -199,7 +199,10 @@ export class SVGRenderer {
   /**
    * Calculate legend dimensions without rendering
    */
-  private calculateLegendDimensions(graph: NetworkGraph, settings: LegendSettings): { width: number; height: number } {
+  private calculateLegendDimensions(
+    graph: NetworkGraph,
+    settings: LegendSettings,
+  ): { width: number; height: number } {
     const lineHeight = 20
     const padding = 12
     const iconWidth = 30
@@ -210,9 +213,9 @@ export class SVGRenderer {
 
     if (settings.showBandwidth) {
       const usedBandwidths = new Set<LinkBandwidth>()
-      graph.links.forEach(link => {
+      for (const link of graph.links) {
         if (link.bandwidth) usedBandwidths.add(link.bandwidth)
-      })
+      }
       itemCount += usedBandwidths.size
     }
 
@@ -229,7 +232,9 @@ export class SVGRenderer {
   /**
    * Parse legend settings from various input formats
    */
-  private getLegendSettings(legend?: boolean | LegendSettings): LegendSettings & { enabled: boolean } {
+  private getLegendSettings(
+    legend?: boolean | LegendSettings,
+  ): LegendSettings & { enabled: boolean } {
     if (legend === true) {
       return {
         enabled: true,
@@ -258,7 +263,11 @@ export class SVGRenderer {
   /**
    * Render legend showing visual elements used in the diagram
    */
-  private renderLegend(graph: NetworkGraph, layout: LayoutResult, settings: LegendSettings): string {
+  private renderLegend(
+    graph: NetworkGraph,
+    layout: LayoutResult,
+    settings: LegendSettings,
+  ): string {
     const items: { icon: string; label: string }[] = []
     const lineHeight = 20
     const padding = 12
@@ -267,20 +276,20 @@ export class SVGRenderer {
 
     // Collect used bandwidths
     const usedBandwidths = new Set<LinkBandwidth>()
-    graph.links.forEach(link => {
+    for (const link of graph.links) {
       if (link.bandwidth) usedBandwidths.add(link.bandwidth)
-    })
+    }
 
     // Collect used device types
     const usedDeviceTypes = new Set<string>()
-    graph.nodes.forEach(node => {
+    for (const node of graph.nodes) {
       if (node.type) usedDeviceTypes.add(node.type)
-    })
+    }
 
     // Build legend items
     if (settings.showBandwidth && usedBandwidths.size > 0) {
-      const sortedBandwidths: LinkBandwidth[] = ['1G', '10G', '25G', '40G', '100G'].filter(
-        b => usedBandwidths.has(b as LinkBandwidth)
+      const sortedBandwidths: LinkBandwidth[] = ['1G', '10G', '25G', '40G', '100G'].filter((b) =>
+        usedBandwidths.has(b as LinkBandwidth),
       ) as LinkBandwidth[]
 
       for (const bw of sortedBandwidths) {
@@ -325,13 +334,13 @@ export class SVGRenderer {
   <text x="${padding}" y="${padding + 12}" class="subgraph-label" font-size="11">Legend</text>`
 
     // Render items
-    items.forEach((item, index) => {
+    for (const [index, item] of items.entries()) {
       const y = padding + 28 + index * lineHeight
       svg += `\n  <g transform="translate(${padding}, ${y})">`
       svg += `\n    ${item.icon}`
       svg += `\n    <text x="${iconWidth + 4}" y="4" class="node-label" font-size="10">${this.escapeXml(item.label)}</text>`
-      svg += `\n  </g>`
-    })
+      svg += '\n  </g>'
+    }
 
     svg += '\n</g>'
     return svg
@@ -346,7 +355,7 @@ export class SVGRenderer {
     const strokeWidth = 2
     const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
 
-    const lines = offsets.map(offset => {
+    const lines = offsets.map((offset) => {
       const y = offset
       return `<line x1="0" y1="${y}" x2="${lineWidth}" y2="${y}" stroke="${this.themeColors.defaultLinkStroke}" stroke-width="${strokeWidth}" />`
     })
@@ -437,8 +446,8 @@ export class SVGRenderer {
         if (iconContent.startsWith('<svg')) {
           const viewBoxMatch = iconContent.match(/viewBox="0 0 (\d+) (\d+)"/)
           if (viewBoxMatch) {
-            const vbWidth = parseInt(viewBoxMatch[1])
-            const vbHeight = parseInt(viewBoxMatch[2])
+            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
+            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
             const aspectRatio = vbWidth / vbHeight
             const iconWidth = Math.round(iconSize * aspectRatio)
             iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
@@ -482,7 +491,17 @@ export class SVGRenderer {
     const strokeWidth = style.strokeWidth || 1
     const strokeDasharray = style.strokeDasharray || ''
 
-    const shape = this.renderNodeShape(node.shape, x, y, w, h, fill, stroke, strokeWidth, strokeDasharray)
+    const shape = this.renderNodeShape(
+      node.shape,
+      x,
+      y,
+      w,
+      h,
+      fill,
+      stroke,
+      strokeWidth,
+      strokeDasharray,
+    )
 
     return `<g class="node-bg" data-id="${id}">${shape}</g>`
   }
@@ -503,20 +522,15 @@ export class SVGRenderer {
 </g>`
   }
 
-
   /**
    * Render ports on a node
    */
-  private renderPorts(
-    nodeX: number,
-    nodeY: number,
-    ports?: Map<string, LayoutPort>
-  ): string {
+  private renderPorts(nodeX: number, nodeY: number, ports?: Map<string, LayoutPort>): string {
     if (!ports || ports.size === 0) return ''
 
     const parts: string[] = []
 
-    ports.forEach((port) => {
+    for (const port of ports.values()) {
       const px = nodeX + port.position.x
       const py = nodeY + port.position.y
       const pw = port.size.width
@@ -565,19 +579,27 @@ export class SVGRenderer {
       }
       const bgY = labelY - labelHeight + 3
 
-      parts.push(`<rect class="port-label-bg" x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`)
-      parts.push(`<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`)
-    })
+      parts.push(
+        `<rect class="port-label-bg" x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`,
+      )
+      parts.push(
+        `<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`,
+      )
+    }
 
     return parts.join('\n  ')
   }
 
   private renderNodeShape(
     shape: NodeShape,
-    x: number, y: number,
-    w: number, h: number,
-    fill: string, stroke: string,
-    strokeWidth: number, strokeDasharray: string
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    fill: string,
+    stroke: string,
+    strokeWidth: number,
+    strokeDasharray: string,
   ): string {
     const dashAttr = strokeDasharray ? `stroke-dasharray="${strokeDasharray}"` : ''
     const halfW = w / 2
@@ -592,21 +614,23 @@ export class SVGRenderer {
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="8" ry="8"
           fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
 
-      case 'circle':
+      case 'circle': {
         const r = Math.min(halfW, halfH)
         return `<circle cx="${x}" cy="${y}" r="${r}"
           fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+      }
 
       case 'diamond':
         return `<polygon points="${x},${y - halfH} ${x + halfW},${y} ${x},${y + halfH} ${x - halfW},${y}"
           fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
 
-      case 'hexagon':
+      case 'hexagon': {
         const hx = halfW * 0.866
         return `<polygon points="${x - halfW},${y} ${x - hx},${y - halfH} ${x + hx},${y - halfH} ${x + halfW},${y} ${x + hx},${y + halfH} ${x - hx},${y + halfH}"
           fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+      }
 
-      case 'cylinder':
+      case 'cylinder': {
         const ellipseH = h * 0.15
         return `<g>
           <ellipse cx="${x}" cy="${y + halfH - ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />
@@ -615,15 +639,17 @@ export class SVGRenderer {
           <line x1="${x + halfW}" y1="${y - halfH + ellipseH}" x2="${x + halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
           <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />
         </g>`
+      }
 
       case 'stadium':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="${halfH}" ry="${halfH}"
           fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
 
-      case 'trapezoid':
+      case 'trapezoid': {
         const indent = w * 0.15
         return `<polygon points="${x - halfW + indent},${y - halfH} ${x + halfW - indent},${y - halfH} ${x + halfW},${y + halfH} ${x - halfW},${y + halfH}"
           fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+      }
 
       default:
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="4" ry="4"
@@ -634,7 +660,10 @@ export class SVGRenderer {
   /**
    * Calculate icon dimensions for a node
    */
-  private calculateIconInfo(node: Node, w: number): { width: number; height: number; svg: string } | null {
+  private calculateIconInfo(
+    node: Node,
+    w: number,
+  ): { width: number; height: number; svg: string } | null {
     // Cap icon width at MAX_ICON_WIDTH_RATIO of node width to leave room for ports
     const maxIconWidth = Math.round(w * MAX_ICON_WIDTH_RATIO)
 
@@ -650,8 +679,8 @@ export class SVGRenderer {
         if (vendorIcon.startsWith('<svg')) {
           const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
           if (viewBoxMatch) {
-            const vbWidth = parseInt(viewBoxMatch[1])
-            const vbHeight = parseInt(viewBoxMatch[2])
+            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
+            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
             const aspectRatio = vbWidth / vbHeight
             let iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
             let iconHeight = DEFAULT_ICON_SIZE
@@ -671,10 +700,13 @@ export class SVGRenderer {
         // Parse viewBox for aspect ratio calculation
         const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
         if (vbMatch) {
-          const vbWidth = parseInt(vbMatch[3])
-          const vbHeight = parseInt(vbMatch[4])
+          const vbWidth = Number.parseInt(vbMatch[3], 10)
+          const vbHeight = Number.parseInt(vbMatch[4], 10)
           const aspectRatio = vbWidth / vbHeight
-          let iconWidth = Math.abs(aspectRatio - 1) < 0.01 ? DEFAULT_ICON_SIZE : Math.round(DEFAULT_ICON_SIZE * aspectRatio)
+          let iconWidth =
+            Math.abs(aspectRatio - 1) < 0.01
+              ? DEFAULT_ICON_SIZE
+              : Math.round(DEFAULT_ICON_SIZE * aspectRatio)
           let iconHeight = DEFAULT_ICON_SIZE
           if (iconWidth > maxIconWidth) {
             iconWidth = maxIconWidth
@@ -734,13 +766,15 @@ export class SVGRenderer {
     }
 
     // Render labels below icon
-    const labelStartY = contentTop + iconHeight + gap + LABEL_LINE_HEIGHT * 0.7  // 0.7 for text baseline adjustment
-    labels.forEach((line, i) => {
+    const labelStartY = contentTop + iconHeight + gap + LABEL_LINE_HEIGHT * 0.7 // 0.7 for text baseline adjustment
+    for (const [i, line] of labels.entries()) {
       const isBold = line.includes('<b>') || line.includes('<strong>')
       const cleanLine = line.replace(/<\/?b>|<\/?strong>|<br\s*\/?>/gi, '')
       const className = isBold ? 'node-label node-label-bold' : 'node-label'
-      parts.push(`<text x="${x}" y="${labelStartY + i * LABEL_LINE_HEIGHT}" class="${className}" text-anchor="middle">${this.escapeXml(cleanLine)}</text>`)
-    })
+      parts.push(
+        `<text x="${x}" y="${labelStartY + i * LABEL_LINE_HEIGHT}" class="${className}" text-anchor="middle">${this.escapeXml(cleanLine)}</text>`,
+      )
+    }
 
     return parts.join('\n  ')
   }
@@ -753,17 +787,26 @@ export class SVGRenderer {
     const type = link.type || this.getDefaultLinkType(link.redundancy)
     const arrow = link.arrow ?? this.getDefaultArrowType(link.redundancy)
 
-    const stroke = link.style?.stroke || this.getVlanStroke(link.vlan) || this.themeColors.defaultLinkStroke
+    const stroke =
+      link.style?.stroke || this.getVlanStroke(link.vlan) || this.themeColors.defaultLinkStroke
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
     const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
 
     // Get bandwidth rendering config
     const bandwidthConfig = this.getBandwidthConfig(link.bandwidth)
-    const strokeWidth = link.style?.strokeWidth || bandwidthConfig.strokeWidth || this.getLinkStrokeWidth(type)
+    const strokeWidth =
+      link.style?.strokeWidth || bandwidthConfig.strokeWidth || this.getLinkStrokeWidth(type)
 
     // Render link lines based on bandwidth (single or multiple parallel lines)
     let result = this.renderBandwidthLines(
-      id, points, stroke, strokeWidth, dasharray, markerEnd, bandwidthConfig, type
+      id,
+      points,
+      stroke,
+      strokeWidth,
+      dasharray,
+      markerEnd,
+      bandwidthConfig,
+      type,
     )
 
     // Center label and VLANs
@@ -778,9 +821,8 @@ export class SVGRenderer {
 
     // VLANs (link-level, applies to both endpoints)
     if (link.vlan && link.vlan.length > 0) {
-      const vlanText = link.vlan.length === 1
-        ? `VLAN ${link.vlan[0]}`
-        : `VLAN ${link.vlan.join(', ')}`
+      const vlanText =
+        link.vlan.length === 1 ? `VLAN ${link.vlan[0]}` : `VLAN ${link.vlan.join(', ')}`
       result += `\n<text x="${midPoint.x}" y="${midPoint.y + labelYOffset}" class="link-label" text-anchor="middle">${this.escapeXml(vlanText)}</text>`
     }
 
@@ -825,7 +867,7 @@ export class SVGRenderer {
     points: { x: number; y: number }[],
     which: 'start' | 'end',
     nodeCenterX: number,
-    portName: string
+    portName: string,
   ): { x: number; y: number; anchor: string } {
     // Get the endpoint position (port position)
     const endpointIdx = which === 'start' ? 0 : points.length - 1
@@ -869,8 +911,8 @@ export class SVGRenderer {
       sideMultiplier = isStart ? -1 : 1
     }
 
-    const offsetDist = 30  // Distance along line direction
-    const perpDist = 20    // Perpendicular offset (fixed)
+    const offsetDist = 30 // Distance along line direction
+    const perpDist = 20 // Perpendicular offset (fixed)
 
     // Position: offset along line direction + fixed horizontal offset for vertical links
     let x: number
@@ -893,7 +935,7 @@ export class SVGRenderer {
       // For horizontal links, position label near the port (not toward center)
       // Keep x near the endpoint, offset y below the line
       x = endpoint.x
-      y = endpoint.y + perpDist  // Always below the line
+      y = endpoint.y + perpDist // Always below the line
 
       // Text anchor: extend toward the center of the link
       // Start endpoint extends right (start), end endpoint extends left (end)
@@ -916,7 +958,7 @@ export class SVGRenderer {
     const charWidth = 4.8 // Approximate character width for 9px font
 
     // Calculate dimensions
-    const maxLen = Math.max(...lines.map(l => l.length))
+    const maxLen = Math.max(...lines.map((l) => l.length))
     const rectWidth = maxLen * charWidth + paddingX * 2
     const rectHeight = lines.length * lineHeight + paddingY * 2
 
@@ -932,19 +974,22 @@ export class SVGRenderer {
 
     let result = `\n<rect x="${rectX}" y="${rectY}" width="${rectWidth}" height="${rectHeight}" rx="2" fill="${this.themeColors.endpointLabelBg}" stroke="${this.themeColors.endpointLabelStroke}" stroke-width="0.5" />`
 
-    lines.forEach((line, i) => {
+    for (const [i, line] of lines.entries()) {
       const textY = y + i * lineHeight
       result += `\n<text x="${x}" y="${textY}" class="endpoint-label" text-anchor="${anchor}">${this.escapeXml(line)}</text>`
-    })
+    }
 
     return result
   }
 
   private getLinkStrokeWidth(type: LinkType): number {
     switch (type) {
-      case 'thick': return 3
-      case 'double': return 2
-      default: return 2
+      case 'thick':
+        return 3
+      case 'double':
+        return 2
+      default:
+        return 2
     }
   }
 
@@ -985,7 +1030,7 @@ export class SVGRenderer {
     dasharray: string,
     markerEnd: string,
     config: { lineCount: number; strokeWidth: number },
-    type: LinkType
+    type: LinkType,
   ): string {
     const { lineCount } = config
     const lineSpacing = 3 // Space between parallel lines
@@ -1025,7 +1070,7 @@ ${result}`
   /**
    * Generate SVG path string from points with rounded corners
    */
-  private generatePath(points: { x: number; y: number }[], cornerRadius: number = 8): string {
+  private generatePath(points: { x: number; y: number }[], cornerRadius = 8): string {
     if (points.length < 2) return ''
     if (points.length === 2) {
       return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
@@ -1090,7 +1135,10 @@ ${result}`
    * Offset points perpendicular to line direction, handling each segment properly
    * For orthogonal paths, this maintains parallel lines through bends
    */
-  private offsetPoints(points: { x: number; y: number }[], offset: number): { x: number; y: number }[] {
+  private offsetPoints(
+    points: { x: number; y: number }[],
+    offset: number,
+  ): { x: number; y: number }[] {
     if (points.length < 2) return points
 
     const result: { x: number; y: number }[] = []
@@ -1131,7 +1179,10 @@ ${result}`
   /**
    * Get perpendicular unit vector for a line segment
    */
-  private getPerpendicular(from: { x: number; y: number }, to: { x: number; y: number }): { x: number; y: number } {
+  private getPerpendicular(
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+  ): { x: number; y: number } {
     const dx = to.x - from.x
     const dy = to.y - from.y
     const len = Math.sqrt(dx * dx + dy * dy)
@@ -1208,9 +1259,12 @@ ${result}`
 
   private getLinkDasharray(type: LinkType): string {
     switch (type) {
-      case 'dashed': return '5 3'
-      case 'invisible': return '0'
-      default: return ''
+      case 'dashed':
+        return '5 3'
+      case 'invisible':
+        return '0'
+      default:
+        return ''
     }
   }
 
@@ -1219,11 +1273,13 @@ ${result}`
       // Cubic bezier curve midpoint at t=0.5
       const t = 0.5
       const mt = 1 - t
-      const x = mt * mt * mt * points[0].x +
+      const x =
+        mt * mt * mt * points[0].x +
         3 * mt * mt * t * points[1].x +
         3 * mt * t * t * points[2].x +
         t * t * t * points[3].x
-      const y = mt * mt * mt * points[0].y +
+      const y =
+        mt * mt * mt * points[0].y +
         3 * mt * mt * t * points[1].y +
         3 * mt * t * t * points[2].y +
         t * t * t * points[3].y
@@ -1266,7 +1322,7 @@ ${result}`
     let hash = 0
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
+      hash = (hash << 5) - hash + char
       hash = hash & hash // Convert to 32-bit integer
     }
     return Math.abs(hash)

@@ -11,28 +11,28 @@ export interface ThemeColors {
   background: string
   surface: string
   surfaceHover: string
-  
+
   /**
    * Text colors
    */
   text: string
   textSecondary: string
   textDisabled: string
-  
+
   /**
    * Primary palette
    */
   primary: string
   primaryHover: string
   primaryActive: string
-  
+
   /**
    * Secondary palette
    */
   secondary: string
   secondaryHover: string
   secondaryActive: string
-  
+
   /**
    * Status colors
    */
@@ -40,19 +40,19 @@ export interface ThemeColors {
   warning: string
   error: string
   info: string
-  
+
   /**
    * Link colors
    */
   link: string
   linkHover: string
   linkDown: string
-  
+
   /**
    * Device type colors
    */
   devices: Partial<Record<DeviceType | string, string>>
-  
+
   /**
    * Module colors (for Bento Grid)
    */
@@ -64,7 +64,7 @@ export interface ThemeColors {
     cloud: string
     default: string
   }
-  
+
   /**
    * Grid and guides
    */
@@ -81,7 +81,7 @@ export interface ThemeDimensions {
     medium: { width: number; height: number }
     large: { width: number; height: number }
   }
-  
+
   /**
    * Font sizes
    */
@@ -92,7 +92,7 @@ export interface ThemeDimensions {
     large: number
     huge: number
   }
-  
+
   /**
    * Line widths
    */
@@ -102,7 +102,7 @@ export interface ThemeDimensions {
     thick: number
     emphasis: number
   }
-  
+
   /**
    * Spacing
    */
@@ -113,7 +113,7 @@ export interface ThemeDimensions {
     lg: number
     xl: number
   }
-  
+
   /**
    * Border radius
    */
@@ -154,7 +154,7 @@ export interface ThemeAnimations {
     normal: number
     slow: number
   }
-  
+
   /**
    * Easing functions
    */
@@ -176,7 +176,7 @@ export interface ThemeTypography {
     mono: string
     display: string
   }
-  
+
   /**
    * Font weights
    */
@@ -187,7 +187,7 @@ export interface ThemeTypography {
     semibold: number
     bold: number
   }
-  
+
   /**
    * Letter spacing
    */
@@ -203,37 +203,37 @@ export interface Theme {
    * Theme name
    */
   name: string
-  
+
   /**
    * Theme variant
    */
   variant: 'light' | 'dark'
-  
+
   /**
    * Color definitions
    */
   colors: ThemeColors
-  
+
   /**
    * Size definitions
    */
   dimensions: ThemeDimensions
-  
+
   /**
    * Shadow definitions
    */
   shadows: ThemeShadows
-  
+
   /**
    * Animation settings
    */
   animations: ThemeAnimations
-  
+
   /**
    * Typography settings
    */
   typography: ThemeTypography
-  
+
   /**
    * Custom properties
    */
@@ -245,7 +245,7 @@ export interface ThemeOptions {
    * Base theme to extend
    */
   extends?: Theme
-  
+
   /**
    * Partial overrides
    */
@@ -257,6 +257,6 @@ export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends (infer U)[]
     ? DeepPartial<U>[]
     : T[P] extends readonly (infer U)[]
-    ? readonly DeepPartial<U>[]
-    : DeepPartial<T[P]>
+      ? readonly DeepPartial<U>[]
+      : DeepPartial<T[P]>
 }

@@ -12,8 +12,8 @@ import { resolve } from 'node:path'
 import { HierarchicalLayout } from '@shumoku/core/layout'
 import { SVGRenderer } from '@shumoku/core/renderer'
 import '@shumoku/icons' // Register vendor icons
-import { NetBoxClient } from './client.js'
 import type { QueryParams } from './client.js'
+import { NetBoxClient } from './client.js'
 import { convertToNetworkGraph, toYaml } from './converter.js'
 import type { ConverterOptions, GroupBy } from './types.js'
 
@@ -201,12 +201,7 @@ async function main(): Promise<void> {
       legend: options.legend,
     }
 
-    const graph = convertToNetworkGraph(
-      devices,
-      interfaces,
-      cables,
-      converterOptions
-    )
+    const graph = convertToNetworkGraph(devices, interfaces, cables, converterOptions)
 
     console.log(`  Created ${graph.nodes.length} nodes, ${graph.links.length} links`)
     if (graph.subgraphs) {

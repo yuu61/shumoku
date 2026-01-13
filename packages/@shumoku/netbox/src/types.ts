@@ -3,7 +3,7 @@
  * Based on NetBox REST API responses
  */
 
-import type { LinkType, LinkBandwidth, LegendSettings } from '@shumoku/core/models'
+import type { LegendSettings, LinkBandwidth, LinkType } from '@shumoku/core/models'
 
 // ============================================
 // NetBox API Response Types
@@ -75,21 +75,21 @@ export interface NetBoxInterface {
     name: string
   }
   type?: {
-    value: string  // e.g., '1000base-t', '10gbase-x-sfpp', '25gbase-x-sfp28'
+    value: string // e.g., '1000base-t', '10gbase-x-sfpp', '25gbase-x-sfp28'
     label: string
   }
   enabled: boolean
   mac_address?: string
   mtu?: number
   mode?: {
-    value: string  // 'access', 'tagged', 'tagged-all'
+    value: string // 'access', 'tagged', 'tagged-all'
     label: string
   }
   untagged_vlan: NetBoxVlan | null
   tagged_vlans: NetBoxVlan[]
-  speed: number | null  // kbps
+  speed: number | null // kbps
   duplex?: {
-    value: string  // 'half', 'full', 'auto'
+    value: string // 'half', 'full', 'auto'
     label: string
   } | null
   description?: string
@@ -133,10 +133,10 @@ export interface NetBoxCable {
     label: string
   }
   label?: string
-  color?: string  // Hex color without #
+  color?: string // Hex color without #
   length?: number
   length_unit?: {
-    value: string  // 'm', 'cm', 'ft', 'in'
+    value: string // 'm', 'cm', 'ft', 'in'
     label: string
   }
   description?: string
@@ -176,8 +176,8 @@ export interface NetBoxVirtualMachine {
     address: string
   }
   vcpus?: number
-  memory?: number  // MB
-  disk?: number    // GB
+  memory?: number // MB
+  disk?: number // GB
   role?: {
     id: number
     name: string
@@ -219,7 +219,7 @@ export interface NetBoxVMInterfaceResponse {
 
 export interface NetBoxPrefix {
   id: number
-  prefix: string  // CIDR notation e.g. "10.0.0.0/24"
+  prefix: string // CIDR notation e.g. "10.0.0.0/24"
   site?: {
     id: number
     name: string
@@ -248,7 +248,7 @@ export interface NetBoxPrefixResponse {
 
 export interface NetBoxIPAddress {
   id: number
-  address: string  // CIDR notation e.g. "10.0.0.1/24"
+  address: string // CIDR notation e.g. "10.0.0.1/24"
   status: {
     value: 'active' | 'reserved' | 'deprecated' | 'dhcp' | 'slaac'
     label: string
@@ -330,7 +330,15 @@ export interface NetBoxLocationResponse {
 // Tag Mapping Configuration
 // ============================================
 
-export type DeviceTypeString = 'router' | 'l3-switch' | 'l2-switch' | 'server' | 'access-point' | 'firewall' | 'load-balancer' | 'generic'
+export type DeviceTypeString =
+  | 'router'
+  | 'l3-switch'
+  | 'l2-switch'
+  | 'server'
+  | 'access-point'
+  | 'firewall'
+  | 'load-balancer'
+  | 'generic'
 
 export interface TagMapping {
   type: DeviceTypeString
@@ -343,13 +351,13 @@ export interface TagMapping {
  * Based on network-topology hierarchy
  */
 export const DEFAULT_TAG_MAPPING: Record<string, TagMapping> = {
-  'ocx': { type: 'l3-switch', level: 0, subgraph: 'OCX' },
-  'onu': { type: 'router', level: 1, subgraph: 'ONU' },
-  'router': { type: 'router', level: 2, subgraph: 'Router' },
+  ocx: { type: 'l3-switch', level: 0, subgraph: 'OCX' },
+  onu: { type: 'router', level: 1, subgraph: 'ONU' },
+  router: { type: 'router', level: 2, subgraph: 'Router' },
   'core-switch': { type: 'l3-switch', level: 3, subgraph: 'Core Switch' },
   'edge-switch': { type: 'l2-switch', level: 4, subgraph: 'Edge Switch' },
-  'server': { type: 'server', level: 5, subgraph: 'Server' },
-  'ap': { type: 'access-point', level: 5, subgraph: 'AP' },
+  server: { type: 'server', level: 5, subgraph: 'Server' },
+  ap: { type: 'access-point', level: 5, subgraph: 'AP' },
   'console-server': { type: 'server', level: 6, subgraph: 'Console Server' },
 }
 
@@ -373,7 +381,7 @@ export const TAG_PRIORITY = [
 
 export interface CableStyle {
   color: string
-  type?: LinkType  // 'dashed' for DAC/AOC, undefined for solid
+  type?: LinkType // 'dashed' for DAC/AOC, undefined for solid
 }
 
 /**
@@ -382,26 +390,26 @@ export interface CableStyle {
  */
 export const CABLE_STYLES: Record<string, CableStyle> = {
   // Fiber - solid lines
-  'mmf-om3': { color: '#10b981' },  // Green - OM3 multimode
-  'mmf-om4': { color: '#06b6d4' },  // Cyan - OM4 multimode
-  'smf': { color: '#eab308' },      // Yellow - singlemode
-  'smf-os1': { color: '#eab308' },  // Yellow - OS1 singlemode
-  'smf-os2': { color: '#f59e0b' },  // Amber - OS2 singlemode
+  'mmf-om3': { color: '#10b981' }, // Green - OM3 multimode
+  'mmf-om4': { color: '#06b6d4' }, // Cyan - OM4 multimode
+  smf: { color: '#eab308' }, // Yellow - singlemode
+  'smf-os1': { color: '#eab308' }, // Yellow - OS1 singlemode
+  'smf-os2': { color: '#f59e0b' }, // Amber - OS2 singlemode
   // Copper - solid lines
-  'cat5e': { color: '#6b7280' },    // Gray - Cat5e
-  'cat6': { color: '#3b82f6' },     // Blue - Cat6
-  'cat6a': { color: '#8b5cf6' },    // Purple - Cat6a
-  'cat7': { color: '#ec4899' },     // Pink - Cat7
-  'cat8': { color: '#f43f5e' },     // Rose - Cat8
+  cat5e: { color: '#6b7280' }, // Gray - Cat5e
+  cat6: { color: '#3b82f6' }, // Blue - Cat6
+  cat6a: { color: '#8b5cf6' }, // Purple - Cat6a
+  cat7: { color: '#ec4899' }, // Pink - Cat7
+  cat8: { color: '#f43f5e' }, // Rose - Cat8
   // DAC/AOC - dashed lines
-  'dac-passive': { color: '#f97316', type: 'dashed' },  // Orange
-  'dac-active': { color: '#ef4444', type: 'dashed' },   // Red
-  'aoc': { color: '#ec4899', type: 'dashed' },          // Pink
+  'dac-passive': { color: '#f97316', type: 'dashed' }, // Orange
+  'dac-active': { color: '#ef4444', type: 'dashed' }, // Red
+  aoc: { color: '#ec4899', type: 'dashed' }, // Pink
 }
 
 // Legacy compatibility
 export const CABLE_COLORS: Record<string, string> = Object.fromEntries(
-  Object.entries(CABLE_STYLES).map(([k, v]) => [k, v.color])
+  Object.entries(CABLE_STYLES).map(([k, v]) => [k, v.color]),
 )
 
 // ============================================
@@ -433,16 +441,16 @@ export function convertSpeedToBandwidth(speedKbps: number | null): LinkBandwidth
  * Map NetBox device role slugs to Shumoku device types
  */
 export const ROLE_TO_TYPE: Record<string, DeviceTypeString> = {
-  'router': 'router',
+  router: 'router',
   'core-router': 'router',
   'border-router': 'router',
   'edge-router': 'router',
-  'switch': 'l2-switch',
+  switch: 'l2-switch',
   'access-switch': 'l2-switch',
   'distribution-switch': 'l3-switch',
   'core-switch': 'l3-switch',
-  'firewall': 'firewall',
-  'server': 'server',
+  firewall: 'firewall',
+  server: 'server',
   'virtual-machine': 'server',
   'access-point': 'access-point',
   'wireless-ap': 'access-point',
@@ -458,7 +466,7 @@ export const ROLE_TO_TYPE: Record<string, DeviceTypeString> = {
  * Uses HSL color space for visual variety
  */
 export function getVlanColor(vid: number): string {
-  const hue = (vid * 137) % 360  // Golden angle for distribution
+  const hue = (vid * 137) % 360 // Golden angle for distribution
   return `hsl(${hue}, 70%, 50%)`
 }
 
@@ -466,7 +474,14 @@ export function getVlanColor(vid: number): string {
 // Device Status Styles
 // ============================================
 
-export type DeviceStatusValue = 'active' | 'planned' | 'staged' | 'failed' | 'offline' | 'inventory' | 'decommissioning'
+export type DeviceStatusValue =
+  | 'active'
+  | 'planned'
+  | 'staged'
+  | 'failed'
+  | 'offline'
+  | 'inventory'
+  | 'decommissioning'
 
 export interface DeviceStatusStyle {
   fill?: string
@@ -486,32 +501,32 @@ export interface DeviceStatusStyle {
  * - decommissioning: orange tint
  */
 export const DEVICE_STATUS_STYLES: Record<DeviceStatusValue, DeviceStatusStyle> = {
-  'active': {},  // Default styling
-  'planned': {
+  active: {}, // Default styling
+  planned: {
     stroke: '#9CA3AF',
     strokeDasharray: '5,5',
     opacity: 0.7,
   },
-  'staged': {
+  staged: {
     fill: '#FEF3C7',
     stroke: '#F59E0B',
   },
-  'failed': {
+  failed: {
     fill: '#FEE2E2',
     stroke: '#EF4444',
   },
-  'offline': {
+  offline: {
     fill: '#F3F4F6',
     stroke: '#6B7280',
     opacity: 0.5,
   },
-  'inventory': {
+  inventory: {
     fill: '#DBEAFE',
     stroke: '#3B82F6',
     strokeDasharray: '3,3',
     opacity: 0.8,
   },
-  'decommissioning': {
+  decommissioning: {
     fill: '#FFEDD5',
     stroke: '#F97316',
     strokeDasharray: '8,4',
@@ -532,10 +547,10 @@ export interface DeviceData {
   model?: string
   manufacturer?: string
   ip?: string
-  role?: string  // device role slug
-  site?: string  // site slug
-  location?: string  // location slug
-  status?: DeviceStatusValue  // device status
+  role?: string // device role slug
+  site?: string // site slug
+  location?: string // location slug
+  status?: DeviceStatusValue // device status
 }
 
 export interface ConnectionData {
@@ -547,11 +562,11 @@ export interface ConnectionData {
   dstLevel: number
   dstTag: string
   cableType: string
-  cableColor?: string   // Hex color from cable
-  cableLabel?: string   // Label from cable
-  cableLength?: string  // Length with unit from cable
-  speed: number | null  // kbps from interface
-  vlans: number[]       // VLANs from both endpoints
+  cableColor?: string // Hex color from cable
+  cableLabel?: string // Label from cable
+  cableLength?: string // Length with unit from cable
+  speed: number | null // kbps from interface
+  vlans: number[] // VLANs from both endpoints
 }
 
 // ============================================

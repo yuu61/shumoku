@@ -3,47 +3,47 @@
  */
 
 import type {
+  DeviceType,
+  Link,
+  LinkEndpoint,
   NetworkGraph,
   Node,
-  Link,
   Subgraph,
-  DeviceType,
-  LinkEndpoint,
 } from '@shumoku/core/models'
 import type {
+  ConnectionData,
+  ConverterOptions,
+  DeviceData,
+  DeviceStatusValue,
+  GroupBy,
+  NetBoxCableResponse,
   NetBoxDeviceResponse,
   NetBoxInterfaceResponse,
-  NetBoxCableResponse,
+  NetBoxTag,
   NetBoxVirtualMachineResponse,
   NetBoxVMInterfaceResponse,
-  NetBoxTag,
-  ConverterOptions,
   TagMapping,
-  DeviceData,
-  ConnectionData,
-  GroupBy,
-  DeviceStatusValue,
 } from './types.js'
 import {
-  DEFAULT_TAG_MAPPING,
-  TAG_PRIORITY,
   CABLE_STYLES,
-  ROLE_TO_TYPE,
-  DEVICE_STATUS_STYLES,
   convertSpeedToBandwidth,
+  DEFAULT_TAG_MAPPING,
+  DEVICE_STATUS_STYLES,
+  ROLE_TO_TYPE,
+  TAG_PRIORITY,
 } from './types.js'
 
 /**
  * Subgraph style colors by level
  */
 const SUBGRAPH_STYLES: Record<number, { fill: string; stroke: string }> = {
-  0: { fill: '#E3F2FD', stroke: '#1565C0' },  // OCX - Blue
-  1: { fill: '#E8F5E9', stroke: '#2E7D32' },  // ONU - Green
-  2: { fill: '#FFF3E0', stroke: '#E65100' },  // Router - Orange
-  3: { fill: '#FFF8E1', stroke: '#F9A825' },  // Core Switch - Yellow
-  4: { fill: '#F3E5F5', stroke: '#7B1FA2' },  // Edge Switch - Purple
-  5: { fill: '#FFEBEE', stroke: '#C62828' },  // Server/AP - Red
-  6: { fill: '#ECEFF1', stroke: '#546E7A' },  // Console - Gray
+  0: { fill: '#E3F2FD', stroke: '#1565C0' }, // OCX - Blue
+  1: { fill: '#E8F5E9', stroke: '#2E7D32' }, // ONU - Green
+  2: { fill: '#FFF3E0', stroke: '#E65100' }, // Router - Orange
+  3: { fill: '#FFF8E1', stroke: '#F9A825' }, // Core Switch - Yellow
+  4: { fill: '#F3E5F5', stroke: '#7B1FA2' }, // Edge Switch - Purple
+  5: { fill: '#FFEBEE', stroke: '#C62828' }, // Server/AP - Red
+  6: { fill: '#ECEFF1', stroke: '#546E7A' }, // Console - Gray
 }
 
 /**
@@ -53,12 +53,11 @@ export function convertToNetworkGraph(
   deviceResp: NetBoxDeviceResponse,
   interfaceResp: NetBoxInterfaceResponse,
   cableResp: NetBoxCableResponse,
-  options: ConverterOptions = {}
+  options: ConverterOptions = {},
 ): NetworkGraph {
   const tagMapping = { ...DEFAULT_TAG_MAPPING, ...options.tagMapping }
   // Support both legacy groupByTag and new groupBy option
-  const groupBy: GroupBy = options.groupBy ??
-    (options.groupByTag === false ? 'none' : 'tag')
+  const groupBy: GroupBy = options.groupBy ?? (options.groupByTag === false ? 'none' : 'tag')
   const showPorts = options.showPorts ?? true
   const colorByCableType = options.colorByCableType ?? true
   const useRoleForType = options.useRoleForType ?? true
@@ -66,15 +65,18 @@ export function convertToNetworkGraph(
 
   // 1. Build device tag map and info map
   const deviceTagMap = new Map<string, string>()
-  const deviceInfoMap = new Map<string, {
-    model?: string
-    manufacturer?: string
-    ip?: string
-    role?: string
-    site?: string
-    location?: string
-    status?: DeviceStatusValue
-  }>()
+  const deviceInfoMap = new Map<
+    string,
+    {
+      model?: string
+      manufacturer?: string
+      ip?: string
+      role?: string
+      site?: string
+      location?: string
+      status?: DeviceStatusValue
+    }
+  >()
   for (const device of deviceResp.results) {
     deviceTagMap.set(device.name, resolvePrimaryTag(device.tags))
     deviceInfoMap.set(device.name, {
@@ -154,9 +156,8 @@ export function convertToNetworkGraph(
     // Extract cable attributes
     const cableColor = cable.color ? `#${cable.color}` : undefined
     const cableLabel = cable.label
-    const cableLength = cable.length && cable.length_unit
-      ? `${cable.length}${cable.length_unit.value}`
-      : undefined
+    const cableLength =
+      cable.length && cable.length_unit ? `${cable.length}${cable.length_unit.value}` : undefined
 
     // Normalize direction: lower level -> higher level
     let conn: ConnectionData
@@ -220,7 +221,7 @@ export function convertToNetworkGraph(
  * Resolve primary tag from tags list based on priority
  */
 function resolvePrimaryTag(tags: NetBoxTag[]): string {
-  const tagSet = new Set(tags.map(t => t.slug))
+  const tagSet = new Set(tags.map((t) => t.slug))
 
   for (const priority of TAG_PRIORITY) {
     if (tagSet.has(priority)) {
@@ -252,7 +253,15 @@ function registerDevice(
   port: string,
   vlans: number[],
   speed: number | null,
-  info?: { model?: string; manufacturer?: string; ip?: string; role?: string; site?: string; location?: string; status?: DeviceStatusValue }
+  info?: {
+    model?: string
+    manufacturer?: string
+    ip?: string
+    role?: string
+    site?: string
+    location?: string
+    status?: DeviceStatusValue
+  },
 ): void {
   if (!devices.has(name)) {
     devices.set(name, {
@@ -281,14 +290,14 @@ function registerDevice(
  * Site/Location subgraph style colors
  */
 const SITE_LOCATION_STYLES = [
-  { fill: '#E3F2FD', stroke: '#1565C0' },  // Blue
-  { fill: '#E8F5E9', stroke: '#2E7D32' },  // Green
-  { fill: '#FFF3E0', stroke: '#E65100' },  // Orange
-  { fill: '#F3E5F5', stroke: '#7B1FA2' },  // Purple
-  { fill: '#FFEBEE', stroke: '#C62828' },  // Red
-  { fill: '#E0F7FA', stroke: '#00838F' },  // Cyan
-  { fill: '#FFF8E1', stroke: '#F9A825' },  // Yellow
-  { fill: '#ECEFF1', stroke: '#546E7A' },  // Gray
+  { fill: '#E3F2FD', stroke: '#1565C0' }, // Blue
+  { fill: '#E8F5E9', stroke: '#2E7D32' }, // Green
+  { fill: '#FFF3E0', stroke: '#E65100' }, // Orange
+  { fill: '#F3E5F5', stroke: '#7B1FA2' }, // Purple
+  { fill: '#FFEBEE', stroke: '#C62828' }, // Red
+  { fill: '#E0F7FA', stroke: '#00838F' }, // Cyan
+  { fill: '#FFF8E1', stroke: '#F9A825' }, // Yellow
+  { fill: '#ECEFF1', stroke: '#546E7A' }, // Gray
 ]
 
 /**
@@ -297,7 +306,7 @@ const SITE_LOCATION_STYLES = [
 function buildSubgraphsByGroupBy(
   devices: Map<string, DeviceData>,
   mapping: Record<string, TagMapping>,
-  groupBy: GroupBy
+  groupBy: GroupBy,
 ): Subgraph[] {
   if (groupBy === 'none') return []
 
@@ -325,7 +334,7 @@ function buildSubgraphsByGroupBy(
  */
 function buildSubgraphsByTag(
   devices: Map<string, DeviceData>,
-  mapping: Record<string, TagMapping>
+  mapping: Record<string, TagMapping>,
 ): Subgraph[] {
   const tagDevices = new Map<string, DeviceData[]>()
 
@@ -447,14 +456,14 @@ function buildSubgraphsByLocation(devices: Map<string, DeviceData>): Subgraph[] 
  * Prefix/subnet colors based on class/range
  */
 const PREFIX_STYLES = [
-  { fill: '#DBEAFE', stroke: '#2563EB' },  // Blue - Class A like
-  { fill: '#D1FAE5', stroke: '#059669' },  // Green - Class B like
-  { fill: '#FEF3C7', stroke: '#D97706' },  // Yellow - Class C like
-  { fill: '#FCE7F3', stroke: '#DB2777' },  // Pink - Private
-  { fill: '#E0E7FF', stroke: '#4F46E5' },  // Indigo
-  { fill: '#F3E8FF', stroke: '#9333EA' },  // Purple
-  { fill: '#FFEDD5', stroke: '#EA580C' },  // Orange
-  { fill: '#ECFEFF', stroke: '#0891B2' },  // Cyan
+  { fill: '#DBEAFE', stroke: '#2563EB' }, // Blue - Class A like
+  { fill: '#D1FAE5', stroke: '#059669' }, // Green - Class B like
+  { fill: '#FEF3C7', stroke: '#D97706' }, // Yellow - Class C like
+  { fill: '#FCE7F3', stroke: '#DB2777' }, // Pink - Private
+  { fill: '#E0E7FF', stroke: '#4F46E5' }, // Indigo
+  { fill: '#F3E8FF', stroke: '#9333EA' }, // Purple
+  { fill: '#FFEDD5', stroke: '#EA580C' }, // Orange
+  { fill: '#ECFEFF', stroke: '#0891B2' }, // Cyan
 ]
 
 /**
@@ -504,9 +513,8 @@ function buildSubgraphsByPrefix(devices: Map<string, DeviceData>): Subgraph[] {
     styleIndex++
 
     // Create label: "10.0.0.0/16" or "Subnet: 10.0.x.x"
-    const label = prefix === 'unknown'
-      ? 'Unknown Network'
-      : `Subnet: ${prefix.replace('.0.0/16', '.x.x')}`
+    const label =
+      prefix === 'unknown' ? 'Unknown Network' : `Subnet: ${prefix.replace('.0.0/16', '.x.x')}`
 
     subgraphs.push({
       id: `prefix-${prefix.replace(/[./]/g, '-')}`,
@@ -530,7 +538,7 @@ function buildNodes(
   mapping: Record<string, TagMapping>,
   groupBy: GroupBy,
   useRoleForType: boolean,
-  colorByStatus: boolean = false
+  colorByStatus = false,
 ): Node[] {
   const nodes: Node[] = []
 
@@ -558,8 +566,8 @@ function buildNodes(
       shape: 'rounded',
       type: deviceType as DeviceType,
       rank: tagConfig?.level,
-      model: device.model?.toLowerCase(),  // Use dedicated model field (lowercase for icon lookup)
-      vendor: device.manufacturer?.toLowerCase(),  // Use vendor field
+      model: device.model?.toLowerCase(), // Use dedicated model field (lowercase for icon lookup)
+      vendor: device.manufacturer?.toLowerCase(), // Use vendor field
     }
 
     // Apply status-based styling if enabled
@@ -604,7 +612,7 @@ function buildNodes(
 function buildLinks(
   connections: ConnectionData[],
   showPorts: boolean,
-  colorByCableType: boolean
+  colorByCableType: boolean,
 ): Link[] {
   return connections.map((conn, index) => {
     const from: LinkEndpoint = {
@@ -687,7 +695,7 @@ export function convertToNetworkGraphWithVMs(
   cableResp: NetBoxCableResponse,
   vmResp: NetBoxVirtualMachineResponse,
   vmInterfaceResp: NetBoxVMInterfaceResponse,
-  options: ConverterOptions = {}
+  options: ConverterOptions = {},
 ): NetworkGraph {
   // First, get the base graph without VMs
   const graph = convertToNetworkGraph(deviceResp, interfaceResp, cableResp, options)
@@ -730,7 +738,7 @@ export function convertToNetworkGraphWithVMs(
 
     let styleIdx = 0
     for (const clusterSlug of clusters) {
-      const vm = vmResp.results.find(v => v.cluster?.slug === clusterSlug)
+      const vm = vmResp.results.find((v) => v.cluster?.slug === clusterSlug)
       const clusterName = vm?.cluster?.name ?? clusterSlug
 
       const style = SITE_LOCATION_STYLES[styleIdx % SITE_LOCATION_STYLES.length]
@@ -743,14 +751,14 @@ export function convertToNetworkGraphWithVMs(
           fill: style.fill,
           stroke: style.stroke,
           strokeWidth: 2,
-          strokeDasharray: '4,2',  // Dashed border for VM clusters
+          strokeDasharray: '4,2', // Dashed border for VM clusters
         },
       })
     }
   }
 
   // Convert VMs to nodes
-  const vmNodes: Node[] = vmResp.results.map(vm => {
+  const vmNodes: Node[] = vmResp.results.map((vm) => {
     const labelLines: string[] = [`<b>${vm.name}</b>`]
 
     // Add IP if available
@@ -771,7 +779,7 @@ export function convertToNetworkGraphWithVMs(
       id: `vm-${vm.name}`,
       label: labelLines,
       shape: 'rounded',
-      type: 'server' as DeviceType,  // VMs are displayed as servers
+      type: 'server' as DeviceType, // VMs are displayed as servers
       style: { ...VM_NODE_STYLE },
       metadata: {
         isVirtualMachine: true,

@@ -1,6 +1,6 @@
-import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { ImageResponse } from 'next/og'
 
 export const revalidate = false
 
@@ -24,7 +24,10 @@ function Logo() {
     <svg width="80" height="80" viewBox="0 0 1024 1024" fill="none">
       <rect x="64" y="64" width="896" height="896" rx="200" fill={colors.primary} />
       <g transform="translate(90,40) scale(1.25)">
-        <path fill={colors.logo} d="M 380 340 H 450 V 505 H 700 V 555 H 510 V 645 H 450 V 645 H 380 Z" />
+        <path
+          fill={colors.logo}
+          d="M 380 340 H 450 V 505 H 700 V 555 H 510 V 645 H 450 V 645 H 380 Z"
+        />
       </g>
     </svg>
   )
@@ -49,7 +52,8 @@ export async function GET() {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(circle at 80% -20%, rgba(16, 185, 129, 0.25), transparent 60%)',
+          background:
+            'radial-gradient(circle at 80% -20%, rgba(16, 185, 129, 0.25), transparent 60%)',
         }}
       />
 
@@ -101,6 +105,6 @@ export async function GET() {
         <img src={diagramUrl} width={480} />
       </div>
     </div>,
-    size
+    size,
   )
 }

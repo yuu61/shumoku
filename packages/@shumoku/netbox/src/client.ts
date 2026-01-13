@@ -3,32 +3,32 @@
  */
 
 import type {
+  NetBoxCableResponse,
   NetBoxClientOptions,
   NetBoxDeviceResponse,
   NetBoxInterfaceResponse,
-  NetBoxCableResponse,
+  NetBoxIPAddressResponse,
+  NetBoxLocationResponse,
+  NetBoxPrefixResponse,
+  NetBoxSiteResponse,
   NetBoxVirtualMachineResponse,
   NetBoxVMInterfaceResponse,
-  NetBoxPrefixResponse,
-  NetBoxIPAddressResponse,
-  NetBoxSiteResponse,
-  NetBoxLocationResponse,
 } from './types.js'
 
 /**
  * Query parameters for filtering API requests
  */
 export interface QueryParams {
-  site?: string        // Filter by site slug
-  site_id?: number     // Filter by site ID
-  location?: string    // Filter by location slug
+  site?: string // Filter by site slug
+  site_id?: number // Filter by site ID
+  location?: string // Filter by location slug
   location_id?: number // Filter by location ID
-  role?: string        // Filter by role slug
-  status?: string      // Filter by status (active, planned, staged, failed, offline)
-  tag?: string         // Filter by tag slug
+  role?: string // Filter by role slug
+  status?: string // Filter by status (active, planned, staged, failed, offline)
+  tag?: string // Filter by tag slug
   manufacturer?: string // Filter by manufacturer slug
   device_type?: string // Filter by device type slug
-  q?: string           // Search query
+  q?: string // Search query
 }
 
 export class NetBoxClient {
@@ -112,8 +112,8 @@ export class NetBoxClient {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Token ${this.token}`,
-          'Accept': 'application/json',
+          Authorization: `Token ${this.token}`,
+          Accept: 'application/json',
         },
         signal: controller.signal,
       })
@@ -122,7 +122,7 @@ export class NetBoxClient {
         throw new Error(`NetBox API request failed: ${response.status} ${response.statusText}`)
       }
 
-      return await response.json() as T
+      return (await response.json()) as T
     } finally {
       clearTimeout(timeoutId)
     }

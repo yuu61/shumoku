@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import type { LayoutResult } from 'shumoku'
-import { HierarchicalLayout, SVGRenderer, parser } from 'shumoku'
-import { enterpriseNetwork, simpleNetwork } from '@/lib/sampleNetworks'
+import { HierarchicalLayout, parser, SVGRenderer } from 'shumoku'
 import { cn } from '@/lib/cn'
+import { enterpriseNetwork, simpleNetwork } from '@/lib/sampleNetworks'
 import { InteractivePreview } from './InteractivePreview'
 
 export default function PlaygroundClient() {
   const [yamlContent, setYamlContent] = useState<string>(enterpriseNetwork)
-  const [layoutResult, setLayoutResult] = useState<LayoutResult | null>(null)
+  const [_layoutResult, setLayoutResult] = useState<LayoutResult | null>(null)
   const [svgContent, setSvgContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState(false)
@@ -82,11 +82,13 @@ export default function PlaygroundClient() {
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col">
       {/* Header */}
-      <div className={cn(
-        'flex items-center justify-between px-6 py-4',
-        'border-b border-neutral-200 dark:border-neutral-700',
-        'bg-white dark:bg-neutral-900'
-      )}>
+      <div
+        className={cn(
+          'flex items-center justify-between px-6 py-4',
+          'border-b border-neutral-200 dark:border-neutral-700',
+          'bg-white dark:bg-neutral-900',
+        )}
+      >
         <h1 className="text-xl font-semibold">Playground</h1>
         <div className="flex items-center gap-3">
           <select
@@ -94,7 +96,7 @@ export default function PlaygroundClient() {
               'rounded px-3 py-2 text-sm',
               'border border-neutral-300 dark:border-neutral-600',
               'bg-white dark:bg-neutral-800',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500'
+              'focus:outline-none focus:ring-2 focus:ring-blue-500',
             )}
             onChange={(e) => {
               if (e.target.value === 'enterprise') setYamlContent(enterpriseNetwork)
@@ -111,7 +113,7 @@ export default function PlaygroundClient() {
             className={cn(
               'rounded px-4 py-2 text-sm font-medium',
               'bg-blue-600 text-white',
-              'hover:bg-blue-700 disabled:opacity-50'
+              'hover:bg-blue-700 disabled:opacity-50',
             )}
           >
             {isRendering ? 'Rendering...' : 'Render'}
@@ -124,7 +126,7 @@ export default function PlaygroundClient() {
               'rounded px-4 py-2 text-sm font-medium',
               'border border-neutral-300 dark:border-neutral-600',
               'bg-white dark:bg-neutral-800',
-              'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50'
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
             )}
           >
             Open SVG
@@ -137,7 +139,7 @@ export default function PlaygroundClient() {
               'rounded px-4 py-2 text-sm font-medium',
               'border border-neutral-300 dark:border-neutral-600',
               'bg-white dark:bg-neutral-800',
-              'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50'
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50',
             )}
           >
             Download
@@ -155,15 +157,19 @@ export default function PlaygroundClient() {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* YAML Editor */}
-        <div className={cn(
-          'flex w-1/2 flex-col',
-          'border-r border-neutral-200 dark:border-neutral-700'
-        )}>
-          <div className={cn(
-            'px-4 py-2',
-            'border-b border-neutral-200 dark:border-neutral-700',
-            'bg-neutral-50 dark:bg-neutral-800'
-          )}>
+        <div
+          className={cn(
+            'flex w-1/2 flex-col',
+            'border-r border-neutral-200 dark:border-neutral-700',
+          )}
+        >
+          <div
+            className={cn(
+              'px-4 py-2',
+              'border-b border-neutral-200 dark:border-neutral-700',
+              'bg-neutral-50 dark:bg-neutral-800',
+            )}
+          >
             <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">YAML</span>
           </div>
           <textarea
@@ -172,7 +178,7 @@ export default function PlaygroundClient() {
             className={cn(
               'flex-1 resize-none p-4 font-mono text-sm',
               'bg-white dark:bg-neutral-900',
-              'focus:outline-none'
+              'focus:outline-none',
             )}
             spellCheck={false}
           />

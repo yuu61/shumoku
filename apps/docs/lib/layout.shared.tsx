@@ -1,11 +1,11 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
 
 const navTitle = (
   <>
     <img src="/logo.svg" alt="Shumoku" className="h-6 w-6" />
     <span>Shumoku</span>
   </>
-);
+)
 
 const navLinks = [
   {
@@ -16,7 +16,7 @@ const navLinks = [
     text: 'Playground',
     url: '/playground',
   },
-];
+]
 
 // For home page and playground
 export function baseOptions(): BaseLayoutProps {
@@ -26,7 +26,7 @@ export function baseOptions(): BaseLayoutProps {
     },
     links: navLinks,
     githubUrl: 'https://github.com/konoe-akitoshi/shumoku',
-  };
+  }
 }
 
 // For docs pages (no links in sidebar)
@@ -36,5 +36,5 @@ export function docsOptions(): BaseLayoutProps {
       title: navTitle,
     },
     githubUrl: 'https://github.com/konoe-akitoshi/shumoku',
-  };
+  }
 }

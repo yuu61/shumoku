@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { vendorIconSets } from 'shumoku'
 import { cn } from '@/lib/cn'
 
@@ -45,7 +45,8 @@ export function VendorIcons() {
   }, [])
 
   const filteredVendors = useMemo(() => {
-    const results: { vendor: VendorKey; icons: { id: string; svg: string; viewBox?: string }[] }[] = []
+    const results: { vendor: VendorKey; icons: { id: string; svg: string; viewBox?: string }[] }[] =
+      []
 
     for (const vendor of vendorOrder) {
       if (selectedVendor !== 'all' && selectedVendor !== vendor) continue
@@ -74,11 +75,13 @@ export function VendorIcons() {
   return (
     <div className="not-prose">
       {/* Stats */}
-      <div className={cn(
-        'mb-6 rounded-lg p-4',
-        'border border-neutral-200 dark:border-neutral-700',
-        'bg-neutral-50 dark:bg-neutral-800'
-      )}>
+      <div
+        className={cn(
+          'mb-6 rounded-lg p-4',
+          'border border-neutral-200 dark:border-neutral-700',
+          'bg-neutral-50 dark:bg-neutral-800',
+        )}
+      >
         <p className="text-lg">
           <strong>{iconCounts.all}</strong> 個のベンダーアイコンが利用可能
         </p>
@@ -103,7 +106,7 @@ export function VendorIcons() {
             'border border-neutral-300 dark:border-neutral-600',
             'bg-white dark:bg-neutral-800',
             'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500'
+            'focus:outline-none focus:ring-2 focus:ring-blue-500',
           )}
         />
         <div className="flex flex-wrap gap-2">
@@ -112,7 +115,7 @@ export function VendorIcons() {
               'rounded px-3 py-1.5 text-sm transition-colors',
               selectedVendor === 'all'
                 ? 'bg-blue-600 text-white'
-                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600',
             )}
             onClick={() => setSelectedVendor('all')}
           >
@@ -125,7 +128,7 @@ export function VendorIcons() {
                 'rounded px-3 py-1.5 text-sm transition-colors',
                 selectedVendor === vendor
                   ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600'
+                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600',
               )}
               onClick={() => setSelectedVendor(vendor)}
             >
@@ -144,10 +147,12 @@ export function VendorIcons() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className={cn(
-                  'border-b border-neutral-200 dark:border-neutral-700',
-                  'bg-neutral-50 dark:bg-neutral-800'
-                )}>
+                <tr
+                  className={cn(
+                    'border-b border-neutral-200 dark:border-neutral-700',
+                    'bg-neutral-50 dark:bg-neutral-800',
+                  )}
+                >
                   <th className="px-4 py-2 text-left font-medium">model / service</th>
                   <th className="px-4 py-2 text-left font-medium">Icon</th>
                 </tr>
@@ -156,10 +161,14 @@ export function VendorIcons() {
                 {icons.map(({ id, svg, viewBox }) => (
                   <tr key={id} className="border-b border-neutral-200 dark:border-neutral-700">
                     <td className="px-4 py-2">
-                      <code className={cn(
-                        'rounded px-1.5 py-0.5 text-sm',
-                        'bg-neutral-100 dark:bg-neutral-800'
-                      )}>{id}</code>
+                      <code
+                        className={cn(
+                          'rounded px-1.5 py-0.5 text-sm',
+                          'bg-neutral-100 dark:bg-neutral-800',
+                        )}
+                      >
+                        {id}
+                      </code>
                     </td>
                     <td className="px-4 py-2">
                       <IconPreview svg={svg} viewBox={viewBox} />

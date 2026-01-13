@@ -3,35 +3,39 @@
  * Uses ELK.js for advanced graph layout with proper edge routing
  */
 
-import ELK, { type ElkNode, type ElkExtendedEdge, type LayoutOptions } from 'elkjs/lib/elk.bundled.js'
+import ELK, {
+  type ElkExtendedEdge,
+  type ElkNode,
+  type LayoutOptions,
+} from 'elkjs/lib/elk.bundled.js'
 import {
-  type NetworkGraph,
-  type Node,
-  type Subgraph,
-  type LayoutResult,
-  type LayoutNode,
-  type LayoutLink,
-  type LayoutSubgraph,
-  type Position,
-  type Bounds,
-  type LayoutDirection,
-  type LinkEndpoint,
-  getNodeId,
-} from '../models/index.js'
-import { getVendorIconEntry, getDeviceIcon } from '../icons/index.js'
-import {
+  CHAR_WIDTH_RATIO,
   DEFAULT_ICON_SIZE,
+  ESTIMATED_CHAR_WIDTH,
   ICON_LABEL_GAP,
   LABEL_LINE_HEIGHT,
-  NODE_VERTICAL_PADDING,
-  NODE_HORIZONTAL_PADDING,
-  MIN_PORT_SPACING,
-  PORT_LABEL_FONT_SIZE,
-  CHAR_WIDTH_RATIO,
-  PORT_LABEL_PADDING,
-  ESTIMATED_CHAR_WIDTH,
   MAX_ICON_WIDTH_RATIO,
+  MIN_PORT_SPACING,
+  NODE_HORIZONTAL_PADDING,
+  NODE_VERTICAL_PADDING,
+  PORT_LABEL_FONT_SIZE,
+  PORT_LABEL_PADDING,
 } from '../constants.js'
+import { getDeviceIcon, getVendorIconEntry } from '../icons/index.js'
+import {
+  type Bounds,
+  getNodeId,
+  type LayoutDirection,
+  type LayoutLink,
+  type LayoutNode,
+  type LayoutResult,
+  type LayoutSubgraph,
+  type LinkEndpoint,
+  type NetworkGraph,
+  type Node,
+  type Position,
+  type Subgraph,
+} from '../models/index.js'
 
 // ============================================
 // Types
@@ -71,15 +75,18 @@ function toEndpoint(endpoint: string | LinkEndpoint): LinkEndpoint {
 }
 
 /** Collect ports for each node from links */
-function collectNodePorts(
-  graph: NetworkGraph,
-  haPairSet: Set<string>
-): Map<string, NodePortInfo> {
+function collectNodePorts(graph: NetworkGraph, haPairSet: Set<string>): Map<string, NodePortInfo> {
   const nodePorts = new Map<string, NodePortInfo>()
 
   const getOrCreate = (nodeId: string): NodePortInfo => {
     if (!nodePorts.has(nodeId)) {
-      nodePorts.set(nodeId, { all: new Set(), top: new Set(), bottom: new Set(), left: new Set(), right: new Set() })
+      nodePorts.set(nodeId, {
+        all: new Set(),
+        top: new Set(),
+        bottom: new Set(),
+        left: new Set(),
+        right: new Set(),
+      })
     }
     return nodePorts.get(nodeId)!
   }
@@ -168,7 +175,11 @@ export class HierarchicalLayout {
   /**
    * Calculate dynamic spacing based on graph complexity
    */
-  private calculateDynamicSpacing(graph: NetworkGraph): { nodeSpacing: number; rankSpacing: number; subgraphPadding: number } {
+  private calculateDynamicSpacing(graph: NetworkGraph): {
+    nodeSpacing: number
+    rankSpacing: number
+    subgraphPadding: number
+  } {
     const nodeCount = graph.nodes.length
     const linkCount = graph.links.length
     const subgraphCount = graph.subgraphs?.length || 0
@@ -254,7 +265,7 @@ export class HierarchicalLayout {
     graph: NetworkGraph,
     options: Required<HierarchicalLayoutOptions>,
     nodePorts: Map<string, NodePortInfo>,
-    haPairs: { nodeA: string; nodeB: string }[]
+    haPairs: { nodeA: string; nodeB: string }[],
   ): ElkNode {
     const elkDirection = this.toElkDirection(options.direction)
 
@@ -269,12 +280,12 @@ export class HierarchicalLayout {
     // Build HA container map: node ID -> container ID
     const nodeToHAContainer = new Map<string, string>()
     const haPairMap = new Map<string, { nodeA: string; nodeB: string }>()
-    haPairs.forEach((pair, idx) => {
+    for (const [idx, pair] of haPairs.entries()) {
       const containerId = `__ha_container_${idx}`
       nodeToHAContainer.set(pair.nodeA, containerId)
       nodeToHAContainer.set(pair.nodeB, containerId)
       haPairMap.set(containerId, pair)
-    })
+    }
 
     // Create ELK node
     const createElkNode = (node: Node): ElkNode => {
@@ -309,7 +320,7 @@ export class HierarchicalLayout {
         // Top ports (incoming)
         const topPorts = Array.from(portInfo.top)
         const topPositions = calcPortPositions(topPorts.length, width)
-        topPorts.forEach((portName, i) => {
+        for (const [i, portName] of topPorts.entries()) {
           elkNode.ports!.push({
             id: `${node.id}:${portName}`,
             width: PORT_WIDTH,
@@ -319,12 +330,12 @@ export class HierarchicalLayout {
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'NORTH' },
           })
-        })
+        }
 
         // Bottom ports (outgoing)
         const bottomPorts = Array.from(portInfo.bottom)
         const bottomPositions = calcPortPositions(bottomPorts.length, width)
-        bottomPorts.forEach((portName, i) => {
+        for (const [i, portName] of bottomPorts.entries()) {
           elkNode.ports!.push({
             id: `${node.id}:${portName}`,
             width: PORT_WIDTH,
@@ -334,12 +345,12 @@ export class HierarchicalLayout {
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'SOUTH' },
           })
-        })
+        }
 
         // Left ports (HA)
         const leftPorts = Array.from(portInfo.left)
         const leftPositions = calcPortPositions(leftPorts.length, height)
-        leftPorts.forEach((portName, i) => {
+        for (const [i, portName] of leftPorts.entries()) {
           elkNode.ports!.push({
             id: `${node.id}:${portName}`,
             width: PORT_WIDTH,
@@ -349,12 +360,12 @@ export class HierarchicalLayout {
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'WEST' },
           })
-        })
+        }
 
         // Right ports (HA)
         const rightPorts = Array.from(portInfo.right)
         const rightPositions = calcPortPositions(rightPorts.length, height)
-        rightPorts.forEach((portName, i) => {
+        for (const [i, portName] of rightPorts.entries()) {
           elkNode.ports!.push({
             id: `${node.id}:${portName}`,
             width: PORT_WIDTH,
@@ -364,7 +375,7 @@ export class HierarchicalLayout {
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'EAST' },
           })
-        })
+        }
 
         elkNode.layoutOptions = {
           'elk.portConstraints': 'FIXED_POS',
@@ -376,16 +387,19 @@ export class HierarchicalLayout {
     }
 
     // Create HA container node
-    const createHAContainerNode = (containerId: string, pair: { nodeA: string; nodeB: string }): ElkNode | null => {
-      const nodeA = graph.nodes.find(n => n.id === pair.nodeA)
-      const nodeB = graph.nodes.find(n => n.id === pair.nodeB)
+    const createHAContainerNode = (
+      containerId: string,
+      pair: { nodeA: string; nodeB: string },
+    ): ElkNode | null => {
+      const nodeA = graph.nodes.find((n) => n.id === pair.nodeA)
+      const nodeB = graph.nodes.find((n) => n.id === pair.nodeB)
       if (!nodeA || !nodeB) return null
 
       const childA = createElkNode(nodeA)
       const childB = createElkNode(nodeB)
 
       // Find HA link
-      const haLink = graph.links.find(link => {
+      const haLink = graph.links.find((link) => {
         if (!link.redundancy) return false
         const from = toEndpoint(link.from)
         const to = toEndpoint(link.to)
@@ -429,7 +443,10 @@ export class HierarchicalLayout {
     const addedHAContainers = new Set<string>()
 
     // Create ELK subgraph node recursively
-    const createSubgraphNode = (subgraph: Subgraph, edgesByContainer: Map<string, ElkExtendedEdge[]>): ElkNode => {
+    const createSubgraphNode = (
+      subgraph: Subgraph,
+      edgesByContainer: Map<string, ElkExtendedEdge[]>,
+    ): ElkNode => {
       const childNodes: ElkNode[] = []
 
       for (const childSg of subgraphMap.values()) {
@@ -546,13 +563,13 @@ export class HierarchicalLayout {
       edgesByContainer.set(sg.id, [])
     }
 
-    graph.links.forEach((link, index) => {
+    for (const [index, link] of graph.links.entries()) {
       const from = toEndpoint(link.from)
       const to = toEndpoint(link.to)
 
       // Skip HA links (they're inside HA containers)
       if (link.redundancy && isHALink(from.node, to.node)) {
-        return
+        continue
       }
 
       const sourceId = from.port ? `${from.node}:${from.port}` : from.node
@@ -573,10 +590,12 @@ export class HierarchicalLayout {
       if (to.ip) labelParts.push(to.ip)
 
       if (labelParts.length > 0) {
-        edge.labels = [{
-          text: labelParts.join('\n'),
-          layoutOptions: { 'elk.edgeLabels.placement': 'CENTER' }
-        }]
+        edge.labels = [
+          {
+            text: labelParts.join('\n'),
+            layoutOptions: { 'elk.edgeLabels.placement': 'CENTER' },
+          },
+        ]
       }
 
       // Find LCA and place edge in appropriate container
@@ -588,7 +607,7 @@ export class HierarchicalLayout {
 
       const containerId = container && subgraphMap.has(container) ? container : 'root'
       edgesByContainer.get(containerId)!.push(edge)
-    })
+    }
 
     // Dynamic edge spacing
     const edgeNodeSpacing = Math.max(10, Math.round(options.nodeSpacing * 0.4))
@@ -632,7 +651,7 @@ export class HierarchicalLayout {
     graph: NetworkGraph,
     elkGraph: ElkNode,
     nodePorts: Map<string, NodePortInfo>,
-    _options: Required<HierarchicalLayoutOptions>
+    _options: Required<HierarchicalLayoutOptions>,
   ): LayoutResult {
     const layoutNodes = new Map<string, LayoutNode>()
     const layoutSubgraphs = new Map<string, LayoutSubgraph>()
@@ -730,7 +749,9 @@ export class HierarchicalLayout {
               side = 'right'
             }
 
-            const portName = elkPort.id.includes(':') ? elkPort.id.split(':').slice(1).join(':') : elkPort.id
+            const portName = elkPort.id.includes(':')
+              ? elkPort.id.split(':').slice(1).join(':')
+              : elkPort.id
 
             layoutNode.ports.set(elkPort.id, {
               id: elkPort.id,
@@ -754,10 +775,10 @@ export class HierarchicalLayout {
     }
 
     // Build link map for ID matching
-    const linkById = new Map<string, { link: typeof graph.links[0]; index: number }>()
-    graph.links.forEach((link, index) => {
+    const linkById = new Map<string, { link: (typeof graph.links)[0]; index: number }>()
+    for (const [index, link] of graph.links.entries()) {
       linkById.set(link.id || `edge-${index}`, { link, index })
-    })
+    }
 
     // Track processed edges to prevent duplicates
     const processedEdgeIds = new Set<string>()
@@ -825,7 +846,7 @@ export class HierarchicalLayout {
             } else {
               points = this.generateOrthogonalPath(
                 { x: fromNode.position.x, y: fromBottomY },
-                { x: toNode.position.x, y: toTopY }
+                { x: toNode.position.x, y: toTopY },
               )
             }
           } else {
@@ -865,21 +886,21 @@ export class HierarchicalLayout {
     processEdgesInContainer(elkGraph)
 
     // Fallback for any missing links
-    graph.links.forEach((link, index) => {
+    for (const [index, link] of graph.links.entries()) {
       const id = link.id || `link-${index}`
-      if (layoutLinks.has(id)) return
+      if (layoutLinks.has(id)) continue
 
       const fromEndpoint = toEndpoint(link.from)
       const toEndpoint_ = toEndpoint(link.to)
       const fromNode = layoutNodes.get(fromEndpoint.node)
       const toNode = layoutNodes.get(toEndpoint_.node)
-      if (!fromNode || !toNode) return
+      if (!fromNode || !toNode) continue
 
       const startY = fromNode.position.y + fromNode.size.height / 2
       const endY = toNode.position.y - toNode.size.height / 2
       const points = this.generateOrthogonalPath(
         { x: fromNode.position.x, y: startY },
-        { x: toNode.position.x, y: endY }
+        { x: toNode.position.x, y: endY },
       )
 
       layoutLinks.set(id, {
@@ -891,7 +912,7 @@ export class HierarchicalLayout {
         points,
         link,
       })
-    })
+    }
 
     // Calculate bounds
     const bounds = this.calculateTotalBounds(layoutNodes, layoutSubgraphs)
@@ -910,33 +931,43 @@ export class HierarchicalLayout {
     const result = this.calculateFallbackLayout(graph, options.direction)
 
     // Start async layout
-    this.layoutAsync(graph).then((asyncResult) => {
-      Object.assign(result, asyncResult)
-    }).catch(() => {})
+    this.layoutAsync(graph)
+      .then((asyncResult) => {
+        Object.assign(result, asyncResult)
+      })
+      .catch(() => {})
 
     return result
   }
 
   private toElkDirection(direction: LayoutDirection): string {
     switch (direction) {
-      case 'TB': return 'DOWN'
-      case 'BT': return 'UP'
-      case 'LR': return 'RIGHT'
-      case 'RL': return 'LEFT'
-      default: return 'DOWN'
+      case 'TB':
+        return 'DOWN'
+      case 'BT':
+        return 'UP'
+      case 'LR':
+        return 'RIGHT'
+      case 'RL':
+        return 'LEFT'
+      default:
+        return 'DOWN'
     }
   }
 
-  private calculateNodeHeight(node: Node, portCount: number = 0): number {
+  private calculateNodeHeight(node: Node, portCount = 0): number {
     const lines = Array.isArray(node.label) ? node.label.length : 1
     const labelHeight = lines * LABEL_LINE_HEIGHT
 
     const labels = Array.isArray(node.label) ? node.label : [node.label]
-    const maxLabelLength = Math.max(...labels.map(l => l.length))
+    const maxLabelLength = Math.max(...labels.map((l) => l.length))
     const labelWidth = maxLabelLength * ESTIMATED_CHAR_WIDTH
     const portWidth = portCount > 0 ? (portCount + 1) * MIN_PORT_SPACING : 0
     const baseContentWidth = Math.max(labelWidth, portWidth)
-    const baseNodeWidth = Math.max(this.options.nodeWidth, baseContentWidth + NODE_HORIZONTAL_PADDING)
+    const baseNodeWidth = Math.max(
+      this.options.nodeWidth,
+      baseContentWidth + NODE_HORIZONTAL_PADDING,
+    )
     const maxIconWidth = Math.round(baseNodeWidth * MAX_ICON_WIDTH_RATIO)
 
     let iconHeight = 0
@@ -950,10 +981,10 @@ export class HierarchicalLayout {
         if (vendorIcon.startsWith('<svg')) {
           const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
           if (viewBoxMatch) {
-            const vbWidth = parseInt(viewBoxMatch[1])
-            const vbHeight = parseInt(viewBoxMatch[2])
+            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
+            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
             const aspectRatio = vbWidth / vbHeight
-            let iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
+            const iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
             iconHeight = DEFAULT_ICON_SIZE
             if (iconWidth > maxIconWidth) {
               iconHeight = Math.round(maxIconWidth / aspectRatio)
@@ -964,10 +995,10 @@ export class HierarchicalLayout {
         } else {
           const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
           if (vbMatch) {
-            const vbWidth = parseInt(vbMatch[3])
-            const vbHeight = parseInt(vbMatch[4])
+            const vbWidth = Number.parseInt(vbMatch[3], 10)
+            const vbHeight = Number.parseInt(vbMatch[4], 10)
             const aspectRatio = vbWidth / vbHeight
-            let iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
+            const iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
             iconHeight = DEFAULT_ICON_SIZE
             if (iconWidth > maxIconWidth) {
               iconHeight = Math.round(maxIconWidth / aspectRatio)
@@ -1004,7 +1035,7 @@ export class HierarchicalLayout {
 
   private calculateNodeWidth(node: Node, portInfo: NodePortInfo | undefined): number {
     const labels = Array.isArray(node.label) ? node.label : [node.label]
-    const maxLabelLength = Math.max(...labels.map(l => l.length))
+    const maxLabelLength = Math.max(...labels.map((l) => l.length))
     const labelWidth = maxLabelLength * ESTIMATED_CHAR_WIDTH
 
     const topCount = portInfo?.top.size || 0
@@ -1030,16 +1061,16 @@ export class HierarchicalLayout {
         if (vendorIcon.startsWith('<svg')) {
           const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
           if (viewBoxMatch) {
-            const vbWidth = parseInt(viewBoxMatch[1])
-            const vbHeight = parseInt(viewBoxMatch[2])
+            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
+            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
             const aspectRatio = vbWidth / vbHeight
             iconWidth = Math.min(Math.round(DEFAULT_ICON_SIZE * aspectRatio), maxIconWidth)
           }
         } else {
           const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
           if (vbMatch) {
-            const vbWidth = parseInt(vbMatch[3])
-            const vbHeight = parseInt(vbMatch[4])
+            const vbWidth = Number.parseInt(vbMatch[3], 10)
+            const vbHeight = Number.parseInt(vbMatch[4], 10)
             const aspectRatio = vbWidth / vbHeight
             iconWidth = Math.min(Math.round(DEFAULT_ICON_SIZE * aspectRatio), maxIconWidth)
           }
@@ -1053,44 +1084,46 @@ export class HierarchicalLayout {
 
   private calculateTotalBounds(
     nodes: Map<string, LayoutNode>,
-    subgraphs: Map<string, LayoutSubgraph>
+    subgraphs: Map<string, LayoutSubgraph>,
   ): Bounds {
-    let minX = Infinity, minY = Infinity
-    let maxX = -Infinity, maxY = -Infinity
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
 
-    nodes.forEach((node) => {
+    for (const node of nodes.values()) {
       let left = node.position.x - node.size.width / 2
       let right = node.position.x + node.size.width / 2
       let top = node.position.y - node.size.height / 2
       let bottom = node.position.y + node.size.height / 2
 
       if (node.ports) {
-        node.ports.forEach((port) => {
+        for (const port of node.ports.values()) {
           const portX = node.position.x + port.position.x
           const portY = node.position.y + port.position.y
           left = Math.min(left, portX - port.size.width / 2)
           right = Math.max(right, portX + port.size.width / 2)
           top = Math.min(top, portY - port.size.height / 2)
           bottom = Math.max(bottom, portY + port.size.height / 2)
-        })
+        }
       }
 
       minX = Math.min(minX, left)
       minY = Math.min(minY, top)
       maxX = Math.max(maxX, right)
       maxY = Math.max(maxY, bottom)
-    })
+    }
 
-    subgraphs.forEach((sg) => {
+    for (const sg of subgraphs.values()) {
       minX = Math.min(minX, sg.bounds.x)
       minY = Math.min(minY, sg.bounds.y)
       maxX = Math.max(maxX, sg.bounds.x + sg.bounds.width)
       maxY = Math.max(maxY, sg.bounds.y + sg.bounds.height)
-    })
+    }
 
     const padding = 50
 
-    if (minX === Infinity) {
+    if (minX === Number.POSITIVE_INFINITY) {
       return { x: 0, y: 0, width: 400, height: 300 }
     }
 
@@ -1115,7 +1148,9 @@ export class HierarchicalLayout {
     }
     const nodePorts = collectNodePorts(graph, haPairSet)
 
-    let x = 100, y = 100, col = 0
+    let x = 100
+    let y = 100
+    let col = 0
     const maxCols = 4
     const rowHeight = this.options.nodeHeight + this.options.rankSpacing
 
@@ -1143,7 +1178,7 @@ export class HierarchicalLayout {
       }
     }
 
-    graph.links.forEach((link, index) => {
+    for (const [index, link] of graph.links.entries()) {
       const fromId = getNodeId(link.from)
       const toId = getNodeId(link.to)
       const from = layoutNodes.get(fromId)
@@ -1159,7 +1194,7 @@ export class HierarchicalLayout {
           link,
         })
       }
-    })
+    }
 
     const bounds = this.calculateTotalBounds(layoutNodes, layoutSubgraphs)
 
@@ -1208,12 +1243,7 @@ export class HierarchicalLayout {
     // Use midpoint for orthogonal routing
     const midY = start.y + dy / 2
 
-    return [
-      start,
-      { x: start.x, y: midY },
-      { x: end.x, y: midY },
-      end,
-    ]
+    return [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end]
   }
 }
 

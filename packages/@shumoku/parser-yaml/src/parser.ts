@@ -2,21 +2,21 @@
  * YAML parser for network diagrams
  */
 
-import yaml from 'js-yaml'
 import type {
+  ArrowType,
+  CanvasSettings,
+  GraphSettings,
+  Link,
+  LinkType,
   NetworkGraph,
   Node,
-  Link,
-  Subgraph,
-  GraphSettings,
-  CanvasSettings,
-  PaperSize,
-  PaperOrientation,
   NodeShape,
-  LinkType,
-  ArrowType,
+  PaperOrientation,
+  PaperSize,
+  Subgraph,
   ThemeType,
 } from '@shumoku/core/models'
+import yaml from 'js-yaml'
 
 // Re-define DeviceType enum locally (same as v2.DeviceType)
 enum DeviceType {
@@ -142,14 +142,16 @@ interface YamlGraphSettings {
   rankSpacing?: number
   subgraphPadding?: number
   canvas?: YamlCanvasSettings
-  legend?: boolean | {
-    enabled?: boolean
-    position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-    showDeviceTypes?: boolean
-    showBandwidth?: boolean
-    showCableTypes?: boolean
-    showVlans?: boolean
-  }
+  legend?:
+    | boolean
+    | {
+        enabled?: boolean
+        position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+        showDeviceTypes?: boolean
+        showBandwidth?: boolean
+        showCableTypes?: boolean
+        showVlans?: boolean
+      }
 }
 
 interface YamlNetworkV2 {
@@ -242,16 +244,18 @@ export class YamlParser {
         type: this.parseDeviceType(n.type),
         parent: n.parent,
         rank: n.rank,
-        style: n.style ? {
-          fill: n.style.fill,
-          stroke: n.style.stroke,
-          strokeWidth: n.style.strokeWidth,
-          strokeDasharray: n.style.strokeDasharray,
-          textColor: n.style.textColor,
-          fontSize: n.style.fontSize,
-          fontWeight: n.style.fontWeight as 'normal' | 'bold' | undefined,
-          opacity: n.style.opacity,
-        } : undefined,
+        style: n.style
+          ? {
+              fill: n.style.fill,
+              stroke: n.style.stroke,
+              strokeWidth: n.style.strokeWidth,
+              strokeDasharray: n.style.strokeDasharray,
+              textColor: n.style.textColor,
+              fontSize: n.style.fontSize,
+              fontWeight: n.style.fontWeight as 'normal' | 'bold' | undefined,
+              opacity: n.style.opacity,
+            }
+          : undefined,
         metadata: n.metadata,
         vendor: n.vendor?.toLowerCase(),
         service: n.service?.toLowerCase(),
@@ -272,13 +276,15 @@ export class YamlParser {
       bandwidth: this.parseBandwidth(l.bandwidth),
       redundancy: this.parseRedundancyType(l.redundancy),
       vlan: this.parseVlan(l.vlan),
-      style: l.style ? {
-        stroke: l.style.stroke,
-        strokeWidth: l.style.strokeWidth,
-        strokeDasharray: l.style.strokeDasharray,
-        opacity: l.style.opacity,
-        minLength: l.style.minLength,
-      } : undefined,
+      style: l.style
+        ? {
+            stroke: l.style.stroke,
+            strokeWidth: l.style.strokeWidth,
+            strokeDasharray: l.style.strokeDasharray,
+            opacity: l.style.opacity,
+            minLength: l.style.minLength,
+          }
+        : undefined,
     }))
   }
 
@@ -289,7 +295,9 @@ export class YamlParser {
     return Array.isArray(vlan) ? vlan : [vlan]
   }
 
-  private parseLinkEndpoint(endpoint: string | YamlLinkEndpoint): string | { node: string; port?: string; ip?: string } {
+  private parseLinkEndpoint(
+    endpoint: string | YamlLinkEndpoint,
+  ): string | { node: string; port?: string; ip?: string } {
     if (typeof endpoint === 'string') {
       return endpoint
     }
@@ -300,7 +308,9 @@ export class YamlParser {
     }
   }
 
-  private parseRedundancyType(redundancy?: string): 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack' | undefined {
+  private parseRedundancyType(
+    redundancy?: string,
+  ): 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack' | undefined {
     if (!redundancy) return undefined
 
     const typeMap: Record<string, 'ha' | 'vc' | 'vss' | 'vpc' | 'mlag' | 'stack'> = {
@@ -364,17 +374,24 @@ export class YamlParser {
         children: s.children || [],
         parent: s.parent,
         direction: this.parseDirection(s.direction),
-        style: s.style ? {
-          fill: s.style.fill,
-          stroke: s.style.stroke,
-          strokeWidth: s.style.strokeWidth,
-          strokeDasharray: s.style.strokeDasharray,
-          labelPosition: s.style.labelPosition as 'top' | 'bottom' | 'left' | 'right' | undefined,
-          labelFontSize: s.style.labelFontSize,
-          padding: s.style.padding,
-          nodeSpacing: s.style.nodeSpacing,
-          rankSpacing: s.style.rankSpacing,
-        } : undefined,
+        style: s.style
+          ? {
+              fill: s.style.fill,
+              stroke: s.style.stroke,
+              strokeWidth: s.style.strokeWidth,
+              strokeDasharray: s.style.strokeDasharray,
+              labelPosition: s.style.labelPosition as
+                | 'top'
+                | 'bottom'
+                | 'left'
+                | 'right'
+                | undefined,
+              labelFontSize: s.style.labelFontSize,
+              padding: s.style.padding,
+              nodeSpacing: s.style.nodeSpacing,
+              rankSpacing: s.style.rankSpacing,
+            }
+          : undefined,
         vendor: s.vendor?.toLowerCase(),
         service: s.service?.toLowerCase(),
         model: s.model?.toLowerCase(),
@@ -441,10 +458,24 @@ export class YamlParser {
   private parsePaperSize(size?: string): PaperSize | undefined {
     if (!size) return undefined
     const normalized = size.toUpperCase()
-    const validSizes: PaperSize[] = ['A0', 'A1', 'A2', 'A3', 'A4', 'B0', 'B1', 'B2', 'B3', 'B4', 'letter', 'legal', 'tabloid']
+    const validSizes: PaperSize[] = [
+      'A0',
+      'A1',
+      'A2',
+      'A3',
+      'A4',
+      'B0',
+      'B1',
+      'B2',
+      'B3',
+      'B4',
+      'letter',
+      'legal',
+      'tabloid',
+    ]
 
     // Handle case-insensitive matching
-    const found = validSizes.find(s => s.toUpperCase() === normalized)
+    const found = validSizes.find((s) => s.toUpperCase() === normalized)
     return found
   }
 
@@ -515,7 +546,7 @@ export class YamlParser {
   }
 
   private parseArrowType(arrow?: string): ArrowType | undefined {
-    if (!arrow) return undefined  // Let renderer decide based on redundancy
+    if (!arrow) return undefined // Let renderer decide based on redundancy
 
     const arrowMap: Record<string, ArrowType> = {
       none: 'none',
@@ -551,9 +582,7 @@ export class YamlParser {
   private assignNodesToSubgraphs(graph: NetworkGraph): void {
     if (!graph.subgraphs) return
 
-    const subgraphMap = new Map<string, Subgraph>(
-      graph.subgraphs.map((s: Subgraph) => [s.id, s])
-    )
+    const subgraphMap = new Map<string, Subgraph>(graph.subgraphs.map((s: Subgraph) => [s.id, s]))
 
     // Update children arrays for nested subgraphs
     for (const subgraph of graph.subgraphs) {

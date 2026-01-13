@@ -1,13 +1,13 @@
-import { getPageImage, source } from '@/lib/source';
-import { notFound } from 'next/navigation';
-import { ImageResponse } from 'next/og';
+import { notFound } from 'next/navigation'
+import { ImageResponse } from 'next/og'
+import { getPageImage, source } from '@/lib/source'
 
-export const revalidate = false;
+export const revalidate = false
 
 export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...slug]'>) {
-  const { slug } = await params;
-  const page = source.getPage(slug.slice(0, -1));
-  if (!page) notFound();
+  const { slug } = await params
+  const page = source.getPage(slug.slice(0, -1))
+  if (!page) notFound()
 
   return new ImageResponse(
     <div
@@ -31,9 +31,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
             />
           </g>
         </svg>
-        <span style={{ color: '#7FE4C1', fontSize: '28px', fontWeight: 600 }}>
-          Shumoku
-        </span>
+        <span style={{ color: '#7FE4C1', fontSize: '28px', fontWeight: 600 }}>Shumoku</span>
       </div>
 
       {/* Title */}
@@ -74,12 +72,12 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
       width: 1200,
       height: 630,
     },
-  );
+  )
 }
 
 export function generateStaticParams() {
   return source.getPages().map((page) => ({
     lang: page.locale,
     slug: getPageImage(page).segments,
-  }));
+  }))
 }

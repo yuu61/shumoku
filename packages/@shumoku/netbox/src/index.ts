@@ -3,57 +3,57 @@
  * NetBox API client and Shumoku converter
  */
 
+export type { LegendSettings } from '@shumoku/core/models'
 export { NetBoxClient, type QueryParams } from './client.js'
 export { convertToNetworkGraph, convertToNetworkGraphWithVMs, toYaml } from './converter.js'
-export type { LegendSettings } from '@shumoku/core/models'
 export type {
-  // NetBox API types
-  NetBoxTag,
+  CableStyle,
+  ConnectionData,
+  ConverterOptions,
+  // Internal types
+  DeviceData,
+  DeviceStatusStyle,
+  DeviceStatusValue,
+  DeviceTypeString,
+  GroupBy,
+  NetBoxCable,
+  NetBoxCableResponse,
+  NetBoxClientOptions,
+  // Virtual Machine types
+  NetBoxCluster,
   NetBoxDevice,
   NetBoxDeviceResponse,
   NetBoxDeviceStatus,
-  NetBoxVlan,
   NetBoxInterface,
   NetBoxInterfaceResponse,
-  NetBoxTermination,
-  NetBoxCable,
-  NetBoxCableResponse,
-  NetBoxSite,
-  NetBoxSiteResponse,
+  NetBoxIPAddress,
+  NetBoxIPAddressResponse,
   NetBoxLocation,
   NetBoxLocationResponse,
-  // Virtual Machine types
-  NetBoxCluster,
-  NetBoxVirtualMachine,
-  NetBoxVirtualMachineResponse,
-  NetBoxVirtualMachineStatus,
-  NetBoxVMInterface,
-  NetBoxVMInterfaceResponse,
   // IPAM types
   NetBoxPrefix,
   NetBoxPrefixResponse,
-  NetBoxIPAddress,
-  NetBoxIPAddressResponse,
+  NetBoxSite,
+  NetBoxSiteResponse,
+  // NetBox API types
+  NetBoxTag,
+  NetBoxTermination,
+  NetBoxVirtualMachine,
+  NetBoxVirtualMachineResponse,
+  NetBoxVirtualMachineStatus,
+  NetBoxVlan,
+  NetBoxVMInterface,
+  NetBoxVMInterfaceResponse,
   // Configuration types
   TagMapping,
-  ConverterOptions,
-  NetBoxClientOptions,
-  GroupBy,
-  CableStyle,
-  DeviceTypeString,
-  DeviceStatusValue,
-  DeviceStatusStyle,
-  // Internal types
-  DeviceData,
-  ConnectionData,
 } from './types.js'
 export {
-  DEFAULT_TAG_MAPPING,
-  TAG_PRIORITY,
   CABLE_COLORS,
   CABLE_STYLES,
-  ROLE_TO_TYPE,
+  convertSpeedToBandwidth,
+  DEFAULT_TAG_MAPPING,
   DEVICE_STATUS_STYLES,
   getVlanColor,
-  convertSpeedToBandwidth,
+  ROLE_TO_TYPE,
+  TAG_PRIORITY,
 } from './types.js'

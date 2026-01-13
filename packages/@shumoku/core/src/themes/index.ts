@@ -2,19 +2,19 @@
  * Theme system exports
  */
 
-export * from './types.js'
-export { modernTheme } from './modern.js'
 export { darkTheme } from './dark.js'
+export { modernTheme } from './modern.js'
+export * from './types.js'
 export {
-  mergeTheme,
-  createTheme,
   applyThemeToCSS,
-  getThemeFromCSS
+  createTheme,
+  getThemeFromCSS,
+  mergeTheme,
 } from './utils.js'
 
+import { darkTheme } from './dark.js'
 // Default themes map
 import { modernTheme } from './modern.js'
-import { darkTheme } from './dark.js'
 
 export const themes = {
   modern: modernTheme,

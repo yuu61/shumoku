@@ -2,45 +2,45 @@
  * Modern theme - Default light theme
  */
 
-import type { Theme } from './types.js'
 import { DeviceType } from '../models/index.js'
+import type { Theme } from './types.js'
 
 export const modernTheme: Theme = {
   name: 'modern',
   variant: 'light',
-  
+
   colors: {
     // Backgrounds
     background: '#ffffff',
     surface: '#f8fafc',
     surfaceHover: '#f1f5f9',
-    
+
     // Text
     text: '#0f172a',
     textSecondary: '#64748b',
     textDisabled: '#cbd5e1',
-    
+
     // Primary (Blue)
     primary: '#3b82f6',
     primaryHover: '#2563eb',
     primaryActive: '#1d4ed8',
-    
+
     // Secondary (Purple)
     secondary: '#8b5cf6',
     secondaryHover: '#7c3aed',
     secondaryActive: '#6d28d9',
-    
+
     // Status
     success: '#10b981',
     warning: '#f59e0b',
     error: '#ef4444',
     info: '#3b82f6',
-    
+
     // Links
     link: '#3b82f6',
     linkHover: '#2563eb',
     linkDown: '#ef4444',
-    
+
     // Device colors
     devices: {
       [DeviceType.Router]: '#3b82f6',
@@ -54,7 +54,7 @@ export const modernTheme: Theme = {
       [DeviceType.Internet]: '#6366f1',
       [DeviceType.Generic]: '#94a3b8',
     },
-    
+
     // Module colors
     modules: {
       core: '#dbeafe',
@@ -64,19 +64,19 @@ export const modernTheme: Theme = {
       cloud: '#e0e7ff',
       default: '#f3f4f6',
     },
-    
+
     // Grid
     grid: '#e5e7eb',
     guideline: '#3b82f6',
   },
-  
+
   dimensions: {
     device: {
       small: { width: 60, height: 40 },
       medium: { width: 80, height: 60 },
       large: { width: 120, height: 80 },
     },
-    
+
     fontSize: {
       tiny: 10,
       small: 12,
@@ -84,14 +84,14 @@ export const modernTheme: Theme = {
       large: 16,
       huge: 20,
     },
-    
+
     lineWidth: {
       thin: 1,
       normal: 2,
       thick: 3,
       emphasis: 4,
     },
-    
+
     spacing: {
       xs: 4,
       sm: 8,
@@ -99,7 +99,7 @@ export const modernTheme: Theme = {
       lg: 24,
       xl: 32,
     },
-    
+
     radius: {
       small: 4,
       medium: 8,
@@ -107,7 +107,7 @@ export const modernTheme: Theme = {
       round: 9999,
     },
   },
-  
+
   shadows: {
     none: {
       color: 'transparent',
@@ -144,7 +144,7 @@ export const modernTheme: Theme = {
       alpha: 0.5,
     },
   },
-  
+
   animations: {
     duration: {
       instant: 0,
@@ -152,7 +152,7 @@ export const modernTheme: Theme = {
       normal: 300,
       slow: 500,
     },
-    
+
     easing: {
       linear: 'linear',
       easeIn: 'ease-in',
@@ -161,14 +161,14 @@ export const modernTheme: Theme = {
       bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
     },
   },
-  
+
   typography: {
     fontFamily: {
       sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       mono: 'ui-monospace, "Cascadia Mono", "Consolas", monospace',
       display: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     },
-    
+
     fontWeight: {
       light: 300,
       regular: 400,
@@ -176,7 +176,7 @@ export const modernTheme: Theme = {
       semibold: 600,
       bold: 700,
     },
-    
+
     letterSpacing: {
       tight: -0.025,
       normal: 0,
