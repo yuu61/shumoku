@@ -1,9 +1,9 @@
 /**
- * Shumoku Renderer Types
- * Note: SVGRenderer has moved to @shumoku/renderer
+ * Shumoku Renderer
+ * SVG renderer for network diagrams
  */
 
-export type { SVGRendererOptions } from './svg.js'
+export { SVGRenderer, type SVGRendererOptions } from './svg.js'
 
 // Types for interactive runtime
 export type {

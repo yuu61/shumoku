@@ -437,8 +437,6 @@ export class SVGRenderer {
       : ''
 
     return `<style>${cssVars}
-  .node { cursor: pointer; }
-  .node:hover rect, .node:hover circle, .node:hover polygon { filter: brightness(0.95); }
   .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: ${this.themeColors.labelColor}; }
   .node-label-bold { font-weight: bold; }
   .node-icon { color: ${this.themeColors.labelSecondaryColor}; }
@@ -532,7 +530,7 @@ export class SVGRenderer {
     const bg = this.renderNodeBackground(layoutNode)
     const fg = this.renderNodeForeground(layoutNode)
 
-    return `<g class="node" data-id="${id}"${dataAttrs} cursor="pointer">
+    return `<g class="node" data-id="${id}"${dataAttrs} >
 ${bg}
 ${fg}
 </g>`
@@ -691,7 +689,7 @@ ${fg}
       )
 
       // Wrap in a group with data attributes
-      groups.push(`<g class="port" data-port="${port.id}"${portDeviceAttr} cursor="pointer">
+      groups.push(`<g class="port" data-port="${port.id}"${portDeviceAttr} >
   ${parts.join('\n  ')}
 </g>`)
     }
@@ -1223,7 +1221,7 @@ ${linePath}`
     return `<g class="link-lines">
 ${lines.join('\n')}
 <path class="link-hit-area" d="${basePath}"
-  fill="none" stroke="${stroke}" stroke-width="${hitWidth}" opacity="0" cursor="pointer" />
+  fill="none" stroke="${stroke}" stroke-width="${hitWidth}" opacity="0"  />
 </g>`
   }
 
