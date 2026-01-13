@@ -42,7 +42,8 @@
   "dependencies": {
     "@shumoku/core": "^0.2.0",
     "@shumoku/icons": "^0.2.0",
-    "@shumoku/parser-yaml": "^0.2.0"
+    "@shumoku/parser-yaml": "^0.2.0",
+    "@shumoku/renderer": "^0.2.0"
   },
   "publishConfig": {
     "access": "public"

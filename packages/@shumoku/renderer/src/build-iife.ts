@@ -5,7 +5,7 @@
 import { join } from 'node:path'
 
 const result = await Bun.build({
-  entrypoints: [join(import.meta.dir, 'iife-entry.ts')],
+  entrypoints: [join(import.meta.dir, 'html', 'iife-entry.ts')],
   outdir: join(import.meta.dir, '..', 'dist'),
   naming: 'shumoku-interactive.iife.js',
   format: 'iife',

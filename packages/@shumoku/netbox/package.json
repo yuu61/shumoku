@@ -46,7 +46,8 @@
   },
   "dependencies": {
     "@shumoku/core": "^0.2.0",
-    "@shumoku/icons": "^0.2.0"
+    "@shumoku/icons": "^0.2.0",
+    "@shumoku/renderer": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

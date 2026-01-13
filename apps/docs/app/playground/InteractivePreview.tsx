@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { initInteractive, type InteractiveInstance } from '@shumoku/interactive'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 
 interface InteractivePreviewProps {
@@ -9,10 +8,21 @@ interface InteractivePreviewProps {
   className?: string
 }
 
+interface ViewBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export function InteractivePreview({ svgContent, className }: InteractivePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const interactiveRef = useRef<InteractiveInstance | null>(null)
-  const [scale, setScale] = useState(1)
+  const scaleDisplayRef = useRef<HTMLSpanElement>(null)
+
+  // ViewBox state (using refs to avoid re-renders)
+  const vbRef = useRef<ViewBox>({ x: 0, y: 0, w: 0, h: 0 })
+  const origVbRef = useRef<ViewBox>({ x: 0, y: 0, w: 0, h: 0 })
+  const dragRef = useRef({ active: false, x: 0, y: 0, vx: 0, vy: 0 })
 
   // Build the SVG with full width/height
   const svgHtml = useMemo(() => {
@@ -31,55 +41,119 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
     return svg.outerHTML
   }, [svgContent])
 
-  // Initialize interactive after SVG is rendered
-  useEffect(() => {
-    // Cleanup previous instance
-    if (interactiveRef.current) {
-      interactiveRef.current.destroy()
-      interactiveRef.current = null
-    }
+  // Update viewBox on SVG element
+  const updateViewBox = useCallback(() => {
+    const svg = containerRef.current?.querySelector('svg')
+    if (!svg) return
+    const vb = vbRef.current
+    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`)
 
+    // Update scale display
+    if (scaleDisplayRef.current) {
+      const scale = origVbRef.current.w / vb.w
+      scaleDisplayRef.current.textContent = `${Math.round(scale * 100)}%`
+    }
+  }, [])
+
+  // Fit view to container
+  const fitView = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+    const orig = origVbRef.current
+    const cw = container.clientWidth || 800
+    const ch = container.clientHeight || 600
+    const scale = Math.min(cw / orig.w, ch / orig.h) * 0.9
+    vbRef.current = {
+      w: cw / scale,
+      h: ch / scale,
+      x: orig.x + (orig.w - cw / scale) / 2,
+      y: orig.y + (orig.h - ch / scale) / 2,
+    }
+    updateViewBox()
+  }, [updateViewBox])
+
+  // Initialize pan/zoom after SVG is rendered
+  useEffect(() => {
     if (!svgHtml || !containerRef.current) return
 
-    const svgElement = containerRef.current.querySelector('svg')
-    if (!svgElement) return
+    const container = containerRef.current
+    const svg = container.querySelector('svg')
+    if (!svg) return
 
-    // Small delay to ensure DOM is ready
-    const timeoutId = setTimeout(() => {
-      interactiveRef.current = initInteractive({
-        target: svgElement as SVGElement,
-        modal: { enabled: true },
-        tooltip: { enabled: true },
-        panZoom: { enabled: true },
-      })
+    // Parse original viewBox
+    const w = parseFloat(svg.getAttribute('width') || '') || 800
+    const h = parseFloat(svg.getAttribute('height') || '') || 600
+    const existing = svg.getAttribute('viewBox')
+    if (existing) {
+      const p = existing.split(/\s+|,/).map(Number)
+      origVbRef.current = { x: p[0] || 0, y: p[1] || 0, w: p[2] || w, h: p[3] || h }
+    } else {
+      origVbRef.current = { x: 0, y: 0, w, h }
+    }
 
-      // Update scale display periodically
-      const updateScale = () => {
-        if (interactiveRef.current) {
-          setScale(interactiveRef.current.getScale())
-        }
-      }
-      updateScale()
+    // Initial fit
+    fitView()
 
-      // Update scale on viewBox changes
-      const observer = new MutationObserver(updateScale)
-      observer.observe(svgElement, { attributes: true, attributeFilter: ['viewBox'] })
+    // Wheel zoom
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const vb = vbRef.current
+      const orig = origVbRef.current
+      const rect = container.getBoundingClientRect()
+      const mx = (e.clientX - rect.left) / rect.width
+      const my = (e.clientY - rect.top) / rect.height
+      const px = vb.x + vb.w * mx
+      const py = vb.y + vb.h * my
+      const f = e.deltaY > 0 ? 1 / 1.2 : 1.2
+      const nw = vb.w / f
+      const nh = vb.h / f
+      const scale = orig.w / nw
+      if (scale < 0.1 || scale > 10) return
+      vbRef.current = { x: px - nw * mx, y: py - nh * my, w: nw, h: nh }
+      updateViewBox()
+    }
 
-      return () => observer.disconnect()
-    }, 50)
-
-    return () => {
-      clearTimeout(timeoutId)
-      if (interactiveRef.current) {
-        interactiveRef.current.destroy()
-        interactiveRef.current = null
+    // Mouse drag pan
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 0) {
+        dragRef.current = { active: true, x: e.clientX, y: e.clientY, vx: vbRef.current.x, vy: vbRef.current.y }
+        container.style.cursor = 'grabbing'
       }
     }
-  }, [svgHtml])
 
-  const handleReset = () => {
-    interactiveRef.current?.resetView()
-  }
+    const handleMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current
+      if (!drag.active) return
+      const vb = vbRef.current
+      const sx = vb.w / container.clientWidth
+      const sy = vb.h / container.clientHeight
+      vbRef.current = { ...vb, x: drag.vx - (e.clientX - drag.x) * sx, y: drag.vy - (e.clientY - drag.y) * sy }
+      updateViewBox()
+    }
+
+    const handleMouseUp = () => {
+      dragRef.current.active = false
+      container.style.cursor = ''
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    container.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel)
+      container.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [svgHtml, fitView, updateViewBox])
+
+  const handleReset = useCallback(() => {
+    const orig = origVbRef.current
+    vbRef.current = { ...orig }
+    updateViewBox()
+  }, [updateViewBox])
 
   return (
     <div className={cn('relative flex flex-col', className)}>
@@ -94,12 +168,13 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
         <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Preview</span>
         <div className="flex items-center gap-1">
           <span
+            ref={scaleDisplayRef}
             className={cn(
               'min-w-[3.5rem] text-center text-xs tabular-nums',
               'text-neutral-500 dark:text-neutral-400',
             )}
           >
-            {Math.round(scale * 100)}%
+            100%
           </span>
           <div className="mx-1 h-4 w-px bg-neutral-300 dark:bg-neutral-600" />
           <button

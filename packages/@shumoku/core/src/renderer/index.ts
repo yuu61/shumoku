@@ -1,9 +1,9 @@
 /**
- * Shumoku Renderers
+ * Shumoku Renderer Types
+ * Note: SVGRenderer has moved to @shumoku/renderer
  */
 
 export type { SVGRendererOptions } from './svg.js'
-export { SVGRenderer, svgRenderer } from './svg.js'
 
 // Types for interactive runtime
 export type {

@@ -5,7 +5,7 @@ const withMDX = createMDX()
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
-  transpilePackages: ['shumoku', '@shumoku/core', '@shumoku/parser-yaml', '@shumoku/icons'],
+  transpilePackages: ['shumoku', '@shumoku/core', '@shumoku/parser-yaml', '@shumoku/icons', '@shumoku/renderer'],
   async rewrites() {
     return [
       {

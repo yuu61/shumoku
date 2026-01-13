@@ -1,14 +1,26 @@
 {
-  "name": "@shumoku/interactive",
+  "name": "@shumoku/renderer",
   "version": "0.2.0",
-  "description": "Interactive runtime for Shumoku network diagrams",
+  "description": "SVG and HTML renderers for Shumoku network diagrams",
   "license": "MIT",
   "author": "konoe-akitoshi",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/konoe-akitoshi/shumoku.git",
-    "directory": "packages/@shumoku/interactive"
+    "directory": "packages/@shumoku/renderer"
   },
+  "homepage": "https://shumoku.packof.me/",
+  "bugs": {
+    "url": "https://github.com/konoe-akitoshi/shumoku/issues"
+  },
+  "keywords": [
+    "network",
+    "topology",
+    "diagram",
+    "visualization",
+    "svg",
+    "renderer"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -36,11 +48,10 @@
     "lint": "biome check .",
     "test": "vitest run --passWithNoTests"
   },
-  "peerDependencies": {
-    "@shumoku/core": ">=0.2.0"
+  "dependencies": {
+    "@shumoku/core": "workspace:*"
   },
   "devDependencies": {
-    "@shumoku/core": "workspace:*",
     "@types/node": "^20.11.0",
     "jsdom": "^26.1.0",
     "typescript": "^5.6.3",

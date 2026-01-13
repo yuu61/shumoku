@@ -2,7 +2,7 @@
  * Interactive Runtime - Hover tooltip with touch support and pan/zoom
  */
 
-import type { InteractiveInstance, InteractiveOptions } from './types.js'
+import type { InteractiveInstance, InteractiveOptions } from '../types.js'
 
 let tooltip: HTMLDivElement | null = null
 let overlay: HTMLDivElement | null = null

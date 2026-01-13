@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const css = `/**
- * @shumoku/interactive - Optional Stylesheet
+ * @shumoku/renderer - Optional Stylesheet
  * Import this if you want to customize styles via CSS instead of JS
  */
 
