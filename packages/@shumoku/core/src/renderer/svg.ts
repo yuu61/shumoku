@@ -24,6 +24,7 @@ import type {
   NodeShape,
   ThemeType,
 } from '../models/index.js'
+import type { DataAttributeOptions, RenderMode } from './types.js'
 
 // ============================================
 // Theme Colors
@@ -90,13 +91,26 @@ const DARK_THEME: ThemeColors = {
 export interface SVGRendererOptions {
   /** Font family */
   fontFamily?: string
-  /** Include interactive elements */
+  /** Include interactive elements (deprecated, use renderMode) */
   interactive?: boolean
+  /**
+   * Render mode
+   * - 'static': Pure SVG without interactive data attributes (default)
+   * - 'interactive': SVG with data attributes for runtime interactivity
+   */
+  renderMode?: RenderMode
+  /**
+   * Data attributes to include in interactive mode
+   * Only used when renderMode is 'interactive'
+   */
+  dataAttributes?: DataAttributeOptions
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   interactive: true,
+  renderMode: 'static',
+  dataAttributes: { device: true, link: true, metadata: true },
 }
 
 // ============================================
@@ -110,6 +124,20 @@ export class SVGRenderer {
 
   constructor(options?: SVGRendererOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
+  }
+
+  /** Check if interactive mode is enabled */
+  private get isInteractive(): boolean {
+    return this.options.renderMode === 'interactive'
+  }
+
+  /** Get data attribute options with defaults */
+  private get dataAttrs(): Required<DataAttributeOptions> {
+    return {
+      device: this.options.dataAttributes?.device ?? true,
+      link: this.options.dataAttributes?.link ?? true,
+      metadata: this.options.dataAttributes?.metadata ?? true,
+    }
   }
 
   /**
@@ -389,7 +417,23 @@ export class SVGRenderer {
   }
 
   private renderStyles(): string {
-    return `<style>
+    // CSS variables for interactive runtime theming
+    const cssVars = this.isInteractive
+      ? `
+  :root {
+    --shumoku-bg: ${this.themeColors.backgroundColor};
+    --shumoku-surface: ${this.themeColors.subgraphFill};
+    --shumoku-text: ${this.themeColors.labelColor};
+    --shumoku-text-secondary: ${this.themeColors.labelSecondaryColor};
+    --shumoku-border: ${this.themeColors.subgraphStroke};
+    --shumoku-node-fill: ${this.themeColors.defaultNodeFill};
+    --shumoku-node-stroke: ${this.themeColors.defaultNodeStroke};
+    --shumoku-link-stroke: ${this.themeColors.defaultLinkStroke};
+    --shumoku-font: ${this.options.fontFamily};
+  }`
+      : ''
+
+    return `<style>${cssVars}
   .node { cursor: pointer; }
   .node:hover rect, .node:hover circle, .node:hover polygon { filter: brightness(0.95); }
   .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: ${this.themeColors.labelColor}; }
@@ -503,7 +547,40 @@ export class SVGRenderer {
       strokeDasharray,
     )
 
-    return `<g class="node-bg" data-id="${id}">${shape}</g>`
+    // Build data attributes for interactive mode
+    const dataAttrs = this.buildNodeDataAttributes(node)
+
+    return `<g class="node-bg" data-id="${id}"${dataAttrs}>${shape}</g>`
+  }
+
+  /** Build data attributes for a node (interactive mode only) */
+  private buildNodeDataAttributes(node: Node): string {
+    if (!this.isInteractive || !this.dataAttrs.device) return ''
+
+    const attrs: string[] = []
+
+    if (node.type) attrs.push(`data-device-type="${this.escapeXml(node.type)}"`)
+    if (node.vendor) attrs.push(`data-device-vendor="${this.escapeXml(node.vendor)}"`)
+    if (node.model) attrs.push(`data-device-model="${this.escapeXml(node.model)}"`)
+    if (node.service) attrs.push(`data-device-service="${this.escapeXml(node.service)}"`)
+    if (node.resource) attrs.push(`data-device-resource="${this.escapeXml(node.resource)}"`)
+
+    // Include full metadata as JSON
+    if (this.dataAttrs.metadata) {
+      const deviceInfo = {
+        id: node.id,
+        label: node.label,
+        type: node.type,
+        vendor: node.vendor,
+        model: node.model,
+        service: node.service,
+        resource: node.resource,
+        metadata: node.metadata,
+      }
+      attrs.push(`data-device-json="${this.escapeXml(JSON.stringify(deviceInfo))}"`)
+    }
+
+    return attrs.length > 0 ? ` ${attrs.join(' ')}` : ''
   }
 
   /** Render node foreground (content + ports) */
@@ -514,7 +591,7 @@ export class SVGRenderer {
     const w = size.width
 
     const content = this.renderNodeContent(node, x, y, w)
-    const portsRendered = this.renderPorts(x, y, ports)
+    const portsRendered = this.renderPorts(id, x, y, ports)
 
     return `<g class="node-fg" data-id="${id}">
   ${content}
@@ -525,7 +602,12 @@ export class SVGRenderer {
   /**
    * Render ports on a node
    */
-  private renderPorts(nodeX: number, nodeY: number, ports?: Map<string, LayoutPort>): string {
+  private renderPorts(
+    nodeId: string,
+    nodeX: number,
+    nodeY: number,
+    ports?: Map<string, LayoutPort>,
+  ): string {
     if (!ports || ports.size === 0) return ''
 
     const parts: string[] = []
@@ -536,8 +618,11 @@ export class SVGRenderer {
       const pw = port.size.width
       const ph = port.size.height
 
+      // Port data attribute for interactive mode
+      const portDeviceAttr = this.isInteractive ? ` data-port-device="${nodeId}"` : ''
+
       // Port box
-      parts.push(`<rect class="port" data-port="${port.id}"
+      parts.push(`<rect class="port" data-port="${port.id}"${portDeviceAttr}
         x="${px - pw / 2}" y="${py - ph / 2}" width="${pw}" height="${ph}"
         fill="${this.themeColors.portFill}" stroke="${this.themeColors.portStroke}" stroke-width="1" rx="2" />`)
 
@@ -848,7 +933,49 @@ export class SVGRenderer {
       result += this.renderEndpointLabels(toLabels, labelPos.x, labelPos.y, labelPos.anchor)
     }
 
-    return `<g class="link-group">\n${result}\n</g>`
+    // Build data attributes for interactive mode
+    const dataAttrs = this.buildLinkDataAttributes(layoutLink)
+
+    return `<g class="link-group" data-link-id="${id}"${dataAttrs}>\n${result}\n</g>`
+  }
+
+  /** Build data attributes for a link (interactive mode only) */
+  private buildLinkDataAttributes(layoutLink: LayoutLink): string {
+    if (!this.isInteractive || !this.dataAttrs.link) return ''
+
+    const { link, fromEndpoint, toEndpoint } = layoutLink
+    const attrs: string[] = []
+
+    // Basic link attributes
+    if (link.bandwidth) attrs.push(`data-link-bandwidth="${this.escapeXml(link.bandwidth)}"`)
+    if (link.vlan && link.vlan.length > 0) {
+      attrs.push(`data-link-vlan="${link.vlan.join(',')}"`)
+    }
+    if (link.redundancy) attrs.push(`data-link-redundancy="${this.escapeXml(link.redundancy)}"`)
+
+    // Endpoint info
+    const fromStr = fromEndpoint.port
+      ? `${fromEndpoint.node}:${fromEndpoint.port}`
+      : fromEndpoint.node
+    const toStr = toEndpoint.port ? `${toEndpoint.node}:${toEndpoint.port}` : toEndpoint.node
+    attrs.push(`data-link-from="${this.escapeXml(fromStr)}"`)
+    attrs.push(`data-link-to="${this.escapeXml(toStr)}"`)
+
+    // Include full metadata as JSON
+    if (this.dataAttrs.metadata) {
+      const linkInfo = {
+        id: layoutLink.id,
+        from: fromEndpoint,
+        to: toEndpoint,
+        bandwidth: link.bandwidth,
+        vlan: link.vlan,
+        redundancy: link.redundancy,
+        label: link.label,
+      }
+      attrs.push(`data-link-json="${this.escapeXml(JSON.stringify(linkInfo))}"`)
+    }
+
+    return attrs.length > 0 ? ` ${attrs.join(' ')}` : ''
   }
 
   private formatEndpointLabels(endpoint: { node: string; port?: string; ip?: string }): string[] {

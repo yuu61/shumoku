@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { initInteractive, type InteractiveInstance } from '@shumoku/interactive'
 import { cn } from '@/lib/cn'
 
 interface InteractivePreviewProps {
@@ -94,6 +95,9 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
       setTimeout(() => handleFit(), 0)
     }
   }, [svgData, handleFit])
+
+  // Initialize interactive runtime
+  const interactiveRef = useRef<InteractiveInstance | null>(null)
 
   const currentScale = useMemo(() => {
     if (originalViewBox.width === 0) return 1
@@ -231,6 +235,38 @@ export function InteractivePreview({ svgContent, className }: InteractivePreview
       `<svg viewBox="${viewBoxStr}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"`,
     )
   }, [svgData, viewBox])
+
+  // Initialize interactive after SVG is rendered
+  useEffect(() => {
+    // Cleanup previous instance
+    if (interactiveRef.current) {
+      interactiveRef.current.destroy()
+      interactiveRef.current = null
+    }
+
+    // Initialize after SVG is rendered
+    if (!renderedSvg || !containerRef.current) return
+
+    const svgElement = containerRef.current.querySelector('svg')
+    if (!svgElement) return
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      interactiveRef.current = initInteractive({
+        target: svgElement as SVGElement,
+        modal: { enabled: true },
+        tooltip: { enabled: true },
+      })
+    }, 50)
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (interactiveRef.current) {
+        interactiveRef.current.destroy()
+        interactiveRef.current = null
+      }
+    }
+  }, [renderedSvg])
 
   return (
     <div className={cn('relative flex flex-col', className)}>

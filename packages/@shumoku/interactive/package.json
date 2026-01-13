@@ -1,0 +1,52 @@
+{
+  "name": "@shumoku/interactive",
+  "version": "0.2.0",
+  "description": "Interactive runtime for Shumoku network diagrams",
+  "license": "MIT",
+  "author": "konoe-akitoshi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/konoe-akitoshi/shumoku.git",
+    "directory": "packages/@shumoku/interactive"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./iife": "./dist/shumoku-interactive.iife.js",
+    "./iife-string": "./dist/iife-string.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc && bun run build:css && bun run build:iife && bun run build:iife-string",
+    "build:css": "bun src/build-css.ts",
+    "build:iife": "bun src/build-iife.ts",
+    "build:iife-string": "bun src/build-iife-string.ts",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@shumoku/core": ">=0.2.0"
+  },
+  "devDependencies": {
+    "@shumoku/core": "workspace:*",
+    "@types/node": "^20.11.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.1.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
