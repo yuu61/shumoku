@@ -1,225 +1,124 @@
 /**
- * Interactive Runtime
- * Main entry point for interactive features
+ * Interactive Runtime - Simple hover tooltip
  */
 
-import {
-  destroyBottomSheet,
-  destroyModal,
-  destroyTooltip,
-  hideBottomSheet,
-  hideModal,
-  hideTooltip,
-  showBottomSheet,
-  showModal,
-  showTooltip,
-} from './components/index.js'
-import {
-  buildLinkMap,
-  extractDeviceInfo,
-  extractDevicePorts,
-  extractLinkInfo,
-  findDeviceElement,
-} from './handlers/index.js'
 import type { InteractiveInstance, InteractiveOptions } from './types.js'
-import { findClosest, getSvgElement } from './utils/dom.js'
-import { getPointerPosition, isMobileDevice } from './utils/touch.js'
 
-/**
- * Initialize interactive features on an SVG element
- */
+let tooltip: HTMLDivElement | null = null
+
+function getTooltip(): HTMLDivElement {
+  if (!tooltip) {
+    tooltip = document.createElement('div')
+    tooltip.style.cssText = `
+      position: fixed;
+      z-index: 10000;
+      padding: 6px 10px;
+      background: #1e293b;
+      color: #fff;
+      font-size: 12px;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      font-family: system-ui, sans-serif;
+      max-width: 300px;
+      white-space: pre-line;
+    `
+    document.body.appendChild(tooltip)
+  }
+  return tooltip
+}
+
+function showTooltip(text: string, x: number, y: number): void {
+  const t = getTooltip()
+  t.textContent = text
+  t.style.left = `${x + 12}px`
+  t.style.top = `${y + 12}px`
+  t.style.opacity = '1'
+}
+
+function hideTooltip(): void {
+  if (tooltip) {
+    tooltip.style.opacity = '0'
+  }
+}
+
+function getTooltipText(el: Element): string | null {
+  // Port tooltip (check first - ports are inside nodes)
+  // Matches .port, .port-label, .port-label-bg with data-port attribute
+  const port = el.closest('[data-port]')
+  if (port) {
+    const portId = port.getAttribute('data-port') || ''
+    const deviceId = port.getAttribute('data-port-device') || ''
+    return `${deviceId}:${portId}`
+  }
+
+  // Link tooltip
+  const linkGroup = el.closest('.link-group[data-link-id]')
+  if (linkGroup) {
+    const from = linkGroup.getAttribute('data-link-from') || ''
+    const to = linkGroup.getAttribute('data-link-to') || ''
+    const bw = linkGroup.getAttribute('data-link-bandwidth')
+    const vlan = linkGroup.getAttribute('data-link-vlan')
+
+    let text = `${from} ↔ ${to}`
+    if (bw) text += `\n${bw}`
+    if (vlan) text += `\nVLAN: ${vlan}`
+    return text
+  }
+
+  // Device tooltip (single label only)
+  const node = el.closest('.node-bg[data-id], .node-fg[data-id]')
+  if (node) {
+    const json = node.getAttribute('data-device-json')
+    if (json) {
+      try {
+        const data = JSON.parse(json)
+        return data.label || data.id
+      } catch {
+        return node.getAttribute('data-id')
+      }
+    }
+    return node.getAttribute('data-id')
+  }
+
+  return null
+}
+
 export function initInteractive(options: InteractiveOptions): InteractiveInstance {
-  const svgElement = getSvgElement(options.target)
-  if (!svgElement) {
-    throw new Error('SVG element not found')
-  }
+  const target = typeof options.target === 'string'
+    ? document.querySelector(options.target)
+    : options.target
 
-  // Determine if we should use mobile UI
-  const useMobileUI = options.useMobileUI ?? isMobileDevice()
+  if (!target) throw new Error('Target not found')
 
-  // Build link map for port connections
-  const linkMap = buildLinkMap(svgElement)
-
-  // Default options
-  const modalEnabled = options.modal?.enabled ?? true
-  const tooltipEnabled = options.tooltip?.enabled ?? true
-  const tooltipDelay = options.tooltip?.delay ?? 200
-
-  // Tooltip state
-  let tooltipTimeout: ReturnType<typeof setTimeout> | null = null
-  let currentLinkElement: Element | null = null
-
-  // Event handlers
-  const handleDeviceClick = (event: Event) => {
-    const target = event.target as Element
-    const nodeElement =
-      findClosest(target, '.node-bg[data-id]') || findClosest(target, '.node-fg[data-id]')
-
-    if (!nodeElement) return
-
-    const deviceInfo = extractDeviceInfo(nodeElement)
-    if (!deviceInfo) return
-
-    // Call user callback first
-    if (options.onDeviceClick) {
-      const result = options.onDeviceClick(deviceInfo)
-      if (result === false) return // User cancelled
-    }
-
-    if (!modalEnabled) return
-
-    // Extract ports for this device
-    const ports = extractDevicePorts(svgElement, deviceInfo.id, linkMap)
-
-    // Show modal or bottom sheet
-    if (useMobileUI) {
-      showBottomSheet(deviceInfo, ports, options.modal?.customTemplate)
+  const handleMove = (e: Event) => {
+    const me = e as MouseEvent
+    const text = getTooltipText(me.target as Element)
+    if (text) {
+      showTooltip(text, me.clientX, me.clientY)
     } else {
-      showModal(deviceInfo, ports, options.modal?.customTemplate, options.modal?.closeOnBackdrop)
-    }
-  }
-
-  const handleLinkMouseEnter = (event: Event) => {
-    if (!tooltipEnabled) return
-
-    const target = event.target as Element
-    const linkElement = findClosest(target, '.link-group[data-link-id]')
-
-    if (!linkElement) return
-    currentLinkElement = linkElement
-
-    const linkInfo = extractLinkInfo(linkElement)
-    if (!linkInfo) return
-
-    // Call user callback first
-    if (options.onLinkHover) {
-      const result = options.onLinkHover(linkInfo)
-      if (result === false) return // User cancelled
-    }
-
-    // Get position
-    const pos = getPointerPosition(event as MouseEvent)
-    if (!pos) return
-
-    // Show tooltip after delay
-    tooltipTimeout = setTimeout(() => {
-      showTooltip(linkInfo, pos.clientX, pos.clientY, options.tooltip?.customTemplate)
-    }, tooltipDelay)
-  }
-
-  const handleLinkMouseLeave = () => {
-    if (tooltipTimeout) {
-      clearTimeout(tooltipTimeout)
-      tooltipTimeout = null
-    }
-    currentLinkElement = null
-    hideTooltip(100)
-  }
-
-  const handleLinkMouseMove = (event: Event) => {
-    if (!currentLinkElement) return
-
-    const linkInfo = extractLinkInfo(currentLinkElement)
-    if (!linkInfo) return
-
-    const pos = getPointerPosition(event as MouseEvent)
-    if (!pos) return
-
-    // Update tooltip position
-    showTooltip(linkInfo, pos.clientX, pos.clientY, options.tooltip?.customTemplate)
-  }
-
-  // Touch handling for links (tap to show tooltip)
-  const handleLinkTap = (event: Event) => {
-    if (!tooltipEnabled) return
-
-    const target = event.target as Element
-    const linkElement = findClosest(target, '.link-group[data-link-id]')
-
-    if (!linkElement) {
       hideTooltip()
-      return
     }
-
-    const linkInfo = extractLinkInfo(linkElement)
-    if (!linkInfo) return
-
-    // Call user callback first
-    if (options.onLinkHover) {
-      const result = options.onLinkHover(linkInfo)
-      if (result === false) return
-    }
-
-    const touchEvent = event as TouchEvent
-    const pos = getPointerPosition(touchEvent)
-    if (!pos) return
-
-    showTooltip(linkInfo, pos.clientX, pos.clientY, options.tooltip?.customTemplate)
-
-    // Auto-hide after 3 seconds on mobile
-    setTimeout(() => hideTooltip(), 3000)
   }
 
-  // Attach event listeners using event delegation
-  svgElement.addEventListener('click', handleDeviceClick)
+  const handleLeave = () => hideTooltip()
 
-  if (isMobileDevice()) {
-    svgElement.addEventListener('touchstart', handleLinkTap, { passive: true })
-  } else {
-    svgElement.addEventListener('mouseenter', handleLinkMouseEnter, true)
-    svgElement.addEventListener('mouseleave', handleLinkMouseLeave, true)
-    svgElement.addEventListener('mousemove', handleLinkMouseMove, true)
-  }
+  target.addEventListener('mousemove', handleMove)
+  target.addEventListener('mouseleave', handleLeave)
 
-  // Return instance with cleanup method
   return {
     destroy: () => {
-      svgElement.removeEventListener('click', handleDeviceClick)
-
-      if (isMobileDevice()) {
-        svgElement.removeEventListener('touchstart', handleLinkTap)
-      } else {
-        svgElement.removeEventListener('mouseenter', handleLinkMouseEnter, true)
-        svgElement.removeEventListener('mouseleave', handleLinkMouseLeave, true)
-        svgElement.removeEventListener('mousemove', handleLinkMouseMove, true)
-      }
-
-      destroyModal()
-      destroyTooltip()
-      destroyBottomSheet()
-    },
-
-    showDeviceModal: (deviceId: string) => {
-      const element = findDeviceElement(svgElement, deviceId)
-      if (!element) return
-
-      const deviceInfo = extractDeviceInfo(element)
-      if (!deviceInfo) return
-
-      const ports = extractDevicePorts(svgElement, deviceId, linkMap)
-
-      if (useMobileUI) {
-        showBottomSheet(deviceInfo, ports, options.modal?.customTemplate)
-      } else {
-        showModal(deviceInfo, ports, options.modal?.customTemplate, options.modal?.closeOnBackdrop)
+      target.removeEventListener('mousemove', handleMove)
+      target.removeEventListener('mouseleave', handleLeave)
+      if (tooltip) {
+        tooltip.remove()
+        tooltip = null
       }
     },
-
-    hideModal: () => {
-      hideModal()
-      hideBottomSheet()
-    },
-
-    showLinkTooltip: (linkId: string, x: number, y: number) => {
-      const element = svgElement.querySelector(`.link-group[data-link-id="${linkId}"]`)
-      if (!element) return
-
-      const linkInfo = extractLinkInfo(element)
-      if (!linkInfo) return
-
-      showTooltip(linkInfo, x, y, options.tooltip?.customTemplate)
-    },
-
+    showDeviceModal: () => {},
+    hideModal: () => {},
+    showLinkTooltip: () => {},
     hideTooltip,
   }
 }

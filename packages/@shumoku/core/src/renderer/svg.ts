@@ -593,7 +593,10 @@ export class SVGRenderer {
     const content = this.renderNodeContent(node, x, y, w)
     const portsRendered = this.renderPorts(id, x, y, ports)
 
-    return `<g class="node-fg" data-id="${id}">
+    // Include data attributes for interactive mode (same as node-bg)
+    const dataAttrs = this.buildNodeDataAttributes(node)
+
+    return `<g class="node-fg" data-id="${id}"${dataAttrs}>
   ${content}
   ${portsRendered}
 </g>`
@@ -665,10 +668,10 @@ export class SVGRenderer {
       const bgY = labelY - labelHeight + 3
 
       parts.push(
-        `<rect class="port-label-bg" x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`,
+        `<rect class="port-label-bg" data-port="${port.id}"${portDeviceAttr} x="${bgX}" y="${bgY}" width="${labelWidth}" height="${labelHeight}" rx="2" fill="${this.themeColors.portLabelBg}" />`,
       )
       parts.push(
-        `<text class="port-label" x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`,
+        `<text class="port-label" data-port="${port.id}"${portDeviceAttr} x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" font-size="9" fill="${this.themeColors.portLabelColor}">${labelText}</text>`,
       )
     }
 
@@ -1182,6 +1185,12 @@ ${result}`
     // Multiple parallel lines
     const paths: string[] = []
     const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
+
+    // Add invisible hit area covering all parallel lines
+    const totalWidth = (lineCount - 1) * lineSpacing + strokeWidth + 4
+    const basePath = this.generatePath(points)
+    paths.push(`<path class="link-hit-area" d="${basePath}"
+  fill="none" stroke="transparent" stroke-width="${totalWidth}" pointer-events="stroke" />`)
 
     for (const offset of offsets) {
       const offsetPoints = this.offsetPoints(points, offset)
