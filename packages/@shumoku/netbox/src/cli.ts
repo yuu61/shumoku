@@ -1,15 +1,11 @@
 #!/usr/bin/env node
 /**
  * NetBox to Shumoku CLI
- *
- * Usage:
- *   netbox-to-shumoku --url $NETBOX_URL --token $NETBOX_TOKEN --output topology.yaml
- *   netbox-to-shumoku --output topology.svg
- *   netbox-to-shumoku --output topology.html
  */
 
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { parseArgs } from 'node:util'
 import { HierarchicalLayout } from '@shumoku/core/layout'
 import { html, svg } from '@shumoku/renderer'
 import { INTERACTIVE_IIFE } from '@shumoku/renderer/iife-string'
@@ -18,236 +14,166 @@ import type { QueryParams } from './client.js'
 import { NetBoxClient } from './client.js'
 import { convertToNetworkGraph, toYaml } from './converter.js'
 import type { ConverterOptions, GroupBy } from './types.js'
+import pkg from '../package.json' with { type: 'json' }
 
-interface CliOptions {
-  url?: string
-  token?: string
-  output: string
-  theme?: 'light' | 'dark'
-  site?: string
-  role?: string
-  status?: string
-  tag?: string
-  groupBy?: GroupBy
-  noPorts?: boolean
-  noColors?: boolean
-  colorByStatus?: boolean
-  legend?: boolean
-}
+const VERSION = pkg.version
 
-function parseArgs(args: string[]): CliOptions {
-  const options: CliOptions = {
-    output: 'topology.yaml',
-  }
+const HELP = `
+netbox-to-shumoku v${VERSION} - Convert NetBox topology to Shumoku YAML/SVG/HTML
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
+Usage: netbox-to-shumoku [options]
 
-    switch (arg) {
-      case '--url':
-      case '-u':
-        options.url = args[++i]
-        break
-      case '--token':
-      case '-t':
-        options.token = args[++i]
-        break
-      case '--output':
-      case '-o':
-        options.output = args[++i]
-        break
-      case '--theme':
-        options.theme = args[++i] as 'light' | 'dark'
-        break
-      case '--site':
-      case '-s':
-        options.site = args[++i]
-        break
-      case '--role':
-      case '-r':
-        options.role = args[++i]
-        break
-      case '--status':
-        options.status = args[++i]
-        break
-      case '--tag':
-        options.tag = args[++i]
-        break
-      case '--group-by':
-      case '-g':
-        options.groupBy = args[++i] as GroupBy
-        break
-      case '--no-ports':
-        options.noPorts = true
-        break
-      case '--no-colors':
-        options.noColors = true
-        break
-      case '--color-by-status':
-        options.colorByStatus = true
-        break
-      case '--legend':
-        options.legend = true
-        break
-      case '--help':
-      case '-h':
-        printHelp()
-        process.exit(0)
-    }
-  }
+Connection:
+  -u, --url <url>       NetBox API URL (or NETBOX_URL env)
+  -t, --token <token>   API token (or NETBOX_TOKEN env)
 
-  return options
-}
-
-function printHelp(): void {
-  console.log(`
-netbox-to-shumoku - Convert NetBox topology to Shumoku YAML/SVG/HTML
-
-Usage:
-  netbox-to-shumoku [options]
-
-Connection Options:
-  -u, --url <url>       NetBox API URL (or set NETBOX_URL env var)
-  -t, --token <token>   NetBox API token (or set NETBOX_TOKEN env var)
-
-Output Options:
+Output:
+  -f, --format <type>   Output format: yaml|svg|html (default: auto from extension)
   -o, --output <file>   Output file (default: topology.yaml)
-                        Use .svg for static SVG output
-                        Use .html for interactive HTML output
-  --theme <theme>       Theme: light or dark (default: light)
+  --theme <theme>       Theme: light|dark (default: light)
 
-Filtering Options:
-  -s, --site <slug>     Filter by site slug
-  -r, --role <slug>     Filter by device role slug
-  --status <status>     Filter by status (active, planned, staged, failed, offline)
-  --tag <slug>          Filter by tag slug
+Filtering:
+  -s, --site <slug>     Filter by site
+  -r, --role <slug>     Filter by device role
+  --status <status>     Filter by status (active|planned|staged|failed|offline)
+  --tag <slug>          Filter by tag
 
-Display Options:
-  -g, --group-by <type> Group devices: tag, site, location, prefix, none (default: tag)
-  --no-ports            Don't include port names in links
-  --no-colors           Don't color links by cable type
-  --color-by-status     Color devices by their status
-  --legend              Show legend in the diagram (SVG/HTML output)
+Display:
+  -g, --group-by <type> Group by: tag|site|location|prefix|none (default: tag)
+  --no-ports            Hide port names
+  --no-colors           Disable cable type colors
+  --color-by-status     Color devices by status
+  --legend              Show legend (SVG/HTML)
 
 Other:
-  -h, --help            Show this help message
+  -h, --help            Show help
+  -v, --version         Show version
 
 Examples:
-  # Using environment variables
-  export NETBOX_URL=https://netbox.example.com
-  export NETBOX_TOKEN=abc123
-  netbox-to-shumoku --output topology.yaml
+  netbox-to-shumoku -f html -o topology
+  netbox-to-shumoku --site tokyo-dc -g location -o tokyo.svg
+  netbox-to-shumoku --color-by-status --theme dark -f svg
+`
 
-  # Filter by site and group by location
-  netbox-to-shumoku --site tokyo-dc --group-by location -o tokyo.svg
+type OutputFormat = 'yaml' | 'svg' | 'html'
 
-  # Generate interactive HTML with tooltips and pan/zoom
-  netbox-to-shumoku --output topology.html
+function cli() {
+  const { values } = parseArgs({
+    options: {
+      url: { type: 'string', short: 'u' },
+      token: { type: 'string', short: 't' },
+      format: { type: 'string', short: 'f' },
+      output: { type: 'string', short: 'o', default: 'topology' },
+      theme: { type: 'string' },
+      site: { type: 'string', short: 's' },
+      role: { type: 'string', short: 'r' },
+      status: { type: 'string' },
+      tag: { type: 'string' },
+      'group-by': { type: 'string', short: 'g' },
+      'no-ports': { type: 'boolean', default: false },
+      'no-colors': { type: 'boolean', default: false },
+      'color-by-status': { type: 'boolean', default: false },
+      legend: { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+      version: { type: 'boolean', short: 'v', default: false },
+    },
+    strict: true,
+  })
 
-  # Show device status colors
-  netbox-to-shumoku --color-by-status --output topology.svg
+  if (values.help) {
+    console.log(HELP)
+    process.exit(0)
+  }
 
-  # Generate dark theme SVG
-  netbox-to-shumoku --theme dark --output topology.svg
-`)
+  if (values.version) {
+    console.log(VERSION)
+    process.exit(0)
+  }
+
+  return values
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2)
-  const options = parseArgs(args)
+  const opts = cli()
 
-  // Get credentials from options or environment
-  const url = options.url ?? process.env.NETBOX_URL
-  const token = options.token ?? process.env.NETBOX_TOKEN
+  const url = opts.url ?? process.env.NETBOX_URL
+  const token = opts.token ?? process.env.NETBOX_TOKEN
 
   if (!url || !token) {
-    console.error('Error: NetBox URL and token are required.')
-    console.error('Set NETBOX_URL and NETBOX_TOKEN environment variables,')
-    console.error('or use --url and --token options.')
+    console.error('Error: NetBox URL and token required.')
+    console.error('Use --url/--token or set NETBOX_URL/NETBOX_TOKEN env vars.')
     process.exit(1)
   }
 
-  console.log('Connecting to NetBox...')
-  const client = new NetBoxClient({ url, token })
-
   try {
-    // Build query parameters for filtering
+    console.log('Connecting to NetBox...')
+    const client = new NetBoxClient({ url, token })
+
+    // Build filters
     const queryParams: QueryParams = {}
-    if (options.site) queryParams.site = options.site
-    if (options.role) queryParams.role = options.role
-    if (options.status) queryParams.status = options.status
-    if (options.tag) queryParams.tag = options.tag
+    if (opts.site) queryParams.site = opts.site
+    if (opts.role) queryParams.role = opts.role
+    if (opts.status) queryParams.status = opts.status
+    if (opts.tag) queryParams.tag = opts.tag
 
     const hasFilters = Object.keys(queryParams).length > 0
-    if (hasFilters) {
-      console.log('Filters:', queryParams)
-    }
+    if (hasFilters) console.log('Filters:', queryParams)
 
-    // Fetch data from NetBox
+    // Fetch data
     console.log('Fetching devices...')
     const devices = await client.fetchDevices(queryParams)
     console.log(`  Found ${devices.results.length} devices`)
 
     console.log('Fetching interfaces...')
-    const interfaces = await client.fetchInterfaces(hasFilters ? { site: options.site } : undefined)
+    const interfaces = await client.fetchInterfaces(hasFilters ? { site: opts.site } : undefined)
     console.log(`  Found ${interfaces.results.length} interfaces`)
 
     console.log('Fetching cables...')
     const cables = await client.fetchCables()
     console.log(`  Found ${cables.results.length} cables`)
 
-    // Convert to NetworkGraph
+    // Convert
     console.log('Converting to Shumoku format...')
     const converterOptions: ConverterOptions = {
-      theme: options.theme ?? 'light',
-      showPorts: !options.noPorts,
-      groupBy: options.groupBy ?? 'tag',
-      colorByCableType: !options.noColors,
-      colorByStatus: options.colorByStatus,
-      legend: options.legend,
+      theme: (opts.theme as 'light' | 'dark') ?? 'light',
+      showPorts: !opts['no-ports'],
+      groupBy: (opts['group-by'] as GroupBy) ?? 'tag',
+      colorByCableType: !opts['no-colors'],
+      colorByStatus: opts['color-by-status'],
+      legend: opts.legend,
     }
 
     const graph = convertToNetworkGraph(devices, interfaces, cables, converterOptions)
-
     console.log(`  Created ${graph.nodes.length} nodes, ${graph.links.length} links`)
-    if (graph.subgraphs) {
-      console.log(`  Created ${graph.subgraphs.length} subgraphs`)
-    }
+    if (graph.subgraphs) console.log(`  Created ${graph.subgraphs.length} subgraphs`)
 
-    // Determine output format
-    const outputPath = resolve(process.cwd(), options.output)
-    const outputLower = options.output.toLowerCase()
-    const isSvg = outputLower.endsWith('.svg')
-    const isHtml = outputLower.endsWith('.html') || outputLower.endsWith('.htm')
+    // Determine format: explicit --format takes priority, then infer from extension
+    const outputBase = opts.output!
+    const extMatch = outputBase.toLowerCase().match(/\.(yaml|yml|svg|html|htm)$/)
+    const format: OutputFormat = (opts.format as OutputFormat)
+      ?? (extMatch ? (extMatch[1] === 'yml' ? 'yaml' : extMatch[1] === 'htm' ? 'html' : extMatch[1] as OutputFormat) : 'yaml')
 
-    if (isSvg || isHtml) {
-      // Generate SVG or HTML (both need layout)
+    // Build output path with extension if not present
+    const hasExt = /\.(yaml|yml|svg|html|htm)$/i.test(outputBase)
+    const outputPath = resolve(process.cwd(), hasExt ? outputBase : `${outputBase}.${format}`)
+
+    if (format === 'svg' || format === 'html') {
       console.log('Generating layout...')
       const layout = new HierarchicalLayout()
       const layoutResult = await layout.layoutAsync(graph)
 
-      if (isHtml) {
-        // Generate interactive HTML
+      if (format === 'html') {
         console.log('Rendering HTML...')
         html.setIIFE(INTERACTIVE_IIFE)
-        const htmlOutput = html.render(graph, layoutResult)
-
-        writeFileSync(outputPath, htmlOutput, 'utf-8')
-        console.log(`HTML written to: ${outputPath}`)
+        writeFileSync(outputPath, html.render(graph, layoutResult), 'utf-8')
       } else {
-        // Generate SVG
         console.log('Rendering SVG...')
-        const svgOutput = svg.render(graph, layoutResult)
-
-        writeFileSync(outputPath, svgOutput, 'utf-8')
-        console.log(`SVG written to: ${outputPath}`)
+        writeFileSync(outputPath, svg.render(graph, layoutResult), 'utf-8')
       }
     } else {
-      // Generate YAML
-      const yaml = toYaml(graph)
-      writeFileSync(outputPath, yaml, 'utf-8')
-      console.log(`YAML written to: ${outputPath}`)
+      writeFileSync(outputPath, toYaml(graph), 'utf-8')
     }
+    console.log(`Output written to: ${outputPath}`)
 
     console.log('Done!')
   } catch (err) {
