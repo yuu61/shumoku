@@ -1,6 +1,6 @@
 {
   "name": "shumoku",
-  "version": "0.2.1",
+  "version": "0.2.4",
   "description": "Modern network topology visualization library for TypeScript/JavaScript",
   "license": "MIT",
   "author": "konoe-akitoshi",
@@ -40,10 +40,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shumoku/core": "^0.2.0",
-    "@shumoku/icons": "^0.2.0",
-    "@shumoku/parser-yaml": "^0.2.0",
-    "@shumoku/renderer": "^0.2.0"
+    "@shumoku/core": "^0.2.3",
+    "@shumoku/icons": "^0.2.3",
+    "@shumoku/parser-yaml": "^0.2.3",
+    "@shumoku/renderer": "^0.2.3"
   },
   "publishConfig": {
     "access": "public"
