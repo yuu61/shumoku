@@ -595,3 +595,133 @@ links:
     to: { node: ex-2 }
     bandwidth: 10G
 ```
+
+## Hierarchical Multi-Site Network
+
+複数拠点を持つ企業ネットワーク。マルチファイル構成で各拠点を分離管理できます。
+
+### main.yaml（親ファイル）
+
+```yaml
+name: "Multi-Site Network"
+description: "Network with multiple sites using file references"
+
+settings:
+  theme: light
+
+subgraphs:
+  - id: headquarters
+    label: "Headquarters"
+    file: "./headquarters.yaml"
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+      strokeWidth: 2
+
+  - id: branch
+    label: "Branch Office"
+    file: "./branch.yaml"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+      strokeWidth: 2
+
+links:
+  # サブグラフを跨ぐリンク - デバイスを直接参照
+  - from:
+      node: hq-router
+      port: wan1
+    to:
+      node: branch-router
+      port: wan1
+    label: "Site-to-Site VPN"
+    type: dashed
+```
+
+### headquarters.yaml（本社）
+
+```yaml
+name: "Headquarters Network"
+
+nodes:
+  - id: hq-router
+    label:
+      - "<b>HQ-Router</b>"
+      - "10.0.0.1"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+
+  - id: hq-fw
+    label:
+      - "<b>HQ-Firewall</b>"
+      - "10.0.0.2"
+    type: firewall
+
+  - id: hq-switch
+    label:
+      - "<b>HQ-Core-SW</b>"
+      - "10.0.1.1"
+    type: l3-switch
+    vendor: juniper
+    model: EX4400-48T
+
+  - id: hq-server
+    label:
+      - "<b>App Server</b>"
+      - "10.0.10.10"
+    type: server
+
+links:
+  - from: { node: hq-router, port: lan1 }
+    to: { node: hq-fw, port: outside }
+    bandwidth: 10G
+
+  - from: { node: hq-fw, port: inside }
+    to: { node: hq-switch, port: uplink }
+    bandwidth: 10G
+
+  - from: { node: hq-switch, port: eth1 }
+    to: { node: hq-server, port: eth0 }
+    bandwidth: 1G
+```
+
+### branch.yaml（支店）
+
+```yaml
+name: "Branch Office Network"
+
+nodes:
+  - id: branch-router
+    label:
+      - "<b>Branch-Router</b>"
+      - "10.1.0.1"
+    type: router
+    vendor: yamaha
+    model: rtx1300
+
+  - id: branch-switch
+    label:
+      - "<b>Branch-SW</b>"
+      - "10.1.1.1"
+    type: l2-switch
+
+  - id: branch-ap
+    label: "Branch-AP"
+    type: access-point
+    vendor: aruba
+    model: ap500-series
+
+links:
+  - from: { node: branch-router, port: lan1 }
+    to: { node: branch-switch, port: uplink }
+    bandwidth: 1G
+
+  - from: { node: branch-switch, port: eth1 }
+    to: { node: branch-ap, port: eth0 }
+    bandwidth: 1G
+```
+
+<Callout type="info">
+サブグラフをクリックすると詳細シートに移動できます。子シートでは、他のサブグラフへの接続点が「エクスポートコネクタ」として表示されます。
+</Callout>

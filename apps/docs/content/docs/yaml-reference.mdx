@@ -299,6 +299,97 @@ subgraphs:
 
 ---
 
+## Hierarchical Diagrams (階層型ダイアグラム)
+
+複数のサイトや拠点を持つネットワークを、マルチファイル構成で管理できます。
+
+### 基本構造
+
+```yaml
+# main.yaml - 親ファイル
+name: "Multi-Site Network"
+
+subgraphs:
+  - id: headquarters
+    label: "Headquarters"
+    file: "./headquarters.yaml"   # 外部ファイル参照
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+
+  - id: branch
+    label: "Branch Office"
+    file: "./branch.yaml"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+
+links:
+  # サブグラフを跨ぐリンクはデバイスを直接参照
+  - from:
+      node: hq-router      # headquarters.yaml 内のデバイス
+      port: wan1
+    to:
+      node: branch-router  # branch.yaml 内のデバイス
+      port: wan1
+    label: "Site-to-Site VPN"
+    type: dashed
+```
+
+```yaml
+# headquarters.yaml - 子ファイル
+name: "Headquarters Network"
+
+nodes:
+  - id: hq-router
+    label: "HQ-Router"
+    type: router
+
+  - id: hq-switch
+    label: "HQ-Switch"
+    type: l3-switch
+
+links:
+  - from: { node: hq-router, port: lan1 }
+    to: { node: hq-switch, port: uplink }
+    bandwidth: 10G
+```
+
+### file (外部ファイル参照)
+
+サブグラフに `file` 属性を指定すると、その内容を外部ファイルから読み込みます。
+
+```yaml
+subgraphs:
+  - id: site-tokyo
+    label: "Tokyo DC"
+    file: "./sites/tokyo.yaml"
+```
+
+### クロスサブグラフリンク
+
+異なるサブグラフに属するデバイス間のリンクは、デバイス名を直接指定します。
+パーサーが自動的にどのサブグラフに属するか検出し、子シートビューにエクスポートコネクタを生成します。
+
+```yaml
+links:
+  - from:
+      node: tokyo-router    # tokyo.yaml 内のデバイス
+      port: wan1
+    to:
+      node: osaka-router    # osaka.yaml 内のデバイス
+      port: wan1
+    label: "WAN Link"
+    bandwidth: 10G
+```
+
+### シートナビゲーション
+
+階層型ダイアグラムでは、サブグラフをクリックして詳細シートに移動できます。
+各シートにはブレッドクラムナビゲーションが表示され、親シートに戻ることができます。
+
+---
+
 ## 完全な例
 
 ```yaml
