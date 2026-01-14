@@ -76,7 +76,7 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
   <title>${escapeHtml(title)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #f5f5f5; min-height: 100vh; }
+    body { background: #f5f5f5; min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
     .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: white; border-bottom: 1px solid #e5e5e5; }
     .toolbar-title { font-size: 14px; color: #666; }
     .toolbar-buttons { display: flex; gap: 4px; align-items: center; }
