@@ -12,8 +12,8 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@panzoom/panzoom": "^4.6.1",
     "@shumoku/renderer": "workspace:*",
+    "shumoku": "workspace:*",
     "fumadocs-core": "16.4.6",
     "fumadocs-mdx": "14.2.4",
     "fumadocs-ui": "16.4.6",
@@ -21,7 +21,6 @@
     "next": "16.1.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "shumoku": "workspace:*",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
