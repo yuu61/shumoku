@@ -192,6 +192,11 @@ export interface Link {
    * Custom style
    */
   style?: LinkStyle
+
+  /**
+   * Custom metadata for extensions
+   */
+  metadata?: Record<string, unknown>
 }
 
 /**

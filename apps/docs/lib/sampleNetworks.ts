@@ -905,7 +905,6 @@ links:
 
 pins:
   - id: wan-out
-    label: "→ To Branch (VPN)"
     device: hq-router
     port: wan1
     direction: out
@@ -977,7 +976,6 @@ links:
 
 pins:
   - id: wan-in
-    label: "← From HQ (VPN)"
     device: branch-router
     port: wan1
     direction: in

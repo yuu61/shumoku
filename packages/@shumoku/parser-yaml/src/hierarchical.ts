@@ -233,6 +233,12 @@ export class HierarchicalParser {
   ): void {
     if (!graph.subgraphs) return
 
+    // Build subgraph label map for destination names
+    const subgraphLabels = new Map<string, string>()
+    for (const sg of graph.subgraphs) {
+      subgraphLabels.set(sg.id, sg.label)
+    }
+
     // Build pin resolution map: "subgraphId:pinId" → { device, port }
     const pinMap = new Map<string, { device: string; port?: string }>()
     for (const sg of graph.subgraphs) {
@@ -249,6 +255,7 @@ export class HierarchicalParser {
       string,
       {
         destSubgraph: string
+        destSubgraphLabel: string
         destPin: string
         destDevice: string
         destPort?: string
@@ -273,6 +280,7 @@ export class HierarchicalParser {
         // Source side: connects TO the destination
         connectionMap.set(fromKey, {
           destSubgraph: to.node,
+          destSubgraphLabel: subgraphLabels.get(to.node) || to.node,
           destPin: to.pin,
           destDevice: toResolved?.device || to.node,
           destPort: toResolved?.port,
@@ -282,6 +290,7 @@ export class HierarchicalParser {
         // Destination side: connects FROM the source
         connectionMap.set(toKey, {
           destSubgraph: from.node,
+          destSubgraphLabel: subgraphLabels.get(from.node) || from.node,
           destPin: from.pin,
           destDevice: fromResolved?.device || from.node,
           destPort: fromResolved?.port,
@@ -301,28 +310,26 @@ export class HierarchicalParser {
         const connection = connectionMap.get(connectionKey)
 
         if (connection) {
-          // Build destination device label (device:port or just device)
-          const destDeviceLabel = connection.destPort
-            ? `${connection.destDevice}:${connection.destPort}`
-            : connection.destDevice
-
-          // Update node label with destination device info
-          const arrow = connection.isSource ? '→' : '←'
-          node.label = `${arrow} ${destDeviceLabel}`
+          // Update node label with destination subgraph name (no arrow)
+          node.label = connection.destSubgraphLabel
 
           // Store connection info in metadata
           if (!node.metadata) node.metadata = {}
           node.metadata._destSubgraph = connection.destSubgraph
+          node.metadata._destSubgraphLabel = connection.destSubgraphLabel
           node.metadata._destPin = connection.destPin
           node.metadata._destDevice = connection.destDevice
           node.metadata._destPort = connection.destPort
           node.metadata._isSource = connection.isSource
 
-          // Also update the corresponding export link label
+          // Also update the export link metadata for tooltip display
           const exportLinkId = `${EXPORT_LINK_PREFIX}${pinId}`
           const exportLink = sheetGraph.links.find((l) => l.id === exportLinkId)
           if (exportLink) {
-            exportLink.label = `${arrow} ${destDeviceLabel}`
+            if (!exportLink.metadata) exportLink.metadata = {}
+            exportLink.metadata._destSubgraphLabel = connection.destSubgraphLabel
+            exportLink.metadata._destDevice = connection.destDevice
+            exportLink.metadata._destPort = connection.destPort
           }
         }
       }

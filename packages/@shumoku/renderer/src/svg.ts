@@ -662,15 +662,14 @@ ${fg}
     // Check if this is an export connector node (for hierarchical diagrams)
     const isExport = node.metadata?._isExport === true
 
-    // Special styling for export connector nodes
+    // Special styling for export connector nodes - use subgraph colors
     let fill = style.fill || this.themeColors.defaultNodeFill
     let stroke = style.stroke || this.themeColors.defaultNodeStroke
     if (isExport) {
-      // Use a distinct color for export connectors
-      fill = style.fill || '#dbeafe' // Light blue
-      stroke = style.stroke || '#3b82f6' // Blue
+      fill = style.fill || this.themeColors.subgraphFill
+      stroke = style.stroke || this.themeColors.defaultNodeStroke
     }
-    const strokeWidth = style.strokeWidth || (isExport ? 2 : 1)
+    const strokeWidth = style.strokeWidth || 1
     const strokeDasharray = style.strokeDasharray || ''
 
     const shape = this.renderNodeShape(
@@ -1021,37 +1020,10 @@ ${fg}
   /** Render content for export connector nodes */
   private renderExportConnectorContent(node: Node, x: number, y: number): string {
     const labels = Array.isArray(node.label) ? node.label : [node.label]
-    const direction = node.metadata?._direction || 'bidirectional'
-
-    const parts: string[] = []
-
-    // Arrow icon based on direction
-    const arrowSize = 14
-    const arrowColor = '#3b82f6' // Blue
-
-    if (direction === 'out' || direction === 'bidirectional') {
-      // Arrow pointing right (outgoing)
-      parts.push(`<g class="export-arrow" transform="translate(${x - arrowSize / 2 - 30}, ${y - arrowSize / 2})">
-        <path d="M0 ${arrowSize / 2} L${arrowSize * 0.7} ${arrowSize / 2} M${arrowSize * 0.5} 2 L${arrowSize * 0.7} ${arrowSize / 2} L${arrowSize * 0.5} ${arrowSize - 2}"
-          fill="none" stroke="${arrowColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>`)
-    }
-
-    if (direction === 'in') {
-      // Arrow pointing left (incoming)
-      parts.push(`<g class="export-arrow" transform="translate(${x - arrowSize / 2 - 30}, ${y - arrowSize / 2})">
-        <path d="M${arrowSize * 0.7} ${arrowSize / 2} L0 ${arrowSize / 2} M${arrowSize * 0.2} 2 L0 ${arrowSize / 2} L${arrowSize * 0.2} ${arrowSize - 2}"
-          fill="none" stroke="${arrowColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>`)
-    }
-
-    // Label
     const labelText = labels[0] || ''
-    parts.push(
-      `<text x="${x}" y="${y + 4}" class="node-label" text-anchor="middle" fill="${arrowColor}" font-weight="500">${this.escapeXml(labelText)}</text>`,
-    )
 
-    return parts.join('\n  ')
+    // Just render the label (subgraph name), no arrows
+    return `<text x="${x}" y="${y + 4}" class="node-label" text-anchor="middle">${this.escapeXml(labelText)}</text>`
   }
 
   private renderLink(layoutLink: LayoutLink, nodes: Map<string, LayoutNode>): string {
@@ -1161,6 +1133,7 @@ ${fg}
         vlan: link.vlan,
         redundancy: link.redundancy,
         label: link.label,
+        metadata: link.metadata,
       }
       attrs.push(`data-link-json="${this.escapeXml(JSON.stringify(linkInfo))}"`)
     }
