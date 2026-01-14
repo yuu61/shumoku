@@ -400,6 +400,79 @@ const graph = convertToNetworkGraph(
 | `showCableTypes` | ケーブルタイプの色を表示 | `true` |
 | `showVlans` | VLAN の色を表示 | `false` |
 
+## 階層型出力
+
+複数拠点のネットワークを階層型YAMLに変換できます。
+
+```typescript
+import { convertToHierarchicalYaml } from '@shumoku/netbox'
+
+const result = convertToHierarchicalYaml(
+  deviceResp,
+  interfaceResp,
+  cableResp,
+  {
+    hierarchical: true,
+    hierarchyDepth: 'location',  // 'site' | 'location' | 'rack'
+    fileBasePath: './',
+    theme: 'light',
+  }
+)
+
+// 結果
+console.log(result.main)           // main.yaml の内容
+console.log(result.files)          // Map<locationId, yamlContent>
+console.log(result.crossLinks)     // 拠点間リンク一覧
+```
+
+### HierarchicalConverterOptions
+
+```typescript
+interface HierarchicalConverterOptions extends ConverterOptions {
+  // 階層型出力を有効化
+  hierarchical?: boolean
+
+  // 階層の深さ
+  hierarchyDepth?: 'site' | 'location' | 'rack'
+
+  // ファイル参照のベースパス
+  fileBasePath?: string  // default: './'
+}
+```
+
+| hierarchyDepth | 説明 |
+|----------------|------|
+| `site` | サイト単位でファイル分割 |
+| `location` | ロケーション単位（デフォルト） |
+| `rack` | ラック単位（最も細かい） |
+
+### 出力例
+
+```yaml
+# main.yaml
+name: "Network Overview"
+
+subgraphs:
+  - id: tokyo-dc
+    label: "Tokyo DC"
+    file: "./tokyo-dc.yaml"
+  - id: osaka-dc
+    label: "Osaka DC"
+    file: "./osaka-dc.yaml"
+
+links:
+  # 拠点間リンクはデバイスを直接参照
+  - from:
+      node: tokyo-router
+      port: wan1
+    to:
+      node: osaka-router
+      port: wan1
+    bandwidth: 10G
+```
+
+---
+
 ## NetBox のセットアップ
 
 ### API トークンの取得

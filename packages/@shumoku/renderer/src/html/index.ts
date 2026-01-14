@@ -3,11 +3,20 @@
  * Generates standalone interactive HTML pages from NetworkGraph
  */
 
-import type { LayoutResult, NetworkGraph } from '@shumoku/core'
+import type { HierarchicalNetworkGraph, LayoutResult, NetworkGraph } from '@shumoku/core'
 import { SVGRenderer } from '../svg.js'
 import type { HTMLRendererOptions } from '../types.js'
+import {
+  generateNavigationToolbar,
+  getNavigationScript,
+  getNavigationStyles,
+  type NavigationState,
+  type SheetInfo,
+} from './navigation.js'
 
 export type { InteractiveInstance, InteractiveOptions } from '../types.js'
+// Re-export navigation types
+export type { NavigationState, SheetInfo } from './navigation.js'
 // Re-export runtime for direct usage
 export { initInteractive } from './runtime.js'
 
@@ -28,11 +37,27 @@ export function getIIFE(): string {
   return INTERACTIVE_IIFE
 }
 
-export interface RenderOptions extends HTMLRendererOptions {}
+export interface RenderOptions extends HTMLRendererOptions {
+  /**
+   * Enable hierarchical navigation UI
+   */
+  hierarchical?: boolean
+
+  /**
+   * Current sheet ID for hierarchical rendering
+   */
+  currentSheet?: string
+
+  /**
+   * Navigation state for hierarchical diagrams
+   */
+  navigation?: NavigationState
+}
 
 const DEFAULT_OPTIONS = {
   branding: true,
   toolbar: true,
+  hierarchical: false,
 }
 
 /**
@@ -40,11 +65,157 @@ const DEFAULT_OPTIONS = {
  */
 export function render(graph: NetworkGraph, layout: LayoutResult, options?: RenderOptions): string {
   const opts = { ...DEFAULT_OPTIONS, ...options }
+
+  // Auto-detect hierarchical mode if not explicitly set
+  if (options?.hierarchical === undefined) {
+    opts.hierarchical = hasHierarchicalContent(graph)
+  }
+
   const svgRenderer = new SVGRenderer({ renderMode: 'interactive' })
   const svg = svgRenderer.render(graph, layout)
   const title = options?.title || graph.name || 'Network Diagram'
 
-  return generateHtml(svg, title, opts as Required<RenderOptions>)
+  // Build navigation state if hierarchical
+  let navigation: NavigationState | undefined = options?.navigation
+  if (!navigation && opts.hierarchical && isHierarchicalGraph(graph)) {
+    navigation = buildNavigationState(graph as HierarchicalNetworkGraph, opts.currentSheet)
+  }
+
+  return generateHtml(svg, title, { ...opts, navigation } as Required<RenderOptions>)
+}
+
+/**
+ * Sheet data for hierarchical rendering
+ */
+export interface SheetData {
+  graph: NetworkGraph
+  layout: LayoutResult
+}
+
+/**
+ * Render a hierarchical HTML page with multiple embedded sheets
+ */
+export function renderHierarchical(
+  sheets: Map<string, SheetData>,
+  options?: RenderOptions,
+): string {
+  const opts = { ...DEFAULT_OPTIONS, ...options, hierarchical: true }
+
+  const sheetSvgs = new Map<string, string>()
+  const sheetInfos = new Map<string, SheetInfo>()
+  const rootSheet = sheets.get('root')
+
+  // Render child sheets for navigation (detail view when clicking subgraphs)
+  for (const [sheetId, data] of sheets) {
+    if (sheetId === 'root') continue // Skip root for now
+
+    // Render child sheet
+    const svgRenderer = new SVGRenderer({ renderMode: 'interactive', sheetId })
+    const svg = svgRenderer.render(data.graph, data.layout)
+    sheetSvgs.set(sheetId, svg)
+    sheetInfos.set(sheetId, {
+      id: sheetId,
+      label: data.graph.name || sheetId,
+      parentId: 'root',
+    })
+  }
+
+  // Render root sheet (ELK handles hierarchical layout natively, no embedding needed)
+  if (rootSheet) {
+    const rootRenderer = new SVGRenderer({
+      renderMode: 'interactive',
+      sheetId: 'root',
+    })
+    const rootSvg = rootRenderer.render(rootSheet.graph, rootSheet.layout)
+    sheetSvgs.set('root', rootSvg)
+    sheetInfos.set('root', {
+      id: 'root',
+      label: rootSheet.graph.name || 'root',
+      parentId: undefined,
+    })
+  }
+
+  // Get title from root sheet
+  const title = options?.title || rootSheet?.graph.name || 'Network Diagram'
+
+  // Build navigation state
+  const navigation: NavigationState = {
+    currentSheet: 'root',
+    breadcrumb: ['root'],
+    sheets: sheetInfos,
+  }
+
+  return generateHierarchicalHtml(sheetSvgs, title, { ...opts, navigation } as Required<RenderOptions>)
+}
+
+/**
+ * Check if graph is a hierarchical graph
+ */
+function isHierarchicalGraph(graph: NetworkGraph): graph is HierarchicalNetworkGraph {
+  return 'sheets' in graph || 'breadcrumb' in graph
+}
+
+/**
+ * Check if graph has hierarchical content (subgraphs with file/pins)
+ */
+function hasHierarchicalContent(graph: NetworkGraph): boolean {
+  if (isHierarchicalGraph(graph)) return true
+  if (!graph.subgraphs) return false
+  return graph.subgraphs.some((sg) => sg.file || (sg.pins && sg.pins.length > 0))
+}
+
+/**
+ * Build navigation state from hierarchical graph
+ */
+function buildNavigationState(
+  graph: HierarchicalNetworkGraph,
+  currentSheet?: string,
+): NavigationState {
+  const sheets = new Map<string, SheetInfo>()
+
+  // Add root
+  sheets.set('root', {
+    id: 'root',
+    label: graph.name || 'Overview',
+  })
+
+  // Add sheets from subgraphs
+  if (graph.subgraphs) {
+    for (const subgraph of graph.subgraphs) {
+      if (subgraph.file) {
+        sheets.set(subgraph.id, {
+          id: subgraph.id,
+          label: subgraph.label,
+          parentId: 'root',
+        })
+      }
+    }
+  }
+
+  // Add nested sheets
+  if (graph.sheets) {
+    for (const [id, sheet] of graph.sheets) {
+      if (!sheets.has(id)) {
+        sheets.set(id, {
+          id,
+          label: sheet.name || id,
+          parentId: graph.parentSheet,
+        })
+      }
+    }
+  }
+
+  // Build breadcrumb
+  const breadcrumb = graph.breadcrumb || ['root']
+  if (currentSheet && !breadcrumb.includes(currentSheet)) {
+    breadcrumb.push(currentSheet)
+  }
+
+  return {
+    currentSheet,
+    breadcrumb,
+    sheets,
+  }
 }
 
 function generateHtml(svg: string, title: string, options: Required<RenderOptions>): string {
@@ -68,6 +239,22 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
   </div>`
     : ''
 
+  // Navigation toolbar for hierarchical diagrams
+  const navToolbarHtml =
+    options.hierarchical && options.navigation ? generateNavigationToolbar(options.navigation) : ''
+
+  // Navigation styles
+  const navStyles = options.hierarchical ? getNavigationStyles() : ''
+
+  // Navigation scripts
+  const navScript = options.hierarchical ? getNavigationScript() : ''
+
+  // Calculate container height based on toolbar presence
+  const headerHeight = options.toolbar ? 45 : 0
+  const navHeight = options.hierarchical && options.navigation ? 60 : 0
+  const totalHeaderHeight = headerHeight + navHeight
+  const containerHeight = totalHeaderHeight > 0 ? `calc(100vh - ${totalHeaderHeight}px)` : '100vh'
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -83,7 +270,7 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
     .toolbar button { padding: 6px; border: none; background: none; cursor: pointer; border-radius: 4px; color: #666; }
     .toolbar button:hover { background: #f0f0f0; }
     .zoom-text { min-width: 50px; text-align: center; font-size: 13px; color: #666; }
-    .container { position: relative; width: 100%; height: ${options.toolbar ? 'calc(100vh - 45px)' : '100vh'}; overflow: hidden; cursor: grab; background: repeating-conic-gradient(#f8f8f8 0% 25%, transparent 0% 50%) 50% / 20px 20px; }
+    .container { position: relative; width: 100%; height: ${containerHeight}; overflow: hidden; cursor: grab; background: repeating-conic-gradient(#f8f8f8 0% 25%, transparent 0% 50%) 50% / 20px 20px; }
     .container.dragging { cursor: grabbing; }
     .container > svg { width: 100%; height: 100%; }
     .branding { position: absolute; bottom: 16px; right: 16px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; font-size: 13px; font-family: system-ui, sans-serif; color: #555; text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 100; }
@@ -94,10 +281,15 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
     .node:hover rect, .node:hover circle, .node:hover polygon { filter: brightness(0.95); }
     .port { cursor: pointer; }
     .link-hit-area { cursor: pointer; }
+    /* Subgraph click for hierarchical navigation */
+    .subgraph[data-has-sheet] { cursor: pointer; }
+    .subgraph[data-has-sheet]:hover > rect { filter: brightness(0.95); }
+    ${navStyles}
   </style>
 </head>
 <body>
   ${toolbarHtml}
+  ${navToolbarHtml}
   <div class="container" id="container">
     ${svg}
     ${brandingHtml}
@@ -317,9 +509,19 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
         hasMoved = false;
       });
 
+      // Listen for hierarchical navigation events
+      document.addEventListener('shumoku:navigate', function(e) {
+        var sheetId = e.detail && e.detail.sheetId;
+        if (sheetId) {
+          console.log('[Shumoku] Navigate to sheet:', sheetId);
+          alert('Navigate to: ' + sheetId + '\\n\\nThis sheet would show the detailed view of this subgraph.');
+        }
+      });
+
       init();
     })();
   </script>
+  <script>${navScript}</script>
 </body>
 </html>`
 }
@@ -331,4 +533,348 @@ function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+/**
+ * Generate HTML with multiple embedded sheets for hierarchical navigation
+ */
+function generateHierarchicalHtml(
+  sheetSvgs: Map<string, string>,
+  title: string,
+  options: Required<RenderOptions>,
+): string {
+  const brandingHtml = options.branding
+    ? `<a class="branding" href="https://shumoku.packof.me" target="_blank" rel="noopener">
+      <svg class="branding-icon" viewBox="0 0 1024 1024" fill="none"><rect x="64" y="64" width="896" height="896" rx="200" fill="#7FE4C1"/><g transform="translate(90,40) scale(1.25)"><path fill="#1F2328" d="M380 340H450V505H700V555H510V645H450V645H380Z"/></g></svg>
+      <span>Made with Shumoku</span>
+    </a>`
+    : ''
+
+  const toolbarHtml = options.toolbar
+    ? `<div class="toolbar">
+    <span class="toolbar-title" id="sheet-title">${escapeHtml(title)}</span>
+    <div class="toolbar-buttons">
+      <button id="btn-out" title="Zoom Out"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M20 12H4"/></svg></button>
+      <span class="zoom-text" id="zoom">100%</span>
+      <button id="btn-in" title="Zoom In"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button>
+      <button id="btn-fit" title="Fit"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></button>
+      <button id="btn-reset" title="Reset"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+    </div>
+  </div>`
+    : ''
+
+  // Build sheet containers
+  const sheetContainers: string[] = []
+  for (const [sheetId, svg] of sheetSvgs) {
+    const isRoot = sheetId === 'root'
+    const display = isRoot ? 'block' : 'none'
+    sheetContainers.push(
+      `<div class="sheet-container" data-sheet-id="${escapeHtml(sheetId)}" style="display: ${display};">
+        ${svg}
+      </div>`,
+    )
+  }
+
+  // Build sheet info JSON for JavaScript
+  const sheetInfoJson: Record<string, { label: string; parentId?: string }> = {}
+  for (const [id, info] of options.navigation?.sheets || []) {
+    sheetInfoJson[id] = { label: info.label, parentId: info.parentId }
+  }
+
+  const headerHeight = options.toolbar ? 45 : 0
+  const containerHeight = headerHeight > 0 ? `calc(100vh - ${headerHeight}px)` : '100vh'
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f5f5f5; min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: white; border-bottom: 1px solid #e5e5e5; }
+    .toolbar-title { font-size: 14px; color: #666; display: flex; align-items: center; gap: 8px; }
+    .toolbar-buttons { display: flex; gap: 4px; align-items: center; }
+    .toolbar button { padding: 6px; border: none; background: none; cursor: pointer; border-radius: 4px; color: #666; }
+    .toolbar button:hover { background: #f0f0f0; }
+    .zoom-text { min-width: 50px; text-align: center; font-size: 13px; color: #666; }
+    .back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer; font-size: 13px; color: #555; }
+    .back-btn:hover { background: #f5f5f5; }
+    .back-btn svg { width: 14px; height: 14px; }
+    .container { position: relative; width: 100%; height: ${containerHeight}; overflow: hidden; cursor: grab; background: repeating-conic-gradient(#f8f8f8 0% 25%, transparent 0% 50%) 50% / 20px 20px; }
+    .container.dragging { cursor: grabbing; }
+    .sheet-container { width: 100%; height: 100%; }
+    .sheet-container > svg { width: 100%; height: 100%; }
+    .branding { position: absolute; bottom: 16px; right: 16px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; font-size: 13px; font-family: system-ui, sans-serif; color: #555; text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 100; }
+    .branding:hover { color: #222; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .branding-icon { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+    .node { cursor: pointer; }
+    .node:hover rect, .node:hover circle, .node:hover polygon { filter: brightness(0.95); }
+    .port { cursor: pointer; }
+    .link-hit-area { cursor: pointer; }
+    .subgraph[data-has-sheet] { cursor: pointer; }
+    .subgraph[data-has-sheet]:hover > rect { filter: brightness(0.95); }
+  </style>
+</head>
+<body>
+  ${toolbarHtml}
+  <div class="container" id="container">
+    ${sheetContainers.join('\n    ')}
+    ${brandingHtml}
+  </div>
+  <script>${INTERACTIVE_IIFE}</script>
+  <script>
+    (function() {
+      var sheetInfo = ${JSON.stringify(sheetInfoJson)};
+      var currentSheet = 'root';
+      var breadcrumb = ['root'];
+      var sheetViewBoxes = {};
+      var container = document.getElementById('container');
+
+      function getActiveSheet() {
+        return container.querySelector('.sheet-container[data-sheet-id="' + currentSheet + '"]');
+      }
+
+      function getActiveSvg() {
+        var sheet = getActiveSheet();
+        return sheet ? sheet.querySelector('svg') : null;
+      }
+
+      function initSheet(sheetId) {
+        var sheet = container.querySelector('.sheet-container[data-sheet-id="' + sheetId + '"]');
+        if (!sheet) return;
+        var svg = sheet.querySelector('svg');
+        if (!svg) return;
+
+        var w = parseFloat(svg.getAttribute('width')) || 800;
+        var h = parseFloat(svg.getAttribute('height')) || 600;
+        var existing = svg.getAttribute('viewBox');
+        var vb;
+        if (existing) {
+          var p = existing.split(/\\s+|,/).map(Number);
+          vb = { x: p[0] || 0, y: p[1] || 0, w: p[2] || w, h: p[3] || h, origX: p[0] || 0, origY: p[1] || 0, origW: p[2] || w, origH: p[3] || h };
+        } else {
+          vb = { x: 0, y: 0, w: w, h: h, origX: 0, origY: 0, origW: w, origH: h };
+        }
+        sheetViewBoxes[sheetId] = vb;
+
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+
+        // Fit view
+        var cw = container.clientWidth || 800;
+        var ch = container.clientHeight || 600;
+        var scale = Math.min(cw / vb.origW, ch / vb.origH) * 0.9;
+        vb.w = cw / scale;
+        vb.h = ch / scale;
+        vb.x = vb.origX + (vb.origW - vb.w) / 2;
+        vb.y = vb.origY + (vb.origH - vb.h) / 2;
+        svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h);
+
+        if (window.ShumokuInteractive) {
+          window.ShumokuInteractive.initInteractive({ target: svg, modal: { enabled: true }, tooltip: { enabled: true }, panZoom: { enabled: false } });
+        }
+      }
+
+      function updateViewBox() {
+        var svg = getActiveSvg();
+        var vb = sheetViewBoxes[currentSheet];
+        if (!svg || !vb) return;
+        svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h);
+        var zoomEl = document.getElementById('zoom');
+        if (zoomEl) zoomEl.textContent = Math.round(vb.origW / vb.w * 100) + '%';
+      }
+
+      function updateTitle() {
+        var titleEl = document.getElementById('sheet-title');
+        if (!titleEl) return;
+        var info = sheetInfo[currentSheet];
+        var label = info ? info.label : currentSheet;
+
+        if (currentSheet === 'root') {
+          titleEl.innerHTML = label;
+        } else {
+          titleEl.innerHTML = '<button class="back-btn" id="back-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>' + label;
+          document.getElementById('back-btn').addEventListener('click', function() {
+            navigateToSheet('root');
+          });
+        }
+      }
+
+      function navigateToSheet(sheetId) {
+        if (sheetId === currentSheet) return;
+        if (!container.querySelector('.sheet-container[data-sheet-id="' + sheetId + '"]')) {
+          console.warn('[Shumoku] Sheet not found:', sheetId);
+          return;
+        }
+
+        // Hide current
+        var current = getActiveSheet();
+        if (current) current.style.display = 'none';
+
+        // Show new
+        currentSheet = sheetId;
+        var newSheet = getActiveSheet();
+        if (newSheet) {
+          newSheet.style.display = 'block';
+          if (!sheetViewBoxes[sheetId]) {
+            initSheet(sheetId);
+          }
+        }
+
+        // Update breadcrumb
+        if (sheetId === 'root') {
+          breadcrumb = ['root'];
+        } else {
+          breadcrumb = ['root', sheetId];
+        }
+
+        updateTitle();
+        updateViewBox();
+      }
+
+      // Zoom functions
+      function zoom(f) {
+        var vb = sheetViewBoxes[currentSheet];
+        if (!vb) return;
+        var cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2;
+        var nw = vb.w / f, nh = vb.h / f;
+        var scale = vb.origW / nw;
+        if (scale < 0.1 || scale > 10) return;
+        vb.w = nw; vb.h = nh; vb.x = cx - nw / 2; vb.y = cy - nh / 2;
+        updateViewBox();
+      }
+
+      function fitView() {
+        var vb = sheetViewBoxes[currentSheet];
+        if (!vb) return;
+        var cw = container.clientWidth || 800;
+        var ch = container.clientHeight || 600;
+        var scale = Math.min(cw / vb.origW, ch / vb.origH) * 0.9;
+        vb.w = cw / scale;
+        vb.h = ch / scale;
+        vb.x = vb.origX + (vb.origW - vb.w) / 2;
+        vb.y = vb.origY + (vb.origH - vb.h) / 2;
+        updateViewBox();
+      }
+
+      function resetView() {
+        var vb = sheetViewBoxes[currentSheet];
+        if (!vb) return;
+        vb.x = vb.origX; vb.y = vb.origY; vb.w = vb.origW; vb.h = vb.origH;
+        updateViewBox();
+      }
+
+      // Toolbar buttons
+      var btnIn = document.getElementById('btn-in');
+      var btnOut = document.getElementById('btn-out');
+      var btnFit = document.getElementById('btn-fit');
+      var btnReset = document.getElementById('btn-reset');
+      if (btnIn) btnIn.addEventListener('click', function() { zoom(1.2); });
+      if (btnOut) btnOut.addEventListener('click', function() { zoom(1/1.2); });
+      if (btnFit) btnFit.addEventListener('click', fitView);
+      if (btnReset) btnReset.addEventListener('click', resetView);
+
+      // Mouse drag
+      var drag = { active: false, x: 0, y: 0 };
+
+      container.addEventListener('mousedown', function(e) {
+        if (e.button === 0) {
+          var vb = sheetViewBoxes[currentSheet];
+          if (!vb) return;
+          drag = { active: true, x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y };
+          container.classList.add('dragging');
+        }
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!drag.active) return;
+        var vb = sheetViewBoxes[currentSheet];
+        if (!vb) return;
+        var sx = vb.w / container.clientWidth;
+        var sy = vb.h / container.clientHeight;
+        vb.x = drag.vx - (e.clientX - drag.x) * sx;
+        vb.y = drag.vy - (e.clientY - drag.y) * sy;
+        updateViewBox();
+      });
+
+      document.addEventListener('mouseup', function() {
+        drag.active = false;
+        container.classList.remove('dragging');
+      });
+
+      // Wheel zoom
+      container.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        var vb = sheetViewBoxes[currentSheet];
+        if (!vb) return;
+        var rect = container.getBoundingClientRect();
+        var mx = (e.clientX - rect.left) / rect.width;
+        var my = (e.clientY - rect.top) / rect.height;
+        var px = vb.x + vb.w * mx, py = vb.y + vb.h * my;
+        var f = e.deltaY > 0 ? 1/1.2 : 1.2;
+        var nw = vb.w / f, nh = vb.h / f;
+        var scale = vb.origW / nw;
+        if (scale < 0.1 || scale > 10) return;
+        vb.w = nw; vb.h = nh; vb.x = px - nw * mx; vb.y = py - nh * my;
+        updateViewBox();
+      }, { passive: false });
+
+      // Navigation event listener
+      document.addEventListener('shumoku:navigate', function(e) {
+        var sheetId = e.detail && e.detail.sheetId;
+        if (sheetId) {
+          navigateToSheet(sheetId);
+        }
+      });
+
+      // Touch support (simplified)
+      var touch1 = null;
+      var hasMoved = false;
+
+      container.addEventListener('touchstart', function(e) {
+        if (e.target.closest && e.target.closest('.branding')) return;
+        if (e.touches.length === 1) {
+          var vb = sheetViewBoxes[currentSheet];
+          if (vb) {
+            touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY, vx: vb.x, vy: vb.y };
+            hasMoved = false;
+          }
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchmove', function(e) {
+        if (e.target.closest && e.target.closest('.branding')) return;
+        if (e.touches.length === 1 && touch1) {
+          var vb = sheetViewBoxes[currentSheet];
+          if (!vb) return;
+          var dx = e.touches[0].clientX - touch1.x;
+          var dy = e.touches[0].clientY - touch1.y;
+          if (!hasMoved && Math.hypot(dx, dy) > 8) hasMoved = true;
+          if (hasMoved) {
+            e.preventDefault();
+            var sx = vb.w / container.clientWidth;
+            var sy = vb.h / container.clientHeight;
+            vb.x = touch1.vx - dx * sx;
+            vb.y = touch1.vy - dy * sy;
+            updateViewBox();
+          }
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchend', function() {
+        touch1 = null;
+        hasMoved = false;
+      });
+
+      // Initialize root sheet
+      initSheet('root');
+      updateTitle();
+    })();
+  </script>
+</body>
+</html>`
 }

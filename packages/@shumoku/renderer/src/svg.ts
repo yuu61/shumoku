@@ -91,6 +91,14 @@ const DARK_THEME: ThemeColors = {
 // Renderer Options
 // ============================================
 
+/** Embedded content for a subgraph */
+export interface EmbeddedSubgraphContent {
+  /** SVG content to embed (inner content, without outer <svg> tag) */
+  svgContent: string
+  /** ViewBox of the embedded content */
+  viewBox: string
+}
+
 export interface SVGRendererOptions {
   /** Font family */
   fontFamily?: string
@@ -107,6 +115,16 @@ export interface SVGRendererOptions {
    * Only used when renderMode is 'interactive'
    */
   dataAttributes?: DataAttributeOptions
+  /**
+   * Unique sheet ID for generating unique filter/marker IDs
+   * Required when multiple SVGs are embedded in the same HTML page
+   */
+  sheetId?: string
+  /**
+   * Embedded content for subgraphs (subgraphId -> content)
+   * Used to embed child SVG content into parent subgraph boxes
+   */
+  embeddedContent?: Map<string, EmbeddedSubgraphContent>
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
@@ -114,6 +132,8 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
   interactive: true,
   renderMode: 'static',
   dataAttributes: { device: true, link: true, metadata: true },
+  sheetId: '',
+  embeddedContent: new Map(),
 }
 
 // ============================================
@@ -141,6 +161,26 @@ export class SVGRenderer {
       link: this.options.dataAttributes?.link ?? true,
       metadata: this.options.dataAttributes?.metadata ?? true,
     }
+  }
+
+  /** Get unique ID suffix for this sheet */
+  private get idSuffix(): string {
+    return this.options.sheetId ? `-${this.options.sheetId}` : ''
+  }
+
+  /** Get shadow filter ID */
+  private get shadowId(): string {
+    return `shadow${this.idSuffix}`
+  }
+
+  /** Get arrow marker ID */
+  private get arrowId(): string {
+    return `arrow${this.idSuffix}`
+  }
+
+  /** Get red arrow marker ID */
+  private get arrowRedId(): string {
+    return `arrow-red${this.idSuffix}`
   }
 
   /**
@@ -408,15 +448,15 @@ export class SVGRenderer {
   private renderDefs(): string {
     return `<defs>
   <!-- Arrow marker -->
-  <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+  <marker id="${this.arrowId}" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
     <polygon points="0 0, 10 3.5, 0 7" fill="${this.themeColors.defaultLinkStroke}" />
   </marker>
-  <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+  <marker id="${this.arrowRedId}" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
     <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
   </marker>
 
   <!-- Filters -->
-  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+  <filter id="${this.shadowId}" x="-20%" y="-20%" width="140%" height="140%">
     <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
   </filter>
 </defs>`
@@ -515,13 +555,84 @@ export class SVGRenderer {
       }
     }
 
-    return `<g class="subgraph" data-id="${sg.id}">
+    // Hierarchical navigation attributes
+    const hasSheet = subgraph.file || (subgraph.pins && subgraph.pins.length > 0)
+    const sheetAttrs = hasSheet ? ` data-has-sheet="true" data-sheet-id="${sg.id}"` : ''
+
+    // Check for embedded content
+    const embeddedContent = this.options.embeddedContent?.get(sg.id)
+    let embeddedSvg = ''
+    if (embeddedContent) {
+      // Calculate content area (below label, with padding)
+      const labelHeight = 30 // Space for label
+      const padding = 10
+      const contentX = bounds.x + padding
+      const contentY = bounds.y + labelHeight
+      const contentWidth = bounds.width - padding * 2
+      const contentHeight = bounds.height - labelHeight - padding
+
+      // Embed child SVG with viewBox for automatic scaling
+      embeddedSvg = `
+  <svg x="${contentX}" y="${contentY}" width="${contentWidth}" height="${contentHeight}"
+    viewBox="${embeddedContent.viewBox}" preserveAspectRatio="xMidYMid meet">
+    ${embeddedContent.svgContent}
+  </svg>`
+    }
+
+    // Render boundary ports for hierarchical connections
+    let portsSvg = ''
+    if (sg.ports && sg.ports.size > 0) {
+      const portParts: string[] = []
+      const centerX = bounds.x + bounds.width / 2
+      const centerY = bounds.y + bounds.height / 2
+
+      for (const port of sg.ports.values()) {
+        const px = centerX + port.position.x
+        const py = centerY + port.position.y
+        const pw = port.size.width
+        const ph = port.size.height
+
+        // Port circle/diamond on boundary
+        portParts.push(`<circle class="subgraph-port" cx="${px}" cy="${py}" r="${Math.max(pw, ph) / 2 + 2}"
+          fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />`)
+
+        // Port label
+        let labelX = px
+        let labelY = py
+        let anchor = 'middle'
+        const labelOffset = 16
+
+        switch (port.side) {
+          case 'top':
+            labelY = py - labelOffset
+            break
+          case 'bottom':
+            labelY = py + labelOffset + 4
+            break
+          case 'left':
+            labelX = px - labelOffset
+            anchor = 'end'
+            break
+          case 'right':
+            labelX = px + labelOffset
+            anchor = 'start'
+            break
+        }
+
+        portParts.push(`<text x="${labelX}" y="${labelY}" class="port-label" text-anchor="${anchor}"
+          fill="#3b82f6" font-size="10" font-weight="500">${this.escapeXml(port.label)}</text>`)
+      }
+      portsSvg = portParts.join('\n  ')
+    }
+
+    return `<g class="subgraph" data-id="${sg.id}"${sheetAttrs}>
   <rect x="${bounds.x}" y="${bounds.y}" width="${bounds.width}" height="${bounds.height}"
     rx="${rx}" ry="${rx}"
     fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"
     ${strokeDasharray ? `stroke-dasharray="${strokeDasharray}"` : ''} />
   ${iconSvg}
-  <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>
+  <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>${embeddedSvg}
+  ${portsSvg}
 </g>`
   }
 
@@ -547,8 +658,17 @@ ${fg}
     const h = size.height
 
     const style = node.style || {}
-    const fill = style.fill || this.themeColors.defaultNodeFill
-    const stroke = style.stroke || this.themeColors.defaultNodeStroke
+
+    // Check if this is an export connector node (for hierarchical diagrams)
+    const isExport = node.metadata?._isExport === true
+
+    // Special styling for export connector nodes - use subgraph colors
+    let fill = style.fill || this.themeColors.defaultNodeFill
+    let stroke = style.stroke || this.themeColors.defaultNodeStroke
+    if (isExport) {
+      fill = style.fill || this.themeColors.subgraphFill
+      stroke = style.stroke || this.themeColors.defaultNodeStroke
+    }
     const strokeWidth = style.strokeWidth || 1
     const strokeDasharray = style.strokeDasharray || ''
 
@@ -718,26 +838,26 @@ ${fg}
     switch (shape) {
       case 'rect':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'rounded':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="8" ry="8"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'circle': {
         const r = Math.min(halfW, halfH)
         return `<circle cx="${x}" cy="${y}" r="${r}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
       }
 
       case 'diamond':
         return `<polygon points="${x},${y - halfH} ${x + halfW},${y} ${x},${y + halfH} ${x - halfW},${y}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'hexagon': {
         const hx = halfW * 0.866
         return `<polygon points="${x - halfW},${y} ${x - hx},${y - halfH} ${x + hx},${y - halfH} ${x + halfW},${y} ${x + hx},${y + halfH} ${x - hx},${y + halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
       }
 
       case 'cylinder': {
@@ -747,23 +867,23 @@ ${fg}
           <rect x="${x - halfW}" y="${y - halfH + ellipseH}" width="${w}" height="${h - ellipseH * 2}" fill="${fill}" stroke="none" />
           <line x1="${x - halfW}" y1="${y - halfH + ellipseH}" x2="${x - halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
           <line x1="${x + halfW}" y1="${y - halfH + ellipseH}" x2="${x + halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
-          <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />
+          <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />
         </g>`
       }
 
       case 'stadium':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="${halfH}" ry="${halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'trapezoid': {
         const indent = w * 0.15
         return `<polygon points="${x - halfW + indent},${y - halfH} ${x + halfW - indent},${y - halfH} ${x + halfW},${y + halfH} ${x - halfW},${y + halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
       }
 
       default:
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="4" ry="4"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
     }
   }
 
@@ -853,6 +973,14 @@ ${fg}
    * Render node content (icon + label) with dynamic vertical centering
    */
   private renderNodeContent(node: Node, x: number, y: number, w: number): string {
+    // Check if this is an export connector node
+    const isExport = node.metadata?._isExport === true
+
+    // For export connectors, render with arrow icon
+    if (isExport) {
+      return this.renderExportConnectorContent(node, x, y)
+    }
+
     const iconInfo = this.calculateIconInfo(node, w)
     const labels = Array.isArray(node.label) ? node.label : [node.label]
     const labelHeight = labels.length * LABEL_LINE_HEIGHT
@@ -889,6 +1017,15 @@ ${fg}
     return parts.join('\n  ')
   }
 
+  /** Render content for export connector nodes */
+  private renderExportConnectorContent(node: Node, x: number, y: number): string {
+    const labels = Array.isArray(node.label) ? node.label : [node.label]
+    const labelText = labels[0] || ''
+
+    // Just render the label (subgraph name), no arrows
+    return `<text x="${x}" y="${y + 4}" class="node-label" text-anchor="middle">${this.escapeXml(labelText)}</text>`
+  }
+
   private renderLink(layoutLink: LayoutLink, nodes: Map<string, LayoutNode>): string {
     const { id, points, link, fromEndpoint, toEndpoint } = layoutLink
     const label = link.label
@@ -900,7 +1037,7 @@ ${fg}
     const stroke =
       link.style?.stroke || this.getVlanStroke(link.vlan) || this.themeColors.defaultLinkStroke
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
-    const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
+    const markerEnd = arrow !== 'none' ? `url(#${this.arrowId})` : ''
 
     // Get bandwidth rendering config
     const bandwidthConfig = this.getBandwidthConfig(link.bandwidth)
@@ -996,6 +1133,7 @@ ${fg}
         vlan: link.vlan,
         redundancy: link.redundancy,
         label: link.label,
+        metadata: link.metadata,
       }
       attrs.push(`data-link-json="${this.escapeXml(JSON.stringify(linkInfo))}"`)
     }

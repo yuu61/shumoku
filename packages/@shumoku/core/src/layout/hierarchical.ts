@@ -71,6 +71,14 @@ function toEndpoint(endpoint: string | LinkEndpoint): LinkEndpoint {
   if (typeof endpoint === 'string') {
     return { node: endpoint }
   }
+  // Convert pin to port for subgraph boundary connections
+  if ('pin' in endpoint && endpoint.pin) {
+    return {
+      node: endpoint.node,
+      port: endpoint.pin, // Use pin as port
+      ip: endpoint.ip,
+    }
+  }
   return endpoint
 }
 
@@ -476,15 +484,42 @@ export class HierarchicalLayout {
       const sgPadding = subgraph.style?.padding ?? options.subgraphPadding
       const sgEdges = edgesByContainer.get(subgraph.id) || []
 
-      return {
+      // Set minimum size for empty subgraphs (e.g., those with file references)
+      const hasFileRef = !!subgraph.file
+      const minWidth = hasFileRef && childNodes.length === 0 ? 200 : undefined
+      const minHeight = hasFileRef && childNodes.length === 0 ? 100 : undefined
+
+      // Subgraph-specific direction (can override parent)
+      const sgDirection = subgraph.direction
+        ? this.toElkDirection(subgraph.direction)
+        : elkDirection
+
+      const elkNode: ElkNode = {
         id: subgraph.id,
         labels: [{ text: subgraph.label }],
         children: childNodes,
         edges: sgEdges,
         layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': sgDirection,
+          'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
           'elk.padding': `[top=${sgPadding + options.subgraphLabelHeight},left=${sgPadding},bottom=${sgPadding},right=${sgPadding}]`,
+          'elk.spacing.nodeNode': String(options.nodeSpacing),
+          'elk.layered.spacing.nodeNodeBetweenLayers': String(options.rankSpacing),
+          'elk.edgeRouting': 'ORTHOGONAL',
+          // Use ROOT coordinate system for consistent edge/shape positioning
+          'org.eclipse.elk.json.edgeCoords': 'ROOT',
+          'org.eclipse.elk.json.shapeCoords': 'ROOT',
         },
       }
+
+      // Note: Subgraph pins are resolved to device:port in parser
+      // ELK handles cross-hierarchy edges directly with INCLUDE_CHILDREN
+
+      if (minWidth) elkNode.width = minWidth
+      if (minHeight) elkNode.height = minHeight
+
+      return elkNode
     }
 
     // Build root children
@@ -518,10 +553,14 @@ export class HierarchicalLayout {
       return children
     }
 
-    // Build node to parent map
+    // Build node to parent map (includes both nodes and subgraphs)
     const nodeParentMap = new Map<string, string | undefined>()
     for (const node of graph.nodes) {
       nodeParentMap.set(node.id, node.parent)
+    }
+    // Add subgraphs to parent map for LCA calculation
+    for (const sg of subgraphMap.values()) {
+      nodeParentMap.set(sg.id, sg.parent)
     }
 
     // Find LCA (Lowest Common Ancestor) of two nodes
@@ -572,6 +611,8 @@ export class HierarchicalLayout {
         continue
       }
 
+      // ELK port reference format: nodeId:portId in sources/targets
+      // Note: Pin references are already resolved to device:port in parser
       const sourceId = from.port ? `${from.node}:${from.port}` : from.node
       const targetId = to.port ? `${to.node}:${to.port}` : to.node
 
@@ -598,14 +639,18 @@ export class HierarchicalLayout {
         ]
       }
 
-      // Find LCA and place edge in appropriate container
+      // Determine edge container using LCA (Lowest Common Ancestor)
+      // All pin references are already resolved to actual devices in parser
       const lca = findLCA(from.node, to.node)
       let container = lca
       if (container === from.node || container === to.node) {
         container = nodeParentMap.get(container)
       }
-
       const containerId = container && subgraphMap.has(container) ? container : 'root'
+
+      if (!edgesByContainer.has(containerId)) {
+        edgesByContainer.set(containerId, [])
+      }
       edgesByContainer.get(containerId)!.push(edge)
     }
 
@@ -681,11 +726,13 @@ export class HierarchicalLayout {
       if (subgraphMap.has(elkNode.id)) {
         // Subgraph
         const sg = subgraphMap.get(elkNode.id)!
-        layoutSubgraphs.set(elkNode.id, {
+        const layoutSg: LayoutSubgraph = {
           id: elkNode.id,
           bounds: { x, y, width, height },
           subgraph: sg,
-        })
+        }
+
+        layoutSubgraphs.set(elkNode.id, layoutSg)
 
         if (elkNode.children) {
           for (const child of elkNode.children) {
@@ -804,11 +851,35 @@ export class HierarchicalLayout {
           const fromEndpoint = toEndpoint(link.from)
           const toEndpoint_ = toEndpoint(link.to)
 
+          // Get layout info for endpoints (can be nodes or subgraphs)
           const fromNode = layoutNodes.get(fromEndpoint.node)
           const toNode = layoutNodes.get(toEndpoint_.node)
-          if (!fromNode || !toNode) continue
+          const fromSubgraph = layoutSubgraphs.get(fromEndpoint.node)
+          const toSubgraph = layoutSubgraphs.get(toEndpoint_.node)
+
+          // Get position and size for from/to (either node or subgraph)
+          // LayoutSubgraph uses bounds {x, y, width, height}, convert to position/size format
+          const fromLayout = fromNode || (fromSubgraph ? {
+            position: {
+              x: fromSubgraph.bounds.x + fromSubgraph.bounds.width / 2,
+              y: fromSubgraph.bounds.y + fromSubgraph.bounds.height / 2,
+            },
+            size: { width: fromSubgraph.bounds.width, height: fromSubgraph.bounds.height },
+          } : null)
+          const toLayout = toNode || (toSubgraph ? {
+            position: {
+              x: toSubgraph.bounds.x + toSubgraph.bounds.width / 2,
+              y: toSubgraph.bounds.y + toSubgraph.bounds.height / 2,
+            },
+            size: { width: toSubgraph.bounds.width, height: toSubgraph.bounds.height },
+          } : null)
+
+          if (!fromLayout || !toLayout) continue
 
           let points: Position[] = []
+
+          // Check if this is a subgraph-to-subgraph edge
+          const isSubgraphEdge = fromSubgraph || toSubgraph
 
           // HA edges inside HA containers: use ELK's edge routing directly
           if (isHAContainer(container.id) && elkEdge.sections && elkEdge.sections.length > 0) {
@@ -820,43 +891,79 @@ export class HierarchicalLayout {
               }
             }
             points.push({ x: section.endPoint.x, y: section.endPoint.y })
-          } else if (!isHAContainer(container.id)) {
-            // Normal vertical edges
-            const fromBottomY = fromNode.position.y + fromNode.size.height / 2
-            const toTopY = toNode.position.y - toNode.size.height / 2
-
+          } else if (isSubgraphEdge) {
+            // Subgraph edges: use ELK's coordinates directly
             if (elkEdge.sections && elkEdge.sections.length > 0) {
               const section = elkEdge.sections[0]
-
-              points.push({
-                x: section.startPoint.x,
-                y: fromBottomY,
-              })
-
+              points.push({ x: section.startPoint.x, y: section.startPoint.y })
               if (section.bendPoints) {
                 for (const bp of section.bendPoints) {
                   points.push({ x: bp.x, y: bp.y })
                 }
               }
-
-              points.push({
-                x: section.endPoint.x,
-                y: toTopY,
-              })
+              points.push({ x: section.endPoint.x, y: section.endPoint.y })
             } else {
+              // Fallback: simple line between centers
+              points = [
+                { x: fromLayout.position.x, y: fromLayout.position.y + fromLayout.size.height / 2 },
+                { x: toLayout.position.x, y: toLayout.position.y - toLayout.size.height / 2 },
+              ]
+            }
+          } else if (!isHAContainer(container.id)) {
+            // Check if this is a cross-subgraph edge
+            const fromParent = graph.nodes.find((n) => n.id === fromEndpoint.node)?.parent
+            const toParent = graph.nodes.find((n) => n.id === toEndpoint_.node)?.parent
+            const isCrossSubgraph = fromParent !== toParent
+
+            if (elkEdge.sections && elkEdge.sections.length > 0) {
+              const section = elkEdge.sections[0]
+
+              if (isCrossSubgraph) {
+                // Cross-subgraph edges: use ELK's coordinates directly
+                points.push({ x: section.startPoint.x, y: section.startPoint.y })
+                if (section.bendPoints) {
+                  for (const bp of section.bendPoints) {
+                    points.push({ x: bp.x, y: bp.y })
+                  }
+                }
+                points.push({ x: section.endPoint.x, y: section.endPoint.y })
+              } else {
+                // Same-subgraph edges: snap to node boundaries for cleaner look
+                const fromBottomY = fromLayout.position.y + fromLayout.size.height / 2
+                const toTopY = toLayout.position.y - toLayout.size.height / 2
+
+                points.push({
+                  x: section.startPoint.x,
+                  y: fromBottomY,
+                })
+
+                if (section.bendPoints) {
+                  for (const bp of section.bendPoints) {
+                    points.push({ x: bp.x, y: bp.y })
+                  }
+                }
+
+                points.push({
+                  x: section.endPoint.x,
+                  y: toTopY,
+                })
+              }
+            } else {
+              const fromBottomY = fromLayout.position.y + fromLayout.size.height / 2
+              const toTopY = toLayout.position.y - toLayout.size.height / 2
               points = this.generateOrthogonalPath(
-                { x: fromNode.position.x, y: fromBottomY },
-                { x: toNode.position.x, y: toTopY },
+                { x: fromLayout.position.x, y: fromBottomY },
+                { x: toLayout.position.x, y: toTopY },
               )
             }
           } else {
             // HA edge fallback: simple horizontal line
-            const leftNode = fromNode.position.x < toNode.position.x ? fromNode : toNode
-            const rightNode = fromNode.position.x < toNode.position.x ? toNode : fromNode
-            const y = (leftNode.position.y + rightNode.position.y) / 2
+            const leftLayout = fromLayout.position.x < toLayout.position.x ? fromLayout : toLayout
+            const rightLayout = fromLayout.position.x < toLayout.position.x ? toLayout : fromLayout
+            const y = (leftLayout.position.y + rightLayout.position.y) / 2
             points = [
-              { x: leftNode.position.x + leftNode.size.width / 2, y },
-              { x: rightNode.position.x - rightNode.size.width / 2, y },
+              { x: leftLayout.position.x + leftLayout.size.width / 2, y },
+              { x: rightLayout.position.x - rightLayout.size.width / 2, y },
             ]
           }
 
