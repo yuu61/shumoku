@@ -71,6 +71,14 @@ function toEndpoint(endpoint: string | LinkEndpoint): LinkEndpoint {
   if (typeof endpoint === 'string') {
     return { node: endpoint }
   }
+  // Convert pin to port for subgraph boundary connections
+  if ('pin' in endpoint && endpoint.pin) {
+    return {
+      node: endpoint.node,
+      port: endpoint.pin, // Use pin as port
+      ip: endpoint.ip,
+    }
+  }
   return endpoint
 }
 
@@ -505,6 +513,9 @@ export class HierarchicalLayout {
         },
       }
 
+      // Note: Subgraph pins are resolved to device:port in parser
+      // ELK handles cross-hierarchy edges directly with INCLUDE_CHILDREN
+
       if (minWidth) elkNode.width = minWidth
       if (minHeight) elkNode.height = minHeight
 
@@ -600,6 +611,8 @@ export class HierarchicalLayout {
         continue
       }
 
+      // ELK port reference format: nodeId:portId in sources/targets
+      // Note: Pin references are already resolved to device:port in parser
       const sourceId = from.port ? `${from.node}:${from.port}` : from.node
       const targetId = to.port ? `${to.node}:${to.port}` : to.node
 
@@ -626,14 +639,18 @@ export class HierarchicalLayout {
         ]
       }
 
-      // Find LCA and place edge in appropriate container
+      // Determine edge container using LCA (Lowest Common Ancestor)
+      // All pin references are already resolved to actual devices in parser
       const lca = findLCA(from.node, to.node)
       let container = lca
       if (container === from.node || container === to.node) {
         container = nodeParentMap.get(container)
       }
-
       const containerId = container && subgraphMap.has(container) ? container : 'root'
+
+      if (!edgesByContainer.has(containerId)) {
+        edgesByContainer.set(containerId, [])
+      }
       edgesByContainer.get(containerId)!.push(edge)
     }
 
@@ -709,11 +726,13 @@ export class HierarchicalLayout {
       if (subgraphMap.has(elkNode.id)) {
         // Subgraph
         const sg = subgraphMap.get(elkNode.id)!
-        layoutSubgraphs.set(elkNode.id, {
+        const layoutSg: LayoutSubgraph = {
           id: elkNode.id,
           bounds: { x, y, width, height },
           subgraph: sg,
-        })
+        }
+
+        layoutSubgraphs.set(elkNode.id, layoutSg)
 
         if (elkNode.children) {
           for (const child of elkNode.children) {

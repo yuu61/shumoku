@@ -579,6 +579,52 @@ export class SVGRenderer {
   </svg>`
     }
 
+    // Render boundary ports for hierarchical connections
+    let portsSvg = ''
+    if (sg.ports && sg.ports.size > 0) {
+      const portParts: string[] = []
+      const centerX = bounds.x + bounds.width / 2
+      const centerY = bounds.y + bounds.height / 2
+
+      for (const port of sg.ports.values()) {
+        const px = centerX + port.position.x
+        const py = centerY + port.position.y
+        const pw = port.size.width
+        const ph = port.size.height
+
+        // Port circle/diamond on boundary
+        portParts.push(`<circle class="subgraph-port" cx="${px}" cy="${py}" r="${Math.max(pw, ph) / 2 + 2}"
+          fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />`)
+
+        // Port label
+        let labelX = px
+        let labelY = py
+        let anchor = 'middle'
+        const labelOffset = 16
+
+        switch (port.side) {
+          case 'top':
+            labelY = py - labelOffset
+            break
+          case 'bottom':
+            labelY = py + labelOffset + 4
+            break
+          case 'left':
+            labelX = px - labelOffset
+            anchor = 'end'
+            break
+          case 'right':
+            labelX = px + labelOffset
+            anchor = 'start'
+            break
+        }
+
+        portParts.push(`<text x="${labelX}" y="${labelY}" class="port-label" text-anchor="${anchor}"
+          fill="#3b82f6" font-size="10" font-weight="500">${this.escapeXml(port.label)}</text>`)
+      }
+      portsSvg = portParts.join('\n  ')
+    }
+
     return `<g class="subgraph" data-id="${sg.id}"${sheetAttrs}>
   <rect x="${bounds.x}" y="${bounds.y}" width="${bounds.width}" height="${bounds.height}"
     rx="${rx}" ry="${rx}"
@@ -586,6 +632,7 @@ export class SVGRenderer {
     ${strokeDasharray ? `stroke-dasharray="${strokeDasharray}"` : ''} />
   ${iconSvg}
   <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>${embeddedSvg}
+  ${portsSvg}
 </g>`
   }
 
@@ -611,9 +658,19 @@ ${fg}
     const h = size.height
 
     const style = node.style || {}
-    const fill = style.fill || this.themeColors.defaultNodeFill
-    const stroke = style.stroke || this.themeColors.defaultNodeStroke
-    const strokeWidth = style.strokeWidth || 1
+
+    // Check if this is an export connector node (for hierarchical diagrams)
+    const isExport = node.metadata?._isExport === true
+
+    // Special styling for export connector nodes
+    let fill = style.fill || this.themeColors.defaultNodeFill
+    let stroke = style.stroke || this.themeColors.defaultNodeStroke
+    if (isExport) {
+      // Use a distinct color for export connectors
+      fill = style.fill || '#dbeafe' // Light blue
+      stroke = style.stroke || '#3b82f6' // Blue
+    }
+    const strokeWidth = style.strokeWidth || (isExport ? 2 : 1)
     const strokeDasharray = style.strokeDasharray || ''
 
     const shape = this.renderNodeShape(
@@ -917,6 +974,14 @@ ${fg}
    * Render node content (icon + label) with dynamic vertical centering
    */
   private renderNodeContent(node: Node, x: number, y: number, w: number): string {
+    // Check if this is an export connector node
+    const isExport = node.metadata?._isExport === true
+
+    // For export connectors, render with arrow icon
+    if (isExport) {
+      return this.renderExportConnectorContent(node, x, y)
+    }
+
     const iconInfo = this.calculateIconInfo(node, w)
     const labels = Array.isArray(node.label) ? node.label : [node.label]
     const labelHeight = labels.length * LABEL_LINE_HEIGHT
@@ -949,6 +1014,42 @@ ${fg}
         `<text x="${x}" y="${labelStartY + i * LABEL_LINE_HEIGHT}" class="${className}" text-anchor="middle">${this.escapeXml(cleanLine)}</text>`,
       )
     }
+
+    return parts.join('\n  ')
+  }
+
+  /** Render content for export connector nodes */
+  private renderExportConnectorContent(node: Node, x: number, y: number): string {
+    const labels = Array.isArray(node.label) ? node.label : [node.label]
+    const direction = node.metadata?._direction || 'bidirectional'
+
+    const parts: string[] = []
+
+    // Arrow icon based on direction
+    const arrowSize = 14
+    const arrowColor = '#3b82f6' // Blue
+
+    if (direction === 'out' || direction === 'bidirectional') {
+      // Arrow pointing right (outgoing)
+      parts.push(`<g class="export-arrow" transform="translate(${x - arrowSize / 2 - 30}, ${y - arrowSize / 2})">
+        <path d="M0 ${arrowSize / 2} L${arrowSize * 0.7} ${arrowSize / 2} M${arrowSize * 0.5} 2 L${arrowSize * 0.7} ${arrowSize / 2} L${arrowSize * 0.5} ${arrowSize - 2}"
+          fill="none" stroke="${arrowColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>`)
+    }
+
+    if (direction === 'in') {
+      // Arrow pointing left (incoming)
+      parts.push(`<g class="export-arrow" transform="translate(${x - arrowSize / 2 - 30}, ${y - arrowSize / 2})">
+        <path d="M${arrowSize * 0.7} ${arrowSize / 2} L0 ${arrowSize / 2} M${arrowSize * 0.2} 2 L0 ${arrowSize / 2} L${arrowSize * 0.2} ${arrowSize - 2}"
+          fill="none" stroke="${arrowColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>`)
+    }
+
+    // Label
+    const labelText = labels[0] || ''
+    parts.push(
+      `<text x="${x}" y="${y + 4}" class="node-label" text-anchor="middle" fill="${arrowColor}" font-weight="500">${this.escapeXml(labelText)}</text>`,
+    )
 
     return parts.join('\n  ')
   }

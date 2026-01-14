@@ -81,10 +81,33 @@ export function getTooltipInfo(el: Element): TooltipInfo | null {
 
   const linkGroup = el.closest('.link-group[data-link-id]')
   if (linkGroup) {
-    const from = linkGroup.getAttribute('data-link-from') || ''
-    const to = linkGroup.getAttribute('data-link-to') || ''
+    let from = linkGroup.getAttribute('data-link-from') || ''
+    let to = linkGroup.getAttribute('data-link-to') || ''
     const bw = linkGroup.getAttribute('data-link-bandwidth')
     const vlan = linkGroup.getAttribute('data-link-vlan')
+    const jsonAttr = linkGroup.getAttribute('data-link-json')
+
+    // For export links, show device:port + destination info from label
+    const fromIsExport = from.startsWith('__export_')
+    const toIsExport = to.startsWith('__export_')
+    if ((fromIsExport || toIsExport) && jsonAttr) {
+      try {
+        const linkData = JSON.parse(jsonAttr)
+        if (linkData.label) {
+          // Get the actual device endpoint (non-export side)
+          const deviceEndpoint = fromIsExport ? to : from
+          // Get the destination info from label (e.g., "→ Branch Office")
+          const destLabel = Array.isArray(linkData.label) ? linkData.label.join(' ') : linkData.label
+          // Show: "device:port → Destination"
+          let text = `${deviceEndpoint} ${destLabel}`
+          if (bw) text += `\n${bw}`
+          if (vlan) text += `\nVLAN: ${vlan}`
+          return { text, element: linkGroup }
+        }
+      } catch {
+        // Fall through to default display
+      }
+    }
 
     let text = `${from} ↔ ${to}`
     if (bw) text += `\n${bw}`

@@ -640,6 +640,8 @@ export interface LayoutSubgraph {
   id: string
   bounds: Bounds
   subgraph: Subgraph
+  /** Boundary ports for hierarchical connections */
+  ports?: Map<string, LayoutPort>
 }
 
 export interface LayoutResult {
