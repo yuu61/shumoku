@@ -797,3 +797,188 @@ links:
     label: "DC Link (100G)"
     bandwidth: 100G
 `
+
+// Multi-file hierarchical example
+export const hierarchicalMultiFile = [
+  {
+    name: 'main.yaml',
+    content: `name: "Multi-Site Network"
+description: "Network with multiple sites using file references"
+
+settings:
+  theme: light
+
+subgraphs:
+  - id: headquarters
+    label: "Headquarters"
+    file: "./headquarters.yaml"
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+      strokeWidth: 2
+    pins:
+      - id: wan-out
+        label: "WAN Uplink"
+        direction: out
+
+  - id: branch
+    label: "Branch Office"
+    file: "./branch.yaml"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+      strokeWidth: 2
+    pins:
+      - id: wan-in
+        label: "WAN Link"
+        direction: in
+
+links:
+  # Cross-site link
+  - from:
+      node: headquarters
+      pin: wan-out
+    to:
+      node: branch
+      pin: wan-in
+    label: "Site-to-Site VPN"
+    type: dashed
+`,
+  },
+  {
+    name: 'headquarters.yaml',
+    content: `name: "Headquarters Network"
+
+nodes:
+  - id: hq-router
+    label:
+      - "<b>HQ-Router</b>"
+      - "10.0.0.1"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+
+  - id: hq-fw
+    label:
+      - "<b>HQ-Firewall</b>"
+      - "10.0.0.2"
+    type: firewall
+
+  - id: hq-switch
+    label:
+      - "<b>HQ-Core-SW</b>"
+      - "10.0.1.1"
+    type: l3-switch
+    vendor: juniper
+    model: EX4400-48T
+
+  - id: hq-server
+    label:
+      - "<b>App Server</b>"
+      - "10.0.10.10"
+    type: server
+
+links:
+  - from:
+      node: hq-router
+      port: lan1
+    to:
+      node: hq-fw
+      port: outside
+    bandwidth: 10G
+
+  - from:
+      node: hq-fw
+      port: inside
+    to:
+      node: hq-switch
+      port: uplink
+    bandwidth: 10G
+
+  - from:
+      node: hq-switch
+      port: eth1
+    to:
+      node: hq-server
+      port: eth0
+    bandwidth: 1G
+
+pins:
+  - id: wan-out
+    device: hq-router
+    port: wan1
+    direction: out
+`,
+  },
+  {
+    name: 'branch.yaml',
+    content: `name: "Branch Office Network"
+
+nodes:
+  - id: branch-router
+    label:
+      - "<b>Branch-Router</b>"
+      - "10.1.0.1"
+    type: router
+    vendor: yamaha
+    model: rtx1300
+
+  - id: branch-switch
+    label:
+      - "<b>Branch-SW</b>"
+      - "10.1.1.1"
+    type: l2-switch
+
+  - id: branch-ap
+    label: "Branch-AP"
+    type: access-point
+    vendor: aruba
+    model: ap500-series
+
+  - id: branch-pc1
+    label: "PC-1"
+    type: generic
+
+  - id: branch-pc2
+    label: "PC-2"
+    type: generic
+
+links:
+  - from:
+      node: branch-router
+      port: lan1
+    to:
+      node: branch-switch
+      port: uplink
+    bandwidth: 1G
+
+  - from:
+      node: branch-switch
+      port: eth1
+    to:
+      node: branch-ap
+      port: eth0
+    bandwidth: 1G
+
+  - from:
+      node: branch-switch
+      port: eth2
+    to:
+      node: branch-pc1
+      port: eth0
+
+  - from:
+      node: branch-switch
+      port: eth3
+    to:
+      node: branch-pc2
+      port: eth0
+
+pins:
+  - id: wan-in
+    device: branch-router
+    port: wan1
+    direction: in
+`,
+  },
+]

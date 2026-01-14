@@ -91,6 +91,14 @@ const DARK_THEME: ThemeColors = {
 // Renderer Options
 // ============================================
 
+/** Embedded content for a subgraph */
+export interface EmbeddedSubgraphContent {
+  /** SVG content to embed (inner content, without outer <svg> tag) */
+  svgContent: string
+  /** ViewBox of the embedded content */
+  viewBox: string
+}
+
 export interface SVGRendererOptions {
   /** Font family */
   fontFamily?: string
@@ -107,6 +115,16 @@ export interface SVGRendererOptions {
    * Only used when renderMode is 'interactive'
    */
   dataAttributes?: DataAttributeOptions
+  /**
+   * Unique sheet ID for generating unique filter/marker IDs
+   * Required when multiple SVGs are embedded in the same HTML page
+   */
+  sheetId?: string
+  /**
+   * Embedded content for subgraphs (subgraphId -> content)
+   * Used to embed child SVG content into parent subgraph boxes
+   */
+  embeddedContent?: Map<string, EmbeddedSubgraphContent>
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
@@ -114,6 +132,8 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
   interactive: true,
   renderMode: 'static',
   dataAttributes: { device: true, link: true, metadata: true },
+  sheetId: '',
+  embeddedContent: new Map(),
 }
 
 // ============================================
@@ -141,6 +161,26 @@ export class SVGRenderer {
       link: this.options.dataAttributes?.link ?? true,
       metadata: this.options.dataAttributes?.metadata ?? true,
     }
+  }
+
+  /** Get unique ID suffix for this sheet */
+  private get idSuffix(): string {
+    return this.options.sheetId ? `-${this.options.sheetId}` : ''
+  }
+
+  /** Get shadow filter ID */
+  private get shadowId(): string {
+    return `shadow${this.idSuffix}`
+  }
+
+  /** Get arrow marker ID */
+  private get arrowId(): string {
+    return `arrow${this.idSuffix}`
+  }
+
+  /** Get red arrow marker ID */
+  private get arrowRedId(): string {
+    return `arrow-red${this.idSuffix}`
   }
 
   /**
@@ -408,15 +448,15 @@ export class SVGRenderer {
   private renderDefs(): string {
     return `<defs>
   <!-- Arrow marker -->
-  <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+  <marker id="${this.arrowId}" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
     <polygon points="0 0, 10 3.5, 0 7" fill="${this.themeColors.defaultLinkStroke}" />
   </marker>
-  <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+  <marker id="${this.arrowRedId}" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
     <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
   </marker>
 
   <!-- Filters -->
-  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+  <filter id="${this.shadowId}" x="-20%" y="-20%" width="140%" height="140%">
     <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
   </filter>
 </defs>`
@@ -519,13 +559,33 @@ export class SVGRenderer {
     const hasSheet = subgraph.file || (subgraph.pins && subgraph.pins.length > 0)
     const sheetAttrs = hasSheet ? ` data-has-sheet="true" data-sheet-id="${sg.id}"` : ''
 
+    // Check for embedded content
+    const embeddedContent = this.options.embeddedContent?.get(sg.id)
+    let embeddedSvg = ''
+    if (embeddedContent) {
+      // Calculate content area (below label, with padding)
+      const labelHeight = 30 // Space for label
+      const padding = 10
+      const contentX = bounds.x + padding
+      const contentY = bounds.y + labelHeight
+      const contentWidth = bounds.width - padding * 2
+      const contentHeight = bounds.height - labelHeight - padding
+
+      // Embed child SVG with viewBox for automatic scaling
+      embeddedSvg = `
+  <svg x="${contentX}" y="${contentY}" width="${contentWidth}" height="${contentHeight}"
+    viewBox="${embeddedContent.viewBox}" preserveAspectRatio="xMidYMid meet">
+    ${embeddedContent.svgContent}
+  </svg>`
+    }
+
     return `<g class="subgraph" data-id="${sg.id}"${sheetAttrs}>
   <rect x="${bounds.x}" y="${bounds.y}" width="${bounds.width}" height="${bounds.height}"
     rx="${rx}" ry="${rx}"
     fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"
     ${strokeDasharray ? `stroke-dasharray="${strokeDasharray}"` : ''} />
   ${iconSvg}
-  <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>
+  <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>${embeddedSvg}
 </g>`
   }
 
@@ -722,26 +782,26 @@ ${fg}
     switch (shape) {
       case 'rect':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'rounded':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="8" ry="8"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'circle': {
         const r = Math.min(halfW, halfH)
         return `<circle cx="${x}" cy="${y}" r="${r}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
       }
 
       case 'diamond':
         return `<polygon points="${x},${y - halfH} ${x + halfW},${y} ${x},${y + halfH} ${x - halfW},${y}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'hexagon': {
         const hx = halfW * 0.866
         return `<polygon points="${x - halfW},${y} ${x - hx},${y - halfH} ${x + hx},${y - halfH} ${x + halfW},${y} ${x + hx},${y + halfH} ${x - hx},${y + halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
       }
 
       case 'cylinder': {
@@ -751,23 +811,23 @@ ${fg}
           <rect x="${x - halfW}" y="${y - halfH + ellipseH}" width="${w}" height="${h - ellipseH * 2}" fill="${fill}" stroke="none" />
           <line x1="${x - halfW}" y1="${y - halfH + ellipseH}" x2="${x - halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
           <line x1="${x + halfW}" y1="${y - halfH + ellipseH}" x2="${x + halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
-          <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />
+          <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />
         </g>`
       }
 
       case 'stadium':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="${halfH}" ry="${halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
 
       case 'trapezoid': {
         const indent = w * 0.15
         return `<polygon points="${x - halfW + indent},${y - halfH} ${x + halfW - indent},${y - halfH} ${x + halfW},${y + halfH} ${x - halfW},${y + halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
       }
 
       default:
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="4" ry="4"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#shadow)" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
     }
   }
 
@@ -904,7 +964,7 @@ ${fg}
     const stroke =
       link.style?.stroke || this.getVlanStroke(link.vlan) || this.themeColors.defaultLinkStroke
     const dasharray = link.style?.strokeDasharray || this.getLinkDasharray(type)
-    const markerEnd = arrow !== 'none' ? 'url(#arrow)' : ''
+    const markerEnd = arrow !== 'none' ? `url(#${this.arrowId})` : ''
 
     // Get bandwidth rendering config
     const bandwidthConfig = this.getBandwidthConfig(link.bandwidth)

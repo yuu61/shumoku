@@ -95,32 +95,54 @@ export class HierarchicalParser {
               warnings.push(...childResult.warnings)
             }
 
-            // Store the child graph
-            sheets.set(subgraph.id, childResult.graph)
+            // Store the child graph (as independent, complete graph for sheet navigation)
+            // Deep clone to avoid mutation issues
+            const childGraphClone = JSON.parse(JSON.stringify(childResult.graph))
+            sheets.set(subgraph.id, childGraphClone)
 
             // Merge child sheets with prefixed paths
             for (const [id, sheet] of childResult.sheets) {
               sheets.set(`${subgraph.id}/${id}`, sheet)
             }
 
-            // If the child has pins defined, merge them with subgraph pins
-            if (childResult.graph.pins && childResult.graph.pins.length > 0) {
-              if (!subgraph.pins) {
-                subgraph.pins = []
+            // Merge child nodes into parent graph with correct parent reference
+            // This enables ELK to build proper hierarchical layout
+            for (const childNode of childResult.graph.nodes) {
+              // Set parent to this subgraph if node has no parent,
+              // otherwise prefix with subgraph id
+              const mergedNode = { ...childNode }
+              if (!childNode.parent) {
+                mergedNode.parent = subgraph.id
+              } else {
+                mergedNode.parent = `${subgraph.id}/${childNode.parent}`
               }
-              // Merge pins from child file (child pins take precedence for device/port mapping)
-              for (const childPin of childResult.graph.pins) {
-                const existingPin = subgraph.pins.find((p) => p.id === childPin.id)
-                if (existingPin) {
-                  // Merge: child's device/port info into parent's pin
-                  existingPin.device = childPin.device || existingPin.device
-                  existingPin.port = childPin.port || existingPin.port
-                  existingPin.direction = childPin.direction || existingPin.direction
-                  existingPin.position = childPin.position || existingPin.position
+              graph.nodes.push(mergedNode)
+            }
+
+            // Merge child subgraphs with prefixed IDs and parent references
+            if (childResult.graph.subgraphs) {
+              for (const childSg of childResult.graph.subgraphs) {
+                const mergedSg = { ...childSg }
+                mergedSg.id = `${subgraph.id}/${childSg.id}`
+                if (!childSg.parent) {
+                  mergedSg.parent = subgraph.id
                 } else {
-                  subgraph.pins.push(childPin)
+                  mergedSg.parent = `${subgraph.id}/${childSg.parent}`
                 }
+                if (!graph.subgraphs) graph.subgraphs = []
+                graph.subgraphs.push(mergedSg)
               }
+            }
+
+            // Merge child links (node IDs stay as-is, parent is set on nodes)
+            for (const childLink of childResult.graph.links) {
+              const mergedLink = { ...childLink }
+              mergedLink.from = this.cloneEndpoint(childLink.from)
+              mergedLink.to = this.cloneEndpoint(childLink.to)
+              if (childLink.id) {
+                mergedLink.id = `${subgraph.id}/${childLink.id}`
+              }
+              graph.links.push(mergedLink)
             }
           } catch (error) {
             warnings.push({
@@ -133,11 +155,79 @@ export class HierarchicalParser {
       }
     }
 
+    // Resolve pin references in links to actual device:port endpoints
+    // This allows cross-subgraph links to connect to internal devices
+    this.resolvePinReferences(graph)
+
     return {
       graph,
       sheets,
       warnings: warnings.length > 0 ? warnings : undefined,
     }
+  }
+
+  /**
+   * Clone endpoint for merged child links
+   * Node IDs stay as-is since parent reference is set on the node itself
+   */
+  private cloneEndpoint(
+    endpoint: string | { node: string; port?: string; pin?: string; ip?: string },
+  ): string | { node: string; port?: string; pin?: string; ip?: string } {
+    if (typeof endpoint === 'string') {
+      return endpoint
+    }
+    return { ...endpoint }
+  }
+
+  /**
+   * Resolve pin references in links to actual device:port endpoints
+   */
+  private resolvePinReferences(graph: HierarchicalNetworkGraph): void {
+    if (!graph.links || !graph.subgraphs) return
+
+    // Build pin map: subgraphId -> pinId -> { device, port }
+    // Skip file-referenced subgraphs - they don't have device mappings in parent
+    const pinMap = new Map<string, Map<string, { device?: string; port?: string }>>()
+    for (const sg of graph.subgraphs) {
+      if (sg.file) continue // Skip file-referenced subgraphs
+
+      if (sg.pins) {
+        const pins = new Map<string, { device?: string; port?: string }>()
+        for (const pin of sg.pins) {
+          pins.set(pin.id, { device: pin.device, port: pin.port })
+        }
+        pinMap.set(sg.id, pins)
+      }
+    }
+
+    // Resolve each link endpoint
+    for (const link of graph.links) {
+      this.resolveEndpoint(link.from, pinMap)
+      this.resolveEndpoint(link.to, pinMap)
+    }
+  }
+
+  /**
+   * Resolve a single endpoint's pin reference
+   */
+  private resolveEndpoint(
+    endpoint: unknown,
+    pinMap: Map<string, Map<string, { device?: string; port?: string }>>,
+  ): void {
+    if (typeof endpoint !== 'object' || !endpoint) return
+    const ep = endpoint as { node?: string; pin?: string; port?: string }
+    if (!ep.node || !ep.pin) return
+
+    const subgraphPins = pinMap.get(ep.node)
+    if (!subgraphPins) return
+
+    const pin = subgraphPins.get(ep.pin)
+    if (!pin || !pin.device) return
+
+    // Replace endpoint with resolved device:port
+    ep.node = pin.device
+    ep.port = pin.port || ep.port
+    delete ep.pin
   }
 
   /**

@@ -81,6 +81,7 @@ interface YamlLinkEndpoint {
   node: string
   port?: string
   ip?: string
+  pin?: string
 }
 
 interface YamlLink {
@@ -317,7 +318,7 @@ export class YamlParser {
 
   private parseLinkEndpoint(
     endpoint: string | YamlLinkEndpoint,
-  ): string | { node: string; port?: string; ip?: string } {
+  ): string | { node: string; port?: string; ip?: string; pin?: string } {
     if (typeof endpoint === 'string') {
       return endpoint
     }
@@ -325,6 +326,7 @@ export class YamlParser {
       node: endpoint.node,
       port: endpoint.port,
       ip: endpoint.ip,
+      pin: endpoint.pin,
     }
   }
 

@@ -20,3 +20,6 @@ export type {
   PortInfo,
   RenderMode,
 } from './types.js'
+
+// Re-export SheetData for hierarchical rendering
+export type { SheetData } from './html/index.js'

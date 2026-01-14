@@ -204,7 +204,20 @@ export function getNavigationScript(): string {
           bubbles: true
         });
         document.dispatchEvent(event);
+
+        // For standalone HTML, show alert (sheets are not embedded yet)
+        console.log('[Shumoku] Navigate to sheet:', sheetId);
+        alert('Navigate to: ' + sheetId + '\\n\\nNote: Multi-sheet navigation requires embedded sheets.');
       }
+
+      // Listen for navigation events from subgraph clicks
+      document.addEventListener('shumoku:navigate', function(e) {
+        var sheetId = e.detail && e.detail.sheetId;
+        if (sheetId) {
+          console.log('[Shumoku] Subgraph clicked, sheet:', sheetId);
+          alert('Navigate to: ' + sheetId + '\\n\\nNote: Multi-sheet navigation requires embedded sheets.');
+        }
+      });
 
       // Handle breadcrumb clicks
       document.querySelectorAll('.breadcrumb-item').forEach(function(btn) {
