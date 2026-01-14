@@ -3,8 +3,8 @@
  * NetBox to Shumoku CLI
  */
 
-import { writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { HierarchicalLayout } from '@shumoku/core/layout'
 import { html, svg } from '@shumoku/renderer'
@@ -156,6 +156,9 @@ async function main(): Promise<void> {
     // Build output path with extension if not present
     const hasExt = /\.(yaml|yml|svg|html|htm)$/i.test(outputBase)
     const outputPath = resolve(process.cwd(), hasExt ? outputBase : `${outputBase}.${format}`)
+
+    // Ensure output directory exists
+    mkdirSync(dirname(outputPath), { recursive: true })
 
     if (format === 'svg' || format === 'html') {
       console.log('Generating layout...')
