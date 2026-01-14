@@ -183,17 +183,93 @@ async function main(): Promise<void> {
             // Create child graph with only nodes in this subgraph
             const childNodes = graph.nodes.filter((n) => n.parent === sg.id)
             const childNodeIds = new Set(childNodes.map((n) => n.id))
+
+            // Internal links (both endpoints in subgraph)
             const childLinks = graph.links.filter(
               (l) =>
                 childNodeIds.has(typeof l.from === 'string' ? l.from : l.from.node) &&
                 childNodeIds.has(typeof l.to === 'string' ? l.to : l.to.node),
             )
 
+            // Find boundary connections and create export connector nodes/links
+            const exportNodes: NetworkGraph['nodes'] = []
+            const exportLinks: NetworkGraph['links'] = []
+            let exportIndex = 0
+
+            for (const link of graph.links) {
+              const fromNode = typeof link.from === 'string' ? link.from : link.from.node
+              const toNode = typeof link.to === 'string' ? link.to : link.to.node
+              const fromPort = typeof link.from === 'object' ? link.from.port : undefined
+              const toPort = typeof link.to === 'object' ? link.to.port : undefined
+
+              const fromInside = childNodeIds.has(fromNode)
+              const toInside = childNodeIds.has(toNode)
+
+              if (fromInside && !toInside) {
+                // Outgoing connection - internal device connects to external
+                const exportId = `${sg.id}-export-${exportIndex++}`
+                const destSubgraph = graph.subgraphs?.find((s) =>
+                  graph.nodes.some((n) => n.id === toNode && n.parent === s.id),
+                )
+                exportNodes.push({
+                  id: `__export_${exportId}`,
+                  label: destSubgraph?.label || toNode,
+                  shape: 'stadium',
+                  metadata: {
+                    _isExport: true,
+                    _destDevice: toNode,
+                    _destPort: toPort,
+                  },
+                })
+                exportLinks.push({
+                  id: `__export_link_${exportId}`,
+                  from: fromPort ? { node: fromNode, port: fromPort } : fromNode,
+                  to: `__export_${exportId}`,
+                  type: 'dashed',
+                  arrow: 'forward',
+                  metadata: {
+                    _destDevice: toNode,
+                    _destPort: toPort,
+                  },
+                })
+              } else if (!fromInside && toInside) {
+                // Incoming connection - external device connects to internal
+                const exportId = `${sg.id}-export-${exportIndex++}`
+                const destSubgraph = graph.subgraphs?.find((s) =>
+                  graph.nodes.some((n) => n.id === fromNode && n.parent === s.id),
+                )
+                exportNodes.push({
+                  id: `__export_${exportId}`,
+                  label: destSubgraph?.label || fromNode,
+                  shape: 'stadium',
+                  metadata: {
+                    _isExport: true,
+                    _destDevice: fromNode,
+                    _destPort: fromPort,
+                  },
+                })
+                exportLinks.push({
+                  id: `__export_link_${exportId}`,
+                  from: `__export_${exportId}`,
+                  to: toPort ? { node: toNode, port: toPort } : toNode,
+                  type: 'dashed',
+                  arrow: 'forward',
+                  metadata: {
+                    _destDevice: fromNode,
+                    _destPort: fromPort,
+                  },
+                })
+              }
+            }
+
             const childGraph: NetworkGraph = {
               ...graph,
               name: sg.label,
-              nodes: childNodes.map((n) => ({ ...n, parent: undefined })), // Remove parent since it's now root level
-              links: childLinks,
+              nodes: [
+                ...childNodes.map((n) => ({ ...n, parent: undefined })),
+                ...exportNodes,
+              ],
+              links: [...childLinks, ...exportLinks],
               subgraphs: undefined,
             }
 
