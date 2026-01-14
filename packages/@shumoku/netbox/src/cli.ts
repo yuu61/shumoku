@@ -6,8 +6,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
+import type { NetworkGraph } from '@shumoku/core'
 import { HierarchicalLayout } from '@shumoku/core/layout'
 import { html, svg } from '@shumoku/renderer'
+import type { SheetData } from '@shumoku/renderer'
 import { INTERACTIVE_IIFE } from '@shumoku/renderer/iife-string'
 import '@shumoku/icons' // Register vendor icons
 import type { QueryParams } from './client.js'
@@ -168,7 +170,48 @@ async function main(): Promise<void> {
       if (format === 'html') {
         console.log('Rendering HTML...')
         html.setIIFE(INTERACTIVE_IIFE)
-        writeFileSync(outputPath, html.render(graph, layoutResult), 'utf-8')
+
+        // Build hierarchical sheets for subgraph navigation
+        const sheets = new Map<string, SheetData>()
+
+        // Mark subgraphs as clickable and create child sheets
+        if (graph.subgraphs && graph.subgraphs.length > 0) {
+          for (const sg of graph.subgraphs) {
+            // Mark as clickable by setting file property
+            sg.file = sg.id
+
+            // Create child graph with only nodes in this subgraph
+            const childNodes = graph.nodes.filter((n) => n.parent === sg.id)
+            const childNodeIds = new Set(childNodes.map((n) => n.id))
+            const childLinks = graph.links.filter(
+              (l) =>
+                childNodeIds.has(typeof l.from === 'string' ? l.from : l.from.node) ||
+                childNodeIds.has(typeof l.to === 'string' ? l.to : l.to.node),
+            )
+
+            const childGraph: NetworkGraph = {
+              ...graph,
+              name: sg.label,
+              nodes: childNodes.map((n) => ({ ...n, parent: undefined })), // Remove parent since it's now root level
+              links: childLinks,
+              subgraphs: undefined,
+            }
+
+            // Layout child sheet
+            const childLayout = await layout.layoutAsync(childGraph)
+            sheets.set(sg.id, { graph: childGraph, layout: childLayout })
+          }
+        }
+
+        // Add root sheet
+        sheets.set('root', { graph, layout: layoutResult })
+
+        // Use hierarchical rendering if we have subgraphs
+        if (sheets.size > 1) {
+          writeFileSync(outputPath, html.renderHierarchical(sheets), 'utf-8')
+        } else {
+          writeFileSync(outputPath, html.render(graph, layoutResult), 'utf-8')
+        }
       } else {
         console.log('Rendering SVG...')
         writeFileSync(outputPath, svg.render(graph, layoutResult), 'utf-8')
