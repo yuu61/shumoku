@@ -191,9 +191,7 @@ function FileTabs({
 }
 
 export default function PlaygroundClient() {
-  const [files, setFiles] = useState<EditorFile[]>([
-    { name: 'main.yaml', content: enterpriseNetwork },
-  ])
+  const [files, setFiles] = useState<EditorFile[]>(enterpriseNetwork)
   const [activeFile, setActiveFile] = useState('main.yaml')
   const [svgContent, setSvgContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -398,7 +396,7 @@ export default function PlaygroundClient() {
 
   const loadSample = (sample: string) => {
     if (sample === 'enterprise') {
-      setFiles([{ name: 'main.yaml', content: enterpriseNetwork }])
+      setFiles(enterpriseNetwork)
       setActiveFile('main.yaml')
     } else if (sample === 'simple') {
       setFiles([{ name: 'main.yaml', content: simpleNetwork }])

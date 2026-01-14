@@ -1,14 +1,17 @@
-export const enterpriseNetwork = `
-name: "Enterprise Network"
+// Hierarchical Enterprise Network - Multi-file structure
+export const enterpriseNetwork = [
+  {
+    name: 'main.yaml',
+    content: `name: "Enterprise Network"
 description: "Enterprise network with HA routers, firewall, DMZ and campus"
 
 settings:
   theme: light
 
 subgraphs:
-  # Cloud Layer
   - id: cloud
     label: "Cloud Services"
+    file: "./cloud.yaml"
     vendor: aws
     service: vpc
     resource: virtual-private-cloud-vpc
@@ -17,65 +20,94 @@ subgraphs:
       stroke: "#0072bc"
       strokeDasharray: "5 5"
 
-  # Edge Layer
-  - id: edge
-    label: "Edge (HA Routers)"
+  - id: perimeter
+    label: "Perimeter (Edge + Security)"
+    file: "./perimeter.yaml"
     style:
       fill: "#fff5f5"
       stroke: "#d4a017"
       strokeWidth: 2
 
-  # Security Layer
-  - id: security
-    label: "Security"
-    style:
-      fill: "#fef2f2"
-      stroke: "#dc2626"
-      strokeWidth: 2
-
-  # DMZ
   - id: dmz
     label: "DMZ"
+    file: "./dmz.yaml"
     style:
       fill: "#fefce8"
       stroke: "#ca8a04"
 
-  # Campus Layer
   - id: campus
     label: "Campus"
+    file: "./campus.yaml"
     style:
       fill: "#fffbf0"
       stroke: "#d4a017"
 
-  # NOC (nested in campus)
-  - id: noc
-    label: "NOC"
-    parent: campus
-    style:
-      fill: "#e6f7ff"
-      stroke: "#0055a6"
-      strokeWidth: 2
+links:
+  # Cloud to Perimeter (VPN)
+  - from:
+      node: vgw
+      port: tun0
+      ip: 169.254.100.1/30
+    to:
+      node: rt1
+      port: tun1
+      ip: 169.254.100.2/30
+    label: "IPsec VPN"
+    type: dashed
 
-  # Building A (nested in campus)
-  - id: building-a
-    label: "Building A"
-    parent: campus
-    direction: TB
-    style:
-      fill: "#f0fdf4"
-      stroke: "#22c55e"
+  - from:
+      node: vgw
+      port: tun1
+      ip: 169.254.101.1/30
+    to:
+      node: rt2
+      port: tun1
+      ip: 169.254.101.2/30
+    label: "IPsec VPN"
+    type: dashed
 
-  # Building B (nested in campus)
-  - id: building-b
-    label: "Building B"
-    parent: campus
-    direction: TB
-    style:
-      fill: "#fef3c7"
-      stroke: "#f59e0b"
+  # Perimeter to DMZ
+  - from:
+      node: fw1
+      port: dmz
+      ip: 10.100.0.2/24
+    to:
+      node: dmz-sw
+      port: uplink
+      ip: 10.100.0.1/24
+    label: "DMZ"
+    vlan: 100
+    bandwidth: 10G
+
+  # Perimeter to Campus
+  - from:
+      node: fw1
+      port: inside
+      ip: 10.0.2.1/30
+    to:
+      node: core-sw
+      port: eth1
+      ip: 10.0.2.2/30
+    label: "Active"
+    bandwidth: 10G
+
+  - from:
+      node: fw2
+      port: inside
+      ip: 10.0.2.5/30
+    to:
+      node: core-sw
+      port: eth2
+      ip: 10.0.2.6/30
+    label: "Standby"
+    bandwidth: 10G
+`,
+  },
+  {
+    name: 'cloud.yaml',
+    content: `name: "Cloud Services"
 
 nodes:
-  # ========== Cloud Layer ==========
   - id: cloud-services
     label:
       - "<b>Services VPC</b>"
@@ -86,7 +118,6 @@ nodes:
     vendor: aws
     service: ec2
     resource: instances
-    parent: cloud
 
   - id: vgw
     label:
@@ -96,8 +127,38 @@ nodes:
     vendor: aws
     service: vpc
     resource: vpn-gateway
-    parent: cloud
 
+links:
+  - from:
+      node: cloud-services
+      port: eth0
+    to:
+      node: vgw
+      port: vpc
+    label: "Internal"
+`,
+  },
+  {
+    name: 'perimeter.yaml',
+    content: `name: "Perimeter Network"
+description: "Edge routers and firewalls"
+
+subgraphs:
+  - id: edge
+    label: "Edge (HA Routers)"
+    style:
+      fill: "#fff5f5"
+      stroke: "#d4a017"
+      strokeWidth: 2
+
+  - id: security
+    label: "Security"
+    style:
+      fill: "#fef2f2"
+      stroke: "#dc2626"
+      strokeWidth: 2
+
+nodes:
   # ========== Edge Layer ==========
   - id: isp1
     label:
@@ -152,28 +213,148 @@ nodes:
     model: SRX4100
     parent: security
 
-  # ========== DMZ ==========
+links:
+  # ISP to Routers
+  - from:
+      node: isp1
+      port: eth0
+      ip: 203.0.113.2/30
+    to:
+      node: rt1
+      port: wan1
+      ip: 203.0.113.1/30
+    bandwidth: 10G
+
+  - from:
+      node: isp2
+      port: eth0
+      ip: 198.51.100.2/30
+    to:
+      node: rt2
+      port: wan1
+      ip: 198.51.100.1/30
+    bandwidth: 10G
+
+  # Router HA Keepalive
+  - from:
+      node: rt1
+      port: ha0
+      ip: 10.255.0.1/30
+    to:
+      node: rt2
+      port: ha0
+      ip: 10.255.0.2/30
+    label: "Keepalive"
+    redundancy: ha
+    style:
+      minLength: 300
+
+  # Router to Firewall
+  - from:
+      node: rt1
+      port: lan1
+      ip: 10.0.1.1/30
+    to:
+      node: fw1
+      port: outside
+      ip: 10.0.1.2/30
+    bandwidth: 10G
+
+  - from:
+      node: rt2
+      port: lan1
+      ip: 10.0.1.5/30
+    to:
+      node: fw2
+      port: outside
+      ip: 10.0.1.6/30
+    bandwidth: 10G
+
+  # Firewall HA
+  - from:
+      node: fw1
+      port: ha
+    to:
+      node: fw2
+      port: ha
+    label: "HA Sync"
+    redundancy: ha
+    style:
+      minLength: 300
+`,
+  },
+  {
+    name: 'dmz.yaml',
+    content: `name: "DMZ"
+description: "Demilitarized zone with public-facing servers"
+
+nodes:
   - id: dmz-sw
     label:
       - "<b>DMZ-SW</b>"
       - "Mgmt: 10.100.0.1"
     type: l2-switch
-    parent: dmz
 
   - id: web-srv
     label:
       - "<b>Web Server</b>"
       - "10.100.10.10"
     type: server
-    parent: dmz
 
   - id: mail-srv
     label:
       - "<b>Mail Server</b>"
       - "10.100.10.20"
     type: server
-    parent: dmz
 
+links:
+  - from:
+      node: dmz-sw
+      port: eth1
+    to:
+      node: web-srv
+      port: eth0
+    vlan: 100
+    bandwidth: 1G
+
+  - from:
+      node: dmz-sw
+      port: eth2
+    to:
+      node: mail-srv
+      port: eth0
+    vlan: 100
+    bandwidth: 1G
+`,
+  },
+  {
+    name: 'campus.yaml',
+    content: `name: "Campus Network"
+description: "Internal campus network with NOC and buildings"
+
+subgraphs:
+  - id: noc
+    label: "NOC"
+    style:
+      fill: "#e6f7ff"
+      stroke: "#0055a6"
+      strokeWidth: 2
+
+  - id: building-a
+    label: "Building A"
+    direction: TB
+    style:
+      fill: "#f0fdf4"
+      stroke: "#22c55e"
+
+  - id: building-b
+    label: "Building B"
+    direction: TB
+    style:
+      fill: "#fef3c7"
+      stroke: "#f59e0b"
+
+nodes:
   # ========== NOC ==========
   - id: core-sw
     label:
@@ -262,150 +443,6 @@ nodes:
     parent: building-b
 
 links:
-  # ISP to Routers
-  - from:
-      node: isp1
-      port: eth0
-      ip: 203.0.113.2/30
-    to:
-      node: rt1
-      port: wan1
-      ip: 203.0.113.1/30
-    bandwidth: 10G
-
-  - from:
-      node: isp2
-      port: eth0
-      ip: 198.51.100.2/30
-    to:
-      node: rt2
-      port: wan1
-      ip: 198.51.100.1/30
-    bandwidth: 10G
-
-  # VPN Tunnels
-  - from:
-      node: vgw
-      port: tun0
-      ip: 169.254.100.1/30
-    to:
-      node: rt1
-      port: tun1
-      ip: 169.254.100.2/30
-    label: "IPsec VPN"
-
-  - from:
-      node: vgw
-      port: tun1
-      ip: 169.254.101.1/30
-    to:
-      node: rt2
-      port: tun1
-      ip: 169.254.101.2/30
-    label: "IPsec VPN"
-
-  # Router HA Keepalive
-  - from:
-      node: rt1
-      port: ha0
-      ip: 10.255.0.1/30
-    to:
-      node: rt2
-      port: ha0
-      ip: 10.255.0.2/30
-    label: "Keepalive"
-    redundancy: ha
-    style:
-      minLength: 300
-
-  # Router to Firewall
-  - from:
-      node: rt1
-      port: lan1
-      ip: 10.0.1.1/30
-    to:
-      node: fw1
-      port: outside
-      ip: 10.0.1.2/30
-    bandwidth: 10G
-
-  - from:
-      node: rt2
-      port: lan1
-      ip: 10.0.1.5/30
-    to:
-      node: fw2
-      port: outside
-      ip: 10.0.1.6/30
-    bandwidth: 10G
-
-  # Firewall HA
-  - from:
-      node: fw1
-      port: ha
-    to:
-      node: fw2
-      port: ha
-    label: "HA Sync"
-    redundancy: ha
-    style:
-      minLength: 300
-
-  # Firewall to Core
-  - from:
-      node: fw1
-      port: inside
-      ip: 10.0.2.1/30
-    to:
-      node: core-sw
-      port: eth1
-      ip: 10.0.2.2/30
-    label: "Active"
-    bandwidth: 10G
-
-  - from:
-      node: fw2
-      port: inside
-      ip: 10.0.2.5/30
-    to:
-      node: core-sw
-      port: eth2
-      ip: 10.0.2.6/30
-    label: "Standby"
-    bandwidth: 10G
-
-  # Firewall to DMZ
-  - from:
-      node: fw1
-      port: dmz
-      ip: 10.100.0.2/24
-    to:
-      node: dmz-sw
-      port: uplink
-      ip: 10.100.0.1/24
-    label: "DMZ"
-    vlan: 100
-    bandwidth: 10G
-
-  # DMZ servers
-  - from:
-      node: dmz-sw
-      port: eth1
-    to:
-      node: web-srv
-      port: eth0
-    vlan: 100
-    bandwidth: 1G
-
-  - from:
-      node: dmz-sw
-      port: eth2
-    to:
-      node: mail-srv
-      port: eth0
-    vlan: 100
-    bandwidth: 1G
-
   # Core to Distribution
   - from:
       node: core-sw
@@ -504,7 +541,9 @@ links:
       port: eth0
     vlan: 30
     bandwidth: 1G
-`
+`,
+  },
+]
 
 export const simpleNetwork = `
 name: "Simple Network"
