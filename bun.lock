@@ -41,7 +41,7 @@
     },
     "packages/@shumoku/core": {
       "name": "@shumoku/core",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "elkjs": "^0.11.0",
         "pixi.js": "^8.5.2",
@@ -62,7 +62,7 @@
     },
     "packages/@shumoku/icons": {
       "name": "@shumoku/icons",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@shumoku/core": "^0.2.0",
       },
@@ -93,7 +93,7 @@
     },
     "packages/@shumoku/parser-yaml": {
       "name": "@shumoku/parser-yaml",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@shumoku/core": "^0.2.0",
         "js-yaml": "^4.1.0",
@@ -107,7 +107,7 @@
     },
     "packages/@shumoku/renderer": {
       "name": "@shumoku/renderer",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@shumoku/core": "workspace:*",
       },
@@ -120,7 +120,7 @@
     },
     "packages/shumoku": {
       "name": "shumoku",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@shumoku/core": "^0.2.0",
         "@shumoku/icons": "^0.2.0",

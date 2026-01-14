@@ -76,7 +76,7 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
   <title>${escapeHtml(title)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #f5f5f5; min-height: 100vh; }
+    body { background: #f5f5f5; min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
     .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: white; border-bottom: 1px solid #e5e5e5; }
     .toolbar-title { font-size: 14px; color: #666; }
     .toolbar-buttons { display: flex; gap: 4px; align-items: center; }
@@ -207,6 +207,114 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
       document.addEventListener('mouseup', function() {
         drag.active = false;
         container.classList.remove('dragging');
+      });
+
+      // Touch events for pan/zoom
+      var pinch = null;
+      var touch1 = null;
+      var hasMoved = false;
+      var DRAG_THRESHOLD = 8;
+
+      function getTouchDist(t) {
+        if (t.length < 2) return 0;
+        return Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
+      }
+
+      function getTouchCenter(t) {
+        return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 };
+      }
+
+      container.addEventListener('touchstart', function(e) {
+        // Skip if touching branding link
+        if (e.target.closest && e.target.closest('.branding')) return;
+
+        if (e.touches.length === 1) {
+          // Single finger - potential pan or tap
+          touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY, vx: vb.x, vy: vb.y };
+          hasMoved = false;
+        } else if (e.touches.length >= 2) {
+          // Two fingers - pinch zoom
+          e.preventDefault();
+          touch1 = null;
+          hasMoved = true;
+          var dist = getTouchDist(e.touches);
+          var center = getTouchCenter(e.touches);
+          var rect = container.getBoundingClientRect();
+          pinch = {
+            dist: dist,
+            vb: { x: vb.x, y: vb.y, w: vb.w, h: vb.h },
+            cx: vb.x + vb.w * ((center.x - rect.left) / rect.width),
+            cy: vb.y + vb.h * ((center.y - rect.top) / rect.height),
+            lastCenter: center
+          };
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchmove', function(e) {
+        // Skip if touching branding link
+        if (e.target.closest && e.target.closest('.branding')) return;
+
+        if (e.touches.length === 1 && touch1) {
+          var dx = e.touches[0].clientX - touch1.x;
+          var dy = e.touches[0].clientY - touch1.y;
+
+          // Check if moved beyond threshold
+          if (!hasMoved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+            hasMoved = true;
+          }
+
+          if (hasMoved) {
+            e.preventDefault();
+            var sx = vb.w / container.clientWidth;
+            var sy = vb.h / container.clientHeight;
+            vb.x = touch1.vx - dx * sx;
+            vb.y = touch1.vy - dy * sy;
+            updateViewBox();
+          }
+        } else if (e.touches.length >= 2 && pinch) {
+          e.preventDefault();
+          var dist = getTouchDist(e.touches);
+          var center = getTouchCenter(e.touches);
+          if (dist === 0 || pinch.dist === 0) return;
+
+          var scale = dist / pinch.dist;
+          var nw = pinch.vb.w / scale;
+          var nh = pinch.vb.h / scale;
+          var newScale = origVb.w / nw;
+          if (newScale < 0.1 || newScale > 10) return;
+
+          var rect = container.getBoundingClientRect();
+          var sx = nw / rect.width;
+          var sy = nh / rect.height;
+          var panX = (center.x - pinch.lastCenter.x) * sx;
+          var panY = (center.y - pinch.lastCenter.y) * sy;
+
+          var mx = (center.x - rect.left) / rect.width;
+          var my = (center.y - rect.top) / rect.height;
+          vb.x = pinch.cx - nw * mx - panX;
+          vb.y = pinch.cy - nh * my - panY;
+          vb.w = nw;
+          vb.h = nh;
+          updateViewBox();
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchend', function(e) {
+        if (e.touches.length === 0) {
+          touch1 = null;
+          pinch = null;
+          hasMoved = false;
+        } else if (e.touches.length === 1) {
+          pinch = null;
+          touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY, vx: vb.x, vy: vb.y };
+          hasMoved = true; // Already moving
+        }
+      });
+
+      container.addEventListener('touchcancel', function() {
+        touch1 = null;
+        pinch = null;
+        hasMoved = false;
       });
 
       init();
