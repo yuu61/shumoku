@@ -185,7 +185,7 @@ async function main(): Promise<void> {
             const childNodeIds = new Set(childNodes.map((n) => n.id))
             const childLinks = graph.links.filter(
               (l) =>
-                childNodeIds.has(typeof l.from === 'string' ? l.from : l.from.node) ||
+                childNodeIds.has(typeof l.from === 'string' ? l.from : l.from.node) &&
                 childNodeIds.has(typeof l.to === 'string' ? l.to : l.to.node),
             )
 
