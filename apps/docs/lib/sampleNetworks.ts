@@ -576,13 +576,6 @@ subgraphs:
       fill: "#e3f2fd"
       stroke: "#1565c0"
       strokeWidth: 2
-    pins:
-      - id: wan-uplink
-        label: "WAN Uplink"
-        direction: out
-      - id: branch-link
-        label: "Branch Link"
-        direction: out
 
   - id: branch-office
     label: "Branch Office"
@@ -590,10 +583,6 @@ subgraphs:
       fill: "#e8f5e9"
       stroke: "#2e7d32"
       strokeWidth: 2
-    pins:
-      - id: hq-link
-        label: "HQ Link"
-        direction: in
 
   - id: datacenter
     label: "Data Center"
@@ -601,10 +590,6 @@ subgraphs:
       fill: "#fff3e0"
       stroke: "#e65100"
       strokeWidth: 2
-    pins:
-      - id: mgmt-link
-        label: "Management"
-        direction: in
 
 nodes:
   # ========== Headquarters ==========
@@ -816,10 +801,6 @@ subgraphs:
       fill: "#e3f2fd"
       stroke: "#1565c0"
       strokeWidth: 2
-    pins:
-      - id: wan-out
-        label: "WAN Uplink"
-        direction: out
 
   - id: branch
     label: "Branch Office"
@@ -828,19 +809,15 @@ subgraphs:
       fill: "#e8f5e9"
       stroke: "#2e7d32"
       strokeWidth: 2
-    pins:
-      - id: wan-in
-        label: "WAN Link"
-        direction: in
 
 links:
-  # Cross-site link
+  # Cross-site link using direct device references
   - from:
-      node: headquarters
-      pin: wan-out
+      node: hq-router
+      port: wan1
     to:
-      node: branch
-      pin: wan-in
+      node: branch-router
+      port: wan1
     label: "Site-to-Site VPN"
     type: dashed
 `,
@@ -902,12 +879,6 @@ links:
       node: hq-server
       port: eth0
     bandwidth: 1G
-
-pins:
-  - id: wan-out
-    device: hq-router
-    port: wan1
-    direction: out
 `,
   },
   {
@@ -973,12 +944,6 @@ links:
     to:
       node: branch-pc2
       port: eth0
-
-pins:
-  - id: wan-in
-    device: branch-router
-    port: wan1
-    direction: in
 `,
   },
 ]

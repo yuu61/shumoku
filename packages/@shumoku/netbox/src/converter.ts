@@ -8,7 +8,6 @@ import type {
   LinkEndpoint,
   NetworkGraph,
   Node,
-  Pin,
   Subgraph,
 } from '@shumoku/core/models'
 
@@ -1209,46 +1208,7 @@ export function convertToHierarchicalYaml(
     }
   }
 
-  // 6. Generate pins for each location from cross-location links
-  const locationPins = new Map<string, Pin[]>()
-
-  for (const crossLink of crossLinks) {
-    // Add pin to source location
-    if (!locationPins.has(crossLink.fromLocation)) {
-      locationPins.set(crossLink.fromLocation, [])
-    }
-    const fromPinId = `${crossLink.toLocation}-link`
-    const existingFromPin = locationPins
-      .get(crossLink.fromLocation)!
-      .find((p) => p.id === fromPinId)
-    if (!existingFromPin) {
-      locationPins.get(crossLink.fromLocation)!.push({
-        id: fromPinId,
-        label: `To ${formatLocationLabel(crossLink.toLocation)}`,
-        device: crossLink.fromDevice,
-        port: crossLink.fromPort,
-        direction: 'out',
-      })
-    }
-
-    // Add pin to target location
-    if (!locationPins.has(crossLink.toLocation)) {
-      locationPins.set(crossLink.toLocation, [])
-    }
-    const toPinId = `${crossLink.fromLocation}-link`
-    const existingToPin = locationPins.get(crossLink.toLocation)!.find((p) => p.id === toPinId)
-    if (!existingToPin) {
-      locationPins.get(crossLink.toLocation)!.push({
-        id: toPinId,
-        label: `From ${formatLocationLabel(crossLink.fromLocation)}`,
-        device: crossLink.toDevice,
-        port: crossLink.toPort,
-        direction: 'in',
-      })
-    }
-  }
-
-  // 7. Generate per-location YAML files
+  // 6. Generate per-location YAML files
   const files = new Map<string, string>()
 
   for (const [locationId, deviceNames] of locationDevices) {
@@ -1257,16 +1217,14 @@ export function convertToHierarchicalYaml(
       deviceNames,
       deviceInfoMap,
       internalConnections.get(locationId) ?? [],
-      locationPins.get(locationId) ?? [],
       options,
     )
     files.set(locationId, toYaml(locationGraph))
   }
 
-  // 8. Generate main YAML with location subgraphs
+  // 7. Generate main YAML with location subgraphs and cross-location links
   const mainYaml = generateMainYaml(
     locationDevices,
-    locationPins,
     crossLinks,
     fileBasePath,
     options,
@@ -1311,7 +1269,6 @@ function buildLocationGraph(
     }
   >,
   connections: ConnectionData[],
-  pins: Pin[],
   options: HierarchicalConverterOptions,
 ): NetworkGraph {
   const useRoleForType = options.useRoleForType ?? true
@@ -1371,7 +1328,6 @@ function buildLocationGraph(
     description: `Network topology for ${formatLocationLabel(locationId)}`,
     nodes,
     links,
-    pins: pins.length > 0 ? pins : undefined,
     settings: {
       direction: 'TB',
       theme: options.theme ?? 'light',
@@ -1384,7 +1340,6 @@ function buildLocationGraph(
  */
 function generateMainYaml(
   locationDevices: Map<string, Set<string>>,
-  locationPins: Map<string, Pin[]>,
   crossLinks: CrossLocationLink[],
   fileBasePath: string,
   options: HierarchicalConverterOptions,
@@ -1406,25 +1361,13 @@ function generateMainYaml(
   // Location subgraphs with file references
   lines.push('subgraphs:')
   let styleIndex = 0
-  for (const [locationId, _devices] of locationDevices) {
+  for (const [locationId] of locationDevices) {
     const style = SITE_LOCATION_STYLES[styleIndex % SITE_LOCATION_STYLES.length]
     styleIndex++
 
     lines.push(`  - id: ${locationId}`)
     lines.push(`    label: "${formatLocationLabel(locationId)}"`)
     lines.push(`    file: "${fileBasePath}${locationId}.yaml"`)
-
-    // Add pins for this location
-    const pins = locationPins.get(locationId)
-    if (pins && pins.length > 0) {
-      lines.push('    pins:')
-      for (const pin of pins) {
-        lines.push(`      - id: ${pin.id}`)
-        if (pin.label) lines.push(`        label: "${pin.label}"`)
-        if (pin.direction) lines.push(`        direction: ${pin.direction}`)
-      }
-    }
-
     lines.push('    style:')
     lines.push(`      fill: "${style.fill}"`)
     lines.push(`      stroke: "${style.stroke}"`)
@@ -1432,26 +1375,17 @@ function generateMainYaml(
   }
   lines.push('')
 
-  // Cross-location links using pin notation
+  // Cross-location links using direct device references
   if (crossLinks.length > 0) {
     lines.push('links:')
 
-    // Group cross-links by location pair to avoid duplicates
-    const linkPairs = new Map<string, CrossLocationLink>()
     for (const crossLink of crossLinks) {
-      const key = [crossLink.fromLocation, crossLink.toLocation].sort().join('|')
-      if (!linkPairs.has(key)) {
-        linkPairs.set(key, crossLink)
-      }
-    }
-
-    for (const [, crossLink] of linkPairs) {
       lines.push('  - from:')
-      lines.push(`      node: ${crossLink.fromLocation}`)
-      lines.push(`      pin: ${crossLink.toLocation}-link`)
+      lines.push(`      node: ${crossLink.fromDevice}`)
+      lines.push(`      port: ${crossLink.fromPort}`)
       lines.push('    to:')
-      lines.push(`      node: ${crossLink.toLocation}`)
-      lines.push(`      pin: ${crossLink.fromLocation}-link`)
+      lines.push(`      node: ${crossLink.toDevice}`)
+      lines.push(`      port: ${crossLink.toPort}`)
 
       // Add bandwidth if available
       const bandwidth = convertSpeedToBandwidth(crossLink.cable.speed)

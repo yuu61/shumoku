@@ -63,6 +63,21 @@ export interface HierarchicalParseResult extends ParseResult {
 }
 
 /**
+ * Cross-subgraph link info for export connector generation
+ */
+interface CrossSubgraphLink {
+  link: Link
+  fromSubgraph: string
+  fromSubgraphLabel: string
+  fromDevice: string
+  fromPort?: string
+  toSubgraph: string
+  toSubgraphLabel: string
+  toDevice: string
+  toPort?: string
+}
+
+/**
  * Hierarchical parser that resolves file references
  */
 export class HierarchicalParser {
@@ -94,6 +109,9 @@ export class HierarchicalParser {
     graph.sheets = sheets
     graph.breadcrumb = ['root']
 
+    // Build device → subgraph map as we load child files
+    const deviceToSubgraph = new Map<string, string>()
+
     // Resolve file references in subgraphs
     if (graph.subgraphs) {
       for (const subgraph of graph.subgraphs) {
@@ -121,8 +139,7 @@ export class HierarchicalParser {
               warnings.push(...childResult.warnings)
             }
 
-            // Store the child graph (as independent, complete graph for sheet navigation)
-            // Deep clone to avoid mutation issues
+            // Store the child graph for sheet navigation (clone to avoid mutation)
             const childGraphClone = JSON.parse(JSON.stringify(childResult.graph))
             sheets.set(subgraph.id, childGraphClone)
 
@@ -131,14 +148,15 @@ export class HierarchicalParser {
               sheets.set(`${subgraph.id}/${id}`, sheet)
             }
 
-            // Merge child nodes into parent graph with correct parent reference
-            // Skip virtual export nodes - they're only for child sheet view
+            // Merge child nodes and track device → subgraph mapping
             for (const childNode of childResult.graph.nodes) {
               // Skip virtual export connector nodes
               if (isExportNode(childNode.id)) continue
 
-              // Set parent to this subgraph if node has no parent,
-              // otherwise prefix with subgraph id
+              // Track which subgraph this device belongs to
+              deviceToSubgraph.set(childNode.id, subgraph.id)
+
+              // Set parent reference
               const mergedNode = { ...childNode }
               if (!childNode.parent) {
                 mergedNode.parent = subgraph.id
@@ -148,7 +166,7 @@ export class HierarchicalParser {
               graph.nodes.push(mergedNode)
             }
 
-            // Merge child subgraphs with prefixed IDs and parent references
+            // Merge child subgraphs with prefixed IDs
             if (childResult.graph.subgraphs) {
               for (const childSg of childResult.graph.subgraphs) {
                 const mergedSg = { ...childSg }
@@ -165,7 +183,6 @@ export class HierarchicalParser {
 
             // Merge child links (skip virtual export links)
             for (const childLink of childResult.graph.links) {
-              // Skip virtual export connector links
               if (isExportLink(childLink.id)) continue
 
               const mergedLink = { ...childLink }
@@ -175,27 +192,6 @@ export class HierarchicalParser {
                 mergedLink.id = `${subgraph.id}/${childLink.id}`
               }
               graph.links.push(mergedLink)
-            }
-
-            // Merge child's pin device info into parent subgraph's pins
-            // Parent may define pins without device/port, child defines the actual wiring
-            if (childResult.graph.pins) {
-              if (!subgraph.pins) {
-                // No parent pins, use child's pins directly
-                subgraph.pins = childResult.graph.pins
-              } else {
-                // Merge: copy device/port from child pins to parent pins with matching IDs
-                for (const childPin of childResult.graph.pins) {
-                  const parentPin = subgraph.pins.find((p) => p.id === childPin.id)
-                  if (parentPin && childPin.device) {
-                    parentPin.device = childPin.device
-                    parentPin.port = childPin.port
-                  } else if (!parentPin && childPin.device) {
-                    // Child has a pin not in parent, add it
-                    subgraph.pins.push(childPin)
-                  }
-                }
-              }
             }
           } catch (error) {
             warnings.push({
@@ -208,13 +204,23 @@ export class HierarchicalParser {
       }
     }
 
-    // Update child sheet export connectors with connection destination info
-    // This must happen BEFORE resolvePinReferences since we need the original pin references
-    this.updateExportConnectorsWithDestinations(graph, sheets)
+    // Build subgraph label map
+    const subgraphLabels = new Map<string, string>()
+    if (graph.subgraphs) {
+      for (const sg of graph.subgraphs) {
+        subgraphLabels.set(sg.id, sg.label)
+      }
+    }
 
-    // Resolve pin references in parent links to actual device:port endpoints
-    // This converts { node: subgraph, pin: pinId } to { node: device, port: port }
-    this.resolvePinReferences(graph)
+    // Detect cross-subgraph links and generate export connectors
+    const crossLinks = this.detectCrossSubgraphLinks(
+      graph.links,
+      deviceToSubgraph,
+      subgraphLabels,
+    )
+
+    // Generate export connectors in child sheets
+    this.generateExportConnectorsForCrossLinks(crossLinks, sheets)
 
     return {
       graph,
@@ -224,174 +230,148 @@ export class HierarchicalParser {
   }
 
   /**
-   * Update child sheet export connectors with connection destination info
-   * Analyzes parent links to find where each pin connects to
+   * Detect links that cross subgraph boundaries
    */
-  private updateExportConnectorsWithDestinations(
-    graph: HierarchicalNetworkGraph,
-    sheets: Map<string, NetworkGraph>,
-  ): void {
-    if (!graph.subgraphs) return
+  private detectCrossSubgraphLinks(
+    links: Link[],
+    deviceToSubgraph: Map<string, string>,
+    subgraphLabels: Map<string, string>,
+  ): CrossSubgraphLink[] {
+    const crossLinks: CrossSubgraphLink[] = []
 
-    // Build subgraph label map for destination names
-    const subgraphLabels = new Map<string, string>()
-    for (const sg of graph.subgraphs) {
-      subgraphLabels.set(sg.id, sg.label)
-    }
+    for (const link of links) {
+      const from = typeof link.from === 'string' ? { node: link.from } : link.from
+      const to = typeof link.to === 'string' ? { node: link.to } : link.to
 
-    // Build pin resolution map: "subgraphId:pinId" → { device, port }
-    const pinMap = new Map<string, { device: string; port?: string }>()
-    for (const sg of graph.subgraphs) {
-      if (!sg.pins) continue
-      for (const pin of sg.pins) {
-        if (!pin.device) continue
-        pinMap.set(`${sg.id}:${pin.id}`, { device: pin.device, port: pin.port })
+      const fromSubgraph = deviceToSubgraph.get(from.node)
+      const toSubgraph = deviceToSubgraph.get(to.node)
+
+      // Check if this link crosses subgraph boundaries
+      if (fromSubgraph && toSubgraph && fromSubgraph !== toSubgraph) {
+        crossLinks.push({
+          link,
+          fromSubgraph,
+          fromSubgraphLabel: subgraphLabels.get(fromSubgraph) || fromSubgraph,
+          fromDevice: from.node,
+          fromPort: from.port,
+          toSubgraph,
+          toSubgraphLabel: subgraphLabels.get(toSubgraph) || toSubgraph,
+          toDevice: to.node,
+          toPort: to.port,
+        })
       }
     }
 
-    // Analyze links to find pin connections
-    // Build map: "subgraphId:pinId" → connection info including resolved device
-    const connectionMap = new Map<
+    return crossLinks
+  }
+
+  /**
+   * Generate export connector nodes/links in child sheets for cross-subgraph links
+   */
+  private generateExportConnectorsForCrossLinks(
+    crossLinks: CrossSubgraphLink[],
+    sheets: Map<string, NetworkGraph>,
+  ): void {
+    // Group cross-links by subgraph and device:port
+    // Map: "subgraphId:device:port" → { destSubgraphLabel, destDevice, destPort, isSource }
+    const exportPoints = new Map<
       string,
       {
-        destSubgraph: string
+        subgraphId: string
+        device: string
+        port?: string
         destSubgraphLabel: string
-        destPin: string
         destDevice: string
         destPort?: string
         isSource: boolean
       }
     >()
 
-    for (const link of graph.links) {
-      const from = typeof link.from === 'string' ? { node: link.from } : link.from
-      const to = typeof link.to === 'string' ? { node: link.to } : link.to
-
-      // Check if this link uses pin references
-      if ('pin' in from && from.pin && 'pin' in to && to.pin) {
-        // Both endpoints use pins - this is a cross-subgraph connection
-        const fromKey = `${from.node}:${from.pin}`
-        const toKey = `${to.node}:${to.pin}`
-
-        // Get resolved device:port for each endpoint
-        const fromResolved = pinMap.get(fromKey)
-        const toResolved = pinMap.get(toKey)
-
-        // Source side: connects TO the destination
-        connectionMap.set(fromKey, {
-          destSubgraph: to.node,
-          destSubgraphLabel: subgraphLabels.get(to.node) || to.node,
-          destPin: to.pin,
-          destDevice: toResolved?.device || to.node,
-          destPort: toResolved?.port,
+    for (const crossLink of crossLinks) {
+      // Source side (from)
+      const fromKey = `${crossLink.fromSubgraph}:${crossLink.fromDevice}:${crossLink.fromPort || ''}`
+      if (!exportPoints.has(fromKey)) {
+        exportPoints.set(fromKey, {
+          subgraphId: crossLink.fromSubgraph,
+          device: crossLink.fromDevice,
+          port: crossLink.fromPort,
+          destSubgraphLabel: crossLink.toSubgraphLabel,
+          destDevice: crossLink.toDevice,
+          destPort: crossLink.toPort,
           isSource: true,
         })
+      }
 
-        // Destination side: connects FROM the source
-        connectionMap.set(toKey, {
-          destSubgraph: from.node,
-          destSubgraphLabel: subgraphLabels.get(from.node) || from.node,
-          destPin: from.pin,
-          destDevice: fromResolved?.device || from.node,
-          destPort: fromResolved?.port,
+      // Destination side (to)
+      const toKey = `${crossLink.toSubgraph}:${crossLink.toDevice}:${crossLink.toPort || ''}`
+      if (!exportPoints.has(toKey)) {
+        exportPoints.set(toKey, {
+          subgraphId: crossLink.toSubgraph,
+          device: crossLink.toDevice,
+          port: crossLink.toPort,
+          destSubgraphLabel: crossLink.fromSubgraphLabel,
+          destDevice: crossLink.fromDevice,
+          destPort: crossLink.fromPort,
           isSource: false,
         })
       }
     }
 
-    // Update export connectors (nodes and links) in each child sheet
-    for (const [sheetId, sheetGraph] of sheets) {
-      for (const node of sheetGraph.nodes) {
-        // Check if this is an export connector node
-        if (!node.id.startsWith(EXPORT_NODE_PREFIX)) continue
+    // Generate export connectors for each export point
+    for (const [key, exportPoint] of exportPoints) {
+      const sheetGraph = sheets.get(exportPoint.subgraphId)
+      if (!sheetGraph) continue
 
-        const pinId = node.id.slice(EXPORT_NODE_PREFIX.length)
-        const connectionKey = `${sheetId}:${pinId}`
-        const connection = connectionMap.get(connectionKey)
+      // Create unique ID for this export connector
+      const exportId = key.replace(/:/g, '_')
 
-        if (connection) {
-          // Update node label with destination subgraph name (no arrow)
-          node.label = connection.destSubgraphLabel
-
-          // Store connection info in metadata
-          if (!node.metadata) node.metadata = {}
-          node.metadata._destSubgraph = connection.destSubgraph
-          node.metadata._destSubgraphLabel = connection.destSubgraphLabel
-          node.metadata._destPin = connection.destPin
-          node.metadata._destDevice = connection.destDevice
-          node.metadata._destPort = connection.destPort
-          node.metadata._isSource = connection.isSource
-
-          // Also update the export link metadata for tooltip display
-          const exportLinkId = `${EXPORT_LINK_PREFIX}${pinId}`
-          const exportLink = sheetGraph.links.find((l) => l.id === exportLinkId)
-          if (exportLink) {
-            if (!exportLink.metadata) exportLink.metadata = {}
-            exportLink.metadata._destSubgraphLabel = connection.destSubgraphLabel
-            exportLink.metadata._destDevice = connection.destDevice
-            exportLink.metadata._destPort = connection.destPort
-          }
-        }
+      // Create export connector node
+      const exportNodeId = `${EXPORT_NODE_PREFIX}${exportId}`
+      const exportNode: Node = {
+        id: exportNodeId,
+        label: exportPoint.destSubgraphLabel, // Show destination subgraph name
+        shape: 'stadium',
+        type: 'connector' as any,
+        metadata: {
+          _isExport: true,
+          _destSubgraph: exportPoint.destSubgraphLabel,
+          _destDevice: exportPoint.destDevice,
+          _destPort: exportPoint.destPort,
+          _isSource: exportPoint.isSource,
+        },
       }
-    }
-  }
+      sheetGraph.nodes.push(exportNode)
 
-  /**
-   * Resolve pin references in links to actual device:port endpoints
-   * Converts { node: subgraphId, pin: pinId } to { node: deviceId, port: portName }
-   */
-  private resolvePinReferences(graph: HierarchicalNetworkGraph): void {
-    if (!graph.subgraphs) return
+      // Create export connector link
+      const exportLinkId = `${EXPORT_LINK_PREFIX}${exportId}`
+      const deviceEndpoint = exportPoint.port
+        ? { node: exportPoint.device, port: exportPoint.port }
+        : exportPoint.device
 
-    // Build pin resolution map: "subgraphId:pinId" → { device, port }
-    const pinMap = new Map<string, { device: string; port?: string }>()
-    for (const sg of graph.subgraphs) {
-      if (!sg.pins) continue
-      for (const pin of sg.pins) {
-        if (!pin.device) continue
-        pinMap.set(`${sg.id}:${pin.id}`, { device: pin.device, port: pin.port })
+      const exportLink: Link = {
+        id: exportLinkId,
+        // Source: device → export connector (outgoing)
+        // Destination: export connector → device (incoming)
+        from: exportPoint.isSource ? deviceEndpoint : exportNodeId,
+        to: exportPoint.isSource ? exportNodeId : deviceEndpoint,
+        type: 'dashed',
+        arrow: 'forward',
+        metadata: {
+          _destSubgraphLabel: exportPoint.destSubgraphLabel,
+          _destDevice: exportPoint.destDevice,
+          _destPort: exportPoint.destPort,
+        },
       }
-    }
-
-    // Resolve pin references in all links
-    for (const link of graph.links) {
-      link.from = this.resolveEndpointPin(link.from, pinMap)
-      link.to = this.resolveEndpointPin(link.to, pinMap)
-    }
-  }
-
-  /**
-   * Resolve a single endpoint's pin reference if present
-   */
-  private resolveEndpointPin(
-    endpoint: string | { node: string; port?: string; pin?: string; ip?: string },
-    pinMap: Map<string, { device: string; port?: string }>,
-  ): string | { node: string; port?: string; ip?: string } {
-    if (typeof endpoint === 'string') return endpoint
-    if (!endpoint.pin) return endpoint
-
-    const key = `${endpoint.node}:${endpoint.pin}`
-    const resolved = pinMap.get(key)
-    if (!resolved) {
-      // Pin not found, return endpoint as-is (will likely fail in layout)
-      return endpoint
-    }
-
-    // Return resolved endpoint with device:port
-    return {
-      node: resolved.device,
-      port: resolved.port,
-      ip: endpoint.ip,
+      sheetGraph.links.push(exportLink)
     }
   }
 
   /**
    * Clone endpoint for merged child links
-   * Node IDs stay as-is since parent reference is set on the node itself
    */
   private cloneEndpoint(
-    endpoint: string | { node: string; port?: string; pin?: string; ip?: string },
-  ): string | { node: string; port?: string; pin?: string; ip?: string } {
+    endpoint: string | { node: string; port?: string; ip?: string },
+  ): string | { node: string; port?: string; ip?: string } {
     if (typeof endpoint === 'string') {
       return endpoint
     }
@@ -407,64 +387,14 @@ export class HierarchicalParser {
     parentId: string,
   ): Promise<HierarchicalParseResult> {
     const childParser = new HierarchicalParser(this.resolver)
-    // Share the loaded files set to detect circular references
     childParser.loadedFiles = this.loadedFiles
 
     const result = await childParser.parse(input, basePath)
 
-    // Set parent reference
     result.graph.parentSheet = parentId
     result.graph.breadcrumb = ['root', parentId]
 
-    // Generate export connector nodes and links for pins
-    // These show "external connection" in child sheet view
-    this.generateExportConnectors(result.graph)
-
     return result
-  }
-
-  /**
-   * Generate virtual export connector nodes and links from graph.pins
-   * These are displayed in child sheet view to show external connections
-   */
-  private generateExportConnectors(graph: NetworkGraph): void {
-    if (!graph.pins || graph.pins.length === 0) return
-
-    for (const pin of graph.pins) {
-      if (!pin.device) continue
-
-      // Create virtual export connector node
-      const exportNodeId = `${EXPORT_NODE_PREFIX}${pin.id}`
-      const exportNode: Node = {
-        id: exportNodeId,
-        label: pin.label || pin.id,
-        shape: 'stadium', // Pill shape for connectors
-        type: 'connector' as any, // Special type for rendering
-        metadata: {
-          _isExport: true,
-          _pinId: pin.id,
-          _direction: pin.direction || 'bidirectional',
-        },
-      }
-      graph.nodes.push(exportNode)
-
-      // Create virtual link between device and export connector
-      // Direction determines link orientation:
-      // - out: device → export (data flows out)
-      // - in: export → device (data flows in)
-      const exportLinkId = `${EXPORT_LINK_PREFIX}${pin.id}`
-      const deviceEndpoint = pin.port ? { node: pin.device, port: pin.port } : pin.device
-      const isIncoming = pin.direction === 'in'
-
-      const exportLink: Link = {
-        id: exportLinkId,
-        from: isIncoming ? exportNodeId : deviceEndpoint,
-        to: isIncoming ? deviceEndpoint : exportNodeId,
-        type: 'dashed',
-        arrow: 'forward',
-      }
-      graph.links.push(exportLink)
-    }
   }
 
   /**
@@ -481,13 +411,11 @@ export class HierarchicalParser {
 export function createNodeFileResolver(): FileResolver {
   return {
     async read(path: string): Promise<string> {
-      // Dynamic import for Node.js fs
       const fs = await import('node:fs/promises')
       return fs.readFile(path, 'utf-8')
     },
 
     resolve(basePath: string, relativePath: string): string {
-      // Dynamic import for Node.js path
       const path = require('node:path')
       const dir = path.dirname(basePath)
       return path.resolve(dir, relativePath)
@@ -509,7 +437,6 @@ export function createMemoryFileResolver(files: Map<string, string>, basePath = 
     },
 
     resolve(_basePath: string, relativePath: string): string {
-      // Simple path resolution for memory resolver
       if (relativePath.startsWith('./')) {
         return basePath + relativePath.slice(2)
       }
