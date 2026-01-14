@@ -124,6 +124,11 @@ export interface LinkEndpoint {
   node: string
   port?: string
   ip?: string // e.g., "10.57.0.1/30"
+  /**
+   * Pin reference for hierarchical connections (e.g., "subgraph-id:pin-id")
+   * When set, this endpoint connects to a subgraph's boundary pin
+   */
+  pin?: string
 }
 
 /**
@@ -217,6 +222,42 @@ export interface SubgraphStyle {
   rankSpacing?: number
 }
 
+/**
+ * Pin for hierarchical boundary connections (KiCad-style sheet pins)
+ * Maps internal device:port to external connection point
+ */
+export interface Pin {
+  /**
+   * Unique identifier for the pin
+   */
+  id: string
+
+  /**
+   * Display label for the pin (e.g., "Office接続")
+   */
+  label?: string
+
+  /**
+   * Internal device reference (which device this pin connects to)
+   */
+  device?: string
+
+  /**
+   * Internal port reference (which port on the device)
+   */
+  port?: string
+
+  /**
+   * Direction hint for layout (incoming/outgoing)
+   */
+  direction?: 'in' | 'out' | 'bidirectional'
+
+  /**
+   * Visual position on the subgraph boundary
+   */
+  position?: 'top' | 'bottom' | 'left' | 'right'
+}
+
 export interface Subgraph {
   id: string
 
@@ -266,6 +307,17 @@ export interface Subgraph {
    * Resource type within the service (e.g., 'instance', 'nat-gateway')
    */
   resource?: string
+
+  /**
+   * File reference for external sheet definition (KiCad-style hierarchy)
+   */
+  file?: string
+
+  /**
+   * Pins for boundary connections (hierarchical sheets)
+   * Defines connection points between this subgraph and parent/siblings
+   */
+  pins?: Pin[]
 }
 
 // ============================================
@@ -481,6 +533,33 @@ export interface NetworkGraph {
    * Global settings
    */
   settings?: GraphSettings
+
+  /**
+   * Top-level pins (for child sheets in hierarchical diagrams)
+   * Defines connection points exposed to parent sheet
+   */
+  pins?: Pin[]
+}
+
+/**
+ * Hierarchical network graph with resolved sheet references
+ * Used when loading multi-file hierarchical diagrams
+ */
+export interface HierarchicalNetworkGraph extends NetworkGraph {
+  /**
+   * Map of sheet ID to their resolved NetworkGraph
+   */
+  sheets?: Map<string, NetworkGraph>
+
+  /**
+   * Parent sheet ID (if this is a child sheet)
+   */
+  parentSheet?: string
+
+  /**
+   * Breadcrumb path from root (e.g., ['root', 'server-room'])
+   */
+  breadcrumb?: string[]
 }
 
 // ============================================

@@ -13,6 +13,7 @@ import type {
   NodeShape,
   PaperOrientation,
   PaperSize,
+  Pin,
   Subgraph,
   ThemeType,
 } from '@shumoku/core/models'
@@ -108,6 +109,18 @@ interface YamlSubgraphStyle {
   rankSpacing?: number
 }
 
+/**
+ * Pin for hierarchical boundary connections
+ */
+interface YamlPin {
+  id: string
+  label?: string
+  device?: string
+  port?: string
+  direction?: 'in' | 'out' | 'bidirectional'
+  position?: 'top' | 'bottom' | 'left' | 'right'
+}
+
 interface YamlSubgraph {
   id: string
   label: string
@@ -123,6 +136,10 @@ interface YamlSubgraph {
   model?: string
   /** Resource type within the service (e.g., 'instance', 'nat-gateway') */
   resource?: string
+  /** File reference for external sheet definition (KiCad-style hierarchy) */
+  file?: string
+  /** Pins for boundary connections (hierarchical sheets) */
+  pins?: YamlPin[]
 }
 
 interface YamlCanvasSettings {
@@ -162,6 +179,8 @@ interface YamlNetworkV2 {
   links?: YamlLink[]
   subgraphs?: YamlSubgraph[]
   settings?: YamlGraphSettings
+  /** Top-level pins (for child sheets in hierarchical diagrams) */
+  pins?: YamlPin[]
 }
 
 // ============================================
@@ -203,6 +222,7 @@ export class YamlParser {
         links: this.parseLinks(data.links || [], warnings),
         subgraphs: this.parseSubgraphs(data.subgraphs || [], warnings),
         settings: this.parseSettings(data.settings),
+        pins: data.pins ? this.parsePins(data.pins, warnings) : undefined,
       }
 
       // Auto-assign nodes to subgraphs based on parent field
@@ -358,6 +378,27 @@ export class YamlParser {
     return bandwidthMap[normalized]
   }
 
+  private parsePins(yamlPins: YamlPin[], warnings: ParseWarning[]): Pin[] {
+    return yamlPins.map((p, index) => {
+      if (!p.id) {
+        warnings.push({
+          code: 'MISSING_PIN_ID',
+          message: `Pin at index ${index} missing id`,
+          severity: 'error',
+        })
+      }
+
+      return {
+        id: p.id || `pin-${index}`,
+        label: p.label,
+        device: p.device,
+        port: p.port,
+        direction: p.direction,
+        position: p.position,
+      }
+    })
+  }
+
   private parseSubgraphs(yamlSubgraphs: YamlSubgraph[], warnings: ParseWarning[]): Subgraph[] {
     return yamlSubgraphs.map((s, index) => {
       if (!s.id) {
@@ -396,6 +437,8 @@ export class YamlParser {
         service: s.service?.toLowerCase(),
         model: s.model?.toLowerCase(),
         resource: s.resource?.toLowerCase(),
+        file: s.file,
+        pins: s.pins ? this.parsePins(s.pins, warnings) : undefined,
       }
     })
   }
