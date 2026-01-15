@@ -10,14 +10,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL('https://shumoku.packof.me'),
   title: {
-    default: 'Shumoku',
+    default: 'Shumoku - Network Topology Diagram Generator',
     template: '%s | Shumoku',
   },
   description:
-    'Network diagrams, as code. YAML でネットワーク構成を定義し、美しい SVG ダイアグラムを自動生成',
+    'Network topology diagram generator. Generate SVG network diagrams from YAML. Supports Cisco, Yamaha, Juniper, Aruba, AWS icons (900+). NetBox integration. Diagram as code for network engineers.',
   openGraph: {
-    title: 'Shumoku',
-    description: 'Network diagrams, as code.',
+    title: 'Shumoku - Network Topology Diagram Generator',
+    description:
+      'Generate network topology diagrams from YAML. Diagram as code with 900+ vendor icons. NetBox integration.',
     siteName: 'Shumoku',
     type: 'website',
   },

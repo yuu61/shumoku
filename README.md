@@ -1,15 +1,19 @@
-# Shumoku
+# Shumoku — Network Topology Diagram Generator
 
-<img src="apps/playground/public/logo.svg" alt="Shumoku Logo" width="128" height="128">
+<img src="apps/docs/public/logo.svg" alt="Shumoku Logo" width="128" height="128">
 
-**撞木** - 撞木は喚鐘を叩く時に使用する丁字形の棒です。その撞木を吊り下げる釘を撞木釘と言います。
+**Network diagrams, as code.** Generate beautiful network topology diagrams (SVG/HTML) from YAML definitions.
 
-Modern network topology visualization library for TypeScript/JavaScript.
+Define your network infrastructure in YAML, get publication-ready diagrams automatically.
 
 [![npm version](https://img.shields.io/npm/v/shumoku.svg)](https://www.npmjs.com/package/shumoku)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[Playground](https://shumoku.packof.me/)** | **[Documentation](https://shumoku.packof.me/docs/yaml-reference)**
+
+## Output Example
+
+![Sample network diagram](apps/docs/public/hero-diagram.png)
 
 ## Features
 
