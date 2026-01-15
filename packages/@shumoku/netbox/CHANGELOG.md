@@ -1,5 +1,18 @@
 # @shumoku/netbox
 
+## 0.2.14
+
+### Patch Changes
+
+- 2b6ff1a: feat: add JSON output support for netbox CLI and shumoku render CLI
+
+  - netbox CLI: `--format json` or `-o file.json` outputs NetworkGraph JSON
+  - new `shumoku render` CLI in @shumoku/renderer to render JSON to SVG/HTML
+  - enables workflow: NetBox → JSON → merge/modify → render
+
+- Updated dependencies [2b6ff1a]
+  - @shumoku/renderer@0.2.14
+
 ## 0.2.13
 
 ### Patch Changes
