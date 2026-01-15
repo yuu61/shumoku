@@ -1,6 +1,6 @@
 {
   "name": "@shumoku/netbox",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "description": "NetBox API client and Shumoku converter",
   "license": "MIT",
   "author": "konoe-akitoshi",
@@ -47,7 +47,7 @@
   "dependencies": {
     "@shumoku/core": "^0.2.13",
     "@shumoku/icons": "^0.2.3",
-    "@shumoku/renderer": "^0.2.6"
+    "@shumoku/renderer": "^0.2.14"
   },
   "devDependencies": {
     "@types/node": "^25.0.7",
