@@ -69,17 +69,20 @@ const svg = renderer.render(layout)
 
 ## CLI Usage
 
-### Render NetworkGraph JSON
+### Render YAML/JSON to Diagram
 
 ```bash
 # Install the renderer package
 npm install @shumoku/renderer
 
-# Render JSON to SVG
-npx shumoku render topology.json -o diagram.svg
+# Render YAML to SVG
+npx shumoku render network.yaml -o diagram.svg
 
-# Render JSON to interactive HTML
-npx shumoku render topology.json -f html -o diagram.html
+# Render to interactive HTML
+npx shumoku render network.yaml -f html -o diagram.html
+
+# Also supports JSON input
+npx shumoku render topology.json -o diagram.svg
 ```
 
 ### NetBox Integration

@@ -7,14 +7,14 @@ Shumoku は2つの CLI ツールを提供しています。
 
 ## shumoku render
 
-NetworkGraph JSON をダイアグラムにレンダリングします。
+YAML または JSON ファイルからダイアグラムをレンダリングします。
 
 ```bash
 # インストール
 npm install @shumoku/renderer
 
 # 使い方
-npx shumoku render <input.json> [options]
+npx shumoku render <input> [options]
 ```
 
 ### オプション
@@ -30,19 +30,25 @@ npx shumoku render <input.json> [options]
 ### 使用例
 
 ```bash
-# JSON から SVG を生成
+# YAML から SVG を生成
+npx shumoku render network.yaml -o diagram.svg
+
+# YAML からインタラクティブ HTML を生成
+npx shumoku render network.yaml -f html -o diagram.html
+
+# JSON から生成
 npx shumoku render topology.json -o diagram.svg
 
-# JSON からインタラクティブ HTML を生成
-npx shumoku render topology.json -f html -o diagram.html
-
-# stdin から読み込み
-cat topology.json | npx shumoku render - -o diagram.svg
+# stdin から読み込み（YAML として解釈）
+cat network.yaml | npx shumoku render - -o diagram.svg
 ```
 
 ### 入力形式
 
-入力ファイルは [NetworkGraph JSON](/docs/json-reference) 形式である必要があります。
+拡張子で自動判定されます：
+- `.yaml`, `.yml` → [YAML 形式](/docs/yaml-reference)
+- `.json` → [JSON 形式](/docs/json-reference)
+- stdin (`-`) → YAML として解釈
 
 ---
 

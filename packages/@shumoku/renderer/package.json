@@ -56,7 +56,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@shumoku/core": "^0.2.4"
+    "@shumoku/core": "^0.2.4",
+    "@shumoku/parser-yaml": "^0.2.13"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

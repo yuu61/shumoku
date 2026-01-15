@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Shumoku CLI - Render NetworkGraph JSON to SVG/HTML
+ * Shumoku CLI - Render NetworkGraph YAML/JSON to SVG/HTML
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, extname, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { NetworkGraph } from '@shumoku/core'
 import { buildHierarchicalSheets, HierarchicalLayout } from '@shumoku/core'
+import { parser } from '@shumoku/parser-yaml'
 import pkg from '../package.json' with { type: 'json' }
 import * as html from './html/index.js'
 import { INTERACTIVE_IIFE } from './iife-string.js'
@@ -16,12 +17,13 @@ import * as svg from './svg.js'
 const VERSION = pkg.version
 
 const HELP = `
-shumoku v${VERSION} - Render NetworkGraph JSON to SVG/HTML
+shumoku v${VERSION} - Render NetworkGraph YAML/JSON to SVG/HTML
 
-Usage: shumoku render [options] <input.json>
+Usage: shumoku render [options] <input>
 
 Input:
-  <input.json>        NetworkGraph JSON file (use - for stdin)
+  <input>             NetworkGraph YAML or JSON file (use - for stdin)
+                      Format auto-detected from extension (.yaml, .yml, .json)
 
 Output:
   -f, --format <type> Output format: svg|html (default: auto from extension)
@@ -33,10 +35,10 @@ Other:
   -v, --version       Show version
 
 Examples:
+  shumoku render network.yaml -o diagram.svg
+  shumoku render network.yaml -f html -o diagram.html
   shumoku render topology.json -o diagram.svg
-  shumoku render topology.json -f html -o diagram.html
-  cat topology.json | shumoku render - -o diagram.svg
-  netbox-to-shumoku -f json -o netbox.json && shumoku render netbox.json -o netbox.svg
+  cat network.yaml | shumoku render - -o diagram.svg
 `
 
 type OutputFormat = 'svg' | 'html'
@@ -75,34 +77,57 @@ function cli() {
   return { values, inputFile: positionals[0] }
 }
 
+function parseInput(content: string, filename: string): NetworkGraph {
+  const ext = extname(filename).toLowerCase()
+
+  if (ext === '.json') {
+    return JSON.parse(content) as NetworkGraph
+  }
+
+  // Default to YAML (for .yaml, .yml, or stdin)
+  const result = parser.parse(content)
+  if (result.warnings && result.warnings.length > 0) {
+    for (const warning of result.warnings) {
+      if (warning.severity === 'error') {
+        throw new Error(`YAML parse error: ${warning.message}`)
+      }
+      console.warn(`Warning: ${warning.message}`)
+    }
+  }
+  return result.graph
+}
+
 async function main(): Promise<void> {
   const { values, inputFile } = cli()
 
   if (!inputFile) {
     console.error('Error: Input file required.')
-    console.error('Usage: shumoku render <input.json>')
+    console.error('Usage: shumoku render <input.yaml|json>')
     console.error('Use --help for more information.')
     process.exit(1)
   }
 
   try {
     // Read input
-    let jsonContent: string
+    let content: string
+    let filename: string
     if (inputFile === '-') {
-      // Read from stdin
+      // Read from stdin (assume YAML)
       console.log('Reading from stdin...')
       const chunks: Buffer[] = []
       for await (const chunk of process.stdin) {
         chunks.push(chunk)
       }
-      jsonContent = Buffer.concat(chunks).toString('utf-8')
+      content = Buffer.concat(chunks).toString('utf-8')
+      filename = 'stdin.yaml'
     } else {
       console.log(`Reading ${inputFile}...`)
-      jsonContent = readFileSync(resolve(process.cwd(), inputFile), 'utf-8')
+      content = readFileSync(resolve(process.cwd(), inputFile), 'utf-8')
+      filename = inputFile
     }
 
-    // Parse JSON
-    const graph: NetworkGraph = JSON.parse(jsonContent)
+    // Parse input
+    const graph = parseInput(content, filename)
     console.log(`Loaded graph: ${graph.nodes.length} nodes, ${graph.links.length} links`)
     if (graph.subgraphs) {
       console.log(`  ${graph.subgraphs.length} subgraphs`)

@@ -14,7 +14,7 @@
     },
     "apps/docs": {
       "name": "@shumoku/docs",
-      "version": "0.2.13",
+      "version": "0.2.14",
       "dependencies": {
         "@shumoku/renderer": "workspace:*",
         "fumadocs-core": "16.4.6",
@@ -76,7 +76,7 @@
     },
     "packages/@shumoku/netbox": {
       "name": "@shumoku/netbox",
-      "version": "0.2.13",
+      "version": "0.2.14",
       "bin": {
         "netbox-to-shumoku": "./dist/cli.js",
       },
@@ -107,12 +107,13 @@
     },
     "packages/@shumoku/renderer": {
       "name": "@shumoku/renderer",
-      "version": "0.2.6",
+      "version": "0.2.14",
       "bin": {
         "shumoku": "./dist/cli.js",
       },
       "dependencies": {
         "@shumoku/core": "^0.2.4",
+        "@shumoku/parser-yaml": "^0.2.13",
       },
       "devDependencies": {
         "@types/node": "^20.11.0",
