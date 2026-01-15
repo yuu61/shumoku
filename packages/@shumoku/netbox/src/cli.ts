@@ -20,7 +20,7 @@ import type { ConverterOptions, GroupBy } from './types.js'
 const VERSION = pkg.version
 
 const HELP = `
-netbox-to-shumoku v${VERSION} - Convert NetBox topology to Shumoku YAML/SVG/HTML
+netbox-to-shumoku v${VERSION} - Convert NetBox topology to Shumoku YAML/JSON/SVG/HTML
 
 Usage: netbox-to-shumoku [options]
 
@@ -29,7 +29,7 @@ Connection:
   -t, --token <token>   API token (or NETBOX_TOKEN env)
 
 Output:
-  -f, --format <type>   Output format: yaml|svg|html (default: auto from extension)
+  -f, --format <type>   Output format: yaml|json|svg|html (default: auto from extension)
   -o, --output <file>   Output file (default: topology.yaml)
   --theme <theme>       Theme: light|dark (default: light)
 
@@ -54,9 +54,10 @@ Examples:
   netbox-to-shumoku -f html -o topology
   netbox-to-shumoku --site tokyo-dc -g location -o tokyo.svg
   netbox-to-shumoku --color-by-status --theme dark -f svg
+  netbox-to-shumoku -f json -o netbox.json   # Export as NetworkGraph JSON
 `
 
-type OutputFormat = 'yaml' | 'svg' | 'html'
+type OutputFormat = 'yaml' | 'json' | 'svg' | 'html'
 
 function cli() {
   const { values } = parseArgs({
@@ -150,7 +151,7 @@ async function main(): Promise<void> {
 
     // Determine format: explicit --format takes priority, then infer from extension
     const outputBase = opts.output!
-    const extMatch = outputBase.toLowerCase().match(/\.(yaml|yml|svg|html|htm)$/)
+    const extMatch = outputBase.toLowerCase().match(/\.(yaml|yml|json|svg|html|htm)$/)
     const format: OutputFormat =
       (opts.format as OutputFormat) ??
       (extMatch
@@ -162,7 +163,7 @@ async function main(): Promise<void> {
         : 'yaml')
 
     // Build output path with extension if not present
-    const hasExt = /\.(yaml|yml|svg|html|htm)$/i.test(outputBase)
+    const hasExt = /\.(yaml|yml|json|svg|html|htm)$/i.test(outputBase)
     const outputPath = resolve(process.cwd(), hasExt ? outputBase : `${outputBase}.${format}`)
 
     // Ensure output directory exists
@@ -190,6 +191,9 @@ async function main(): Promise<void> {
         console.log('Rendering SVG...')
         writeFileSync(outputPath, svg.render(graph, layoutResult), 'utf-8')
       }
+    } else if (format === 'json') {
+      console.log('Exporting NetworkGraph JSON...')
+      writeFileSync(outputPath, JSON.stringify(graph, null, 2), 'utf-8')
     } else {
       writeFileSync(outputPath, toYaml(graph), 'utf-8')
     }

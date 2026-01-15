@@ -39,6 +39,9 @@ npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN -o net
 
 # Generate SVG with legend
 npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN --legend -o network.svg
+
+# Export as NetworkGraph JSON (for integration with other tools)
+npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN -f json -o network.json
 ```
 
 ### CLI Options
@@ -47,6 +50,7 @@ npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN --lege
 |--------|-------------|
 | `-u, --url <url>` | NetBox API URL (or set `NETBOX_URL` env var) |
 | `-t, --token <token>` | API token (or set `NETBOX_TOKEN` env var) |
+| `-f, --format <type>` | Output format: yaml, json, svg, html (default: auto from extension) |
 | `-o, --output <file>` | Output file (default: topology.yaml) |
 | `--theme <theme>` | Theme: light or dark (default: light) |
 | `-s, --site <slug>` | Filter by site slug |
@@ -58,6 +62,21 @@ npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN --lege
 | `--no-colors` | Don't color links by cable type |
 | `--color-by-status` | Color devices by their status |
 | `--legend` | Show legend in the diagram (SVG only) |
+
+### Integration Workflow
+
+Export NetBox data as JSON, merge with custom data, then render:
+
+```bash
+# Step 1: Export from NetBox as JSON
+npx netbox-to-shumoku -f json -o netbox.json
+
+# Step 2: Merge or modify the JSON with your custom data (via script)
+# The JSON follows the NetworkGraph schema
+
+# Step 3: Render the final JSON to SVG or HTML
+npx shumoku render merged.json -o diagram.html
+```
 
 ## API
 

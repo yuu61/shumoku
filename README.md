@@ -67,6 +67,37 @@ const renderer = new SvgRenderer()
 const svg = renderer.render(layout)
 ```
 
+## CLI Usage
+
+### Render NetworkGraph JSON
+
+```bash
+# Install the renderer package
+npm install @shumoku/renderer
+
+# Render JSON to SVG
+npx shumoku render topology.json -o diagram.svg
+
+# Render JSON to interactive HTML
+npx shumoku render topology.json -f html -o diagram.html
+```
+
+### NetBox Integration
+
+```bash
+# Install the NetBox package
+npm install @shumoku/netbox
+
+# Export NetBox topology to SVG
+npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN -o network.svg
+
+# Export as JSON for further processing
+npx netbox-to-shumoku -f json -o netbox.json
+
+# Render the JSON (after merging with custom data)
+npx shumoku render merged.json -o diagram.html
+```
+
 ## Online Playground
 
 Try Shumoku without installation at [shumoku.packof.me](https://shumoku.packof.me/)
@@ -112,7 +143,8 @@ links:
 | Package | Description | npm |
 |---------|-------------|-----|
 | [`shumoku`](packages/shumoku) | Main package (all-in-one) | [![npm](https://img.shields.io/npm/v/shumoku.svg)](https://www.npmjs.com/package/shumoku) |
-| [`@shumoku/core`](packages/@shumoku/core) | Core library (models, layout, renderer) | [![npm](https://img.shields.io/npm/v/@shumoku/core.svg)](https://www.npmjs.com/package/@shumoku/core) |
+| [`@shumoku/core`](packages/@shumoku/core) | Core library (models, layout) | [![npm](https://img.shields.io/npm/v/@shumoku/core.svg)](https://www.npmjs.com/package/@shumoku/core) |
+| [`@shumoku/renderer`](packages/@shumoku/renderer) | SVG/HTML renderers + CLI | [![npm](https://img.shields.io/npm/v/@shumoku/renderer.svg)](https://www.npmjs.com/package/@shumoku/renderer) |
 | [`@shumoku/parser-yaml`](packages/@shumoku/parser-yaml) | YAML parser | [![npm](https://img.shields.io/npm/v/@shumoku/parser-yaml.svg)](https://www.npmjs.com/package/@shumoku/parser-yaml) |
 | [`@shumoku/icons`](packages/@shumoku/icons) | Vendor icons (Yamaha, Aruba, AWS, Juniper) | [![npm](https://img.shields.io/npm/v/@shumoku/icons.svg)](https://www.npmjs.com/package/@shumoku/icons) |
 | [`@shumoku/netbox`](packages/@shumoku/netbox) | NetBox API integration | [![npm](https://img.shields.io/npm/v/@shumoku/netbox.svg)](https://www.npmjs.com/package/@shumoku/netbox) |

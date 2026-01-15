@@ -100,7 +100,7 @@ NetBox からネットワーク構成を取得し、Shumoku ダイアグラム�
 **出力オプション:**
 | オプション | 説明 |
 |-----------|------|
-| `--format, -f` | 出力形式: yaml, svg, html（デフォルト: 拡張子から自動判定） |
+| `--format, -f` | 出力形式: yaml, json, svg, html（デフォルト: 拡張子から自動判定） |
 | `--output, -o` | 出力ファイル名（デフォルト: topology） |
 | `--theme` | テーマ: light または dark |
 
@@ -108,6 +108,7 @@ NetBox からネットワーク構成を取得し、Shumoku ダイアグラム�
 | 形式 | 説明 |
 |------|------|
 | `yaml` | YAML定義ファイル（他のツールで利用可能） |
+| `json` | NetworkGraph JSON（他のAPIと統合可能） |
 | `svg` | 静的SVG画像 |
 | `html` | インタラクティブHTML（ツールチップ、パン/ズーム対応） |
 
@@ -127,6 +128,58 @@ NetBox からネットワーク構成を取得し、Shumoku ダイアグラム�
 | `--no-colors` | ケーブルタイプによる色分けをしない |
 | `--color-by-status` | デバイスをステータスで色分け |
 | `--legend` | 凡例を表示（SVG/HTML 出力時） |
+
+### JSON 出力と統合ワークフロー
+
+NetBox データを JSON で出力し、他のデータソースと統合できます。
+
+<Tabs items={['npx', 'yarn', 'pnpm', 'bun']}>
+  <Tab value="npx">
+    ```bash
+    # Step 1: NetBox から JSON エクスポート
+    npx netbox-to-shumoku -f json -o netbox.json
+
+    # Step 2: 独自スクリプトで他のAPIデータとマージ
+    node merge-data.js netbox.json custom-api.json > merged.json
+
+    # Step 3: マージした JSON からダイアグラム生成
+    npx shumoku render merged.json -o diagram.html
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx netbox-to-shumoku -f json -o netbox.json
+    node merge-data.js netbox.json custom-api.json > merged.json
+    yarn dlx shumoku render merged.json -o diagram.html
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx netbox-to-shumoku -f json -o netbox.json
+    node merge-data.js netbox.json custom-api.json > merged.json
+    pnpm dlx shumoku render merged.json -o diagram.html
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx netbox-to-shumoku -f json -o netbox.json
+    node merge-data.js netbox.json custom-api.json > merged.json
+    bunx shumoku render merged.json -o diagram.html
+    ```
+  </Tab>
+</Tabs>
+
+`shumoku render` コマンドは `@shumoku/renderer` パッケージに含まれています。
+
+```bash
+# shumoku render の使い方
+shumoku render <input.json> [options]
+
+# オプション
+#   -f, --format <type>  出力形式: svg, html（デフォルト: 拡張子から自動判定）
+#   -o, --output <file>  出力ファイル名（デフォルト: output.svg）
+#   --theme <theme>      テーマ: light または dark
+```
 
 ## ライブラリとしての使用
 
