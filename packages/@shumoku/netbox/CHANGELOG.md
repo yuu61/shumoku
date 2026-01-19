@@ -1,5 +1,13 @@
 # @shumoku/netbox
 
+## 0.2.25
+
+### Patch Changes
+
+- 6abeb08: Add unified PNG rendering API with conditional exports for Node.js/browser environments
+- Updated dependencies [6abeb08]
+  - @shumoku/renderer@0.2.25
+
 ## 0.2.24
 
 ### Patch Changes
