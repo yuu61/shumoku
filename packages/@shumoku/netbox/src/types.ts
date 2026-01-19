@@ -28,7 +28,8 @@ export interface NetBoxDeviceStatus {
 }
 
 export interface NetBoxDevice {
-  name: string
+  id: number
+  name: string | null
   tags: NetBoxTag[]
   device_type?: NetBoxDeviceType
   primary_ip4?: {

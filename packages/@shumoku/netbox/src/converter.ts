@@ -243,8 +243,9 @@ function buildDeviceMaps(deviceResp: NetBoxDeviceResponse) {
   const deviceInfoMap = new Map<string, Omit<DeviceInfo, 'name' | 'tags' | 'rack'>>()
 
   for (const device of deviceResp.results) {
-    deviceTagMap.set(device.name, resolvePrimaryTag(device.tags))
-    deviceInfoMap.set(device.name, {
+    const deviceName = device.name ?? `noname-${device.id}`
+    deviceTagMap.set(deviceName, resolvePrimaryTag(device.tags))
+    deviceInfoMap.set(deviceName, {
       model: device.device_type?.model,
       manufacturer: device.device_type?.manufacturer?.name,
       ip: device.primary_ip4?.address?.split('/')[0] ?? device.primary_ip6?.address?.split('/')[0],
@@ -988,8 +989,9 @@ function buildHierarchicalDeviceInfoMap(deviceResp: NetBoxDeviceResponse): Map<s
   const map = new Map<string, DeviceInfo>()
 
   for (const device of deviceResp.results) {
-    map.set(device.name, {
-      name: device.name,
+    const deviceName = device.name ?? `noname-${device.id}`
+    map.set(deviceName, {
+      name: deviceName,
       site: device.site?.slug,
       location: device.location?.slug,
       rack: device.rack?.name,

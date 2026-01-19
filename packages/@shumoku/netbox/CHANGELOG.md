@@ -1,5 +1,11 @@
 # @shumoku/netbox
 
+## 0.2.21
+
+### Patch Changes
+
+- Handle devices with null names by using fallback name (noname-{id})
+
 ## 0.2.20
 
 ### Patch Changes
