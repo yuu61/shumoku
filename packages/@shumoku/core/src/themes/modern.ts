@@ -55,14 +55,14 @@ export const modernTheme: Theme = {
       [DeviceType.Generic]: '#94a3b8',
     },
 
-    // Module colors
+    // Module colors (background fill only - stroke/text handled by renderer)
     modules: {
-      core: '#dbeafe',
-      distribution: '#e9d5ff',
-      access: '#d1fae5',
-      dmz: '#fee2e2',
-      cloud: '#e0e7ff',
-      default: '#f3f4f6',
+      core: '#f0fdf4', // Green-50
+      distribution: '#f0fdf4', // Green-50
+      access: '#f0fdf4', // Green-50
+      dmz: '#fff1f2', // Rose-50
+      cloud: '#eff6ff', // Blue-50
+      default: '#f8fafc', // Slate-50
     },
 
     // Grid
