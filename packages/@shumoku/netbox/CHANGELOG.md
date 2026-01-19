@@ -1,5 +1,12 @@
 # @shumoku/netbox
 
+## 0.2.19
+
+### Patch Changes
+
+- 7dc8d3a: Add --debug option to show API requests/responses for troubleshooting
+  Add --insecure option to skip TLS certificate verification for self-signed certs
+
 ## 0.2.18
 
 ### Patch Changes
