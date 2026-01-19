@@ -1,0 +1,179 @@
+---
+title: CLI Reference
+description: How to use the Shumoku command-line tool
+---
+
+## shumoku render
+
+Render diagrams from YAML/JSON files.
+
+```bash
+npx shumoku render <input> [options]
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-f, --format <type>` | Output format: `svg`, `html`, `png` (default: auto-detect from extension) |
+| `-o, --output <file>` | Output filename (default: `output.svg`) |
+| `--theme <theme>` | Theme: `light` or `dark` |
+| `-h, --help` | Show help |
+| `-v, --version` | Show version |
+
+### Examples
+
+```bash
+# SVG output
+npx shumoku render network.yaml -o diagram.svg
+
+# Interactive HTML output
+npx shumoku render network.yaml -f html -o diagram.html
+
+# PNG output
+npx shumoku render network.yaml -f png -o diagram.png
+
+# Dark theme
+npx shumoku render network.yaml --theme dark -o diagram.svg
+
+# Generate from JSON
+npx shumoku render topology.json -o diagram.svg
+
+# Read from stdin
+cat network.yaml | npx shumoku render - -o diagram.svg
+```
+
+### Input Formats
+
+Auto-detected from extension:
+
+| Extension | Format |
+|-----------|--------|
+| `.yaml`, `.yml` | YAML |
+| `.json` | JSON |
+| `-` (stdin) | Interpreted as YAML |
+
+### Output Formats
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `svg` | Vector image | Document embedding, editing |
+| `html` | Interactive HTML | Browser viewing, pan/zoom |
+| `png` | Raster image | Presentations, sharing as image |
+
+#### PNG Options
+
+Additional options for PNG output:
+
+```bash
+# High resolution output (default: scale=2)
+npx shumoku render network.yaml -f png -o diagram.png
+```
+
+When using from TypeScript:
+
+```typescript
+import { png } from '@shumoku/renderer'
+
+const output = await png.render(graph, layout, {
+  scale: 3,              // Resolution scale
+  loadSystemFonts: true  // Use system fonts
+})
+```
+
+---
+
+## netbox-to-shumoku
+
+Generate diagrams from NetBox.
+
+```bash
+npx netbox-to-shumoku [options]
+```
+
+### Connection Options
+
+| Option | Description |
+|--------|-------------|
+| `-u, --url <url>` | NetBox URL (or `NETBOX_URL` environment variable) |
+| `-t, --token <token>` | API token (or `NETBOX_TOKEN` environment variable) |
+| `-k, --insecure` | Skip TLS certificate verification |
+
+### Output Options
+
+| Option | Description |
+|--------|-------------|
+| `-f, --format <type>` | Output format: `yaml`, `json`, `svg`, `html`, `png` |
+| `-o, --output <file>` | Output filename |
+| `--theme <theme>` | Theme: `light` or `dark` |
+
+### Filtering Options
+
+| Option | Description |
+|--------|-------------|
+| `-s, --site <slug>` | Filter by site slug |
+| `-r, --role <slug>` | Filter by device role slug |
+| `--status <status>` | Status (active, planned, staged, failed, offline) |
+| `--tag <slug>` | Filter by tag slug |
+
+### Display Options
+
+| Option | Description |
+|--------|-------------|
+| `-g, --group-by <method>` | Grouping: `tag`, `site`, `location`, `prefix`, `none` |
+| `--no-ports` | Hide port names |
+| `--no-colors` | Disable cable type color coding |
+| `--color-by-status` | Color devices by status |
+| `--legend` | Show legend |
+
+### Other Options
+
+| Option | Description |
+|--------|-------------|
+| `-d, --debug` | Debug output (API request/response) |
+| `-h, --help` | Show help |
+| `-v, --version` | Show version |
+
+### Examples
+
+```bash
+# Authenticate with environment variables
+export NETBOX_URL=https://netbox.example.com
+export NETBOX_TOKEN=YOUR_API_TOKEN
+
+# HTML output
+npx netbox-to-shumoku -f html -o network.html
+
+# Specific site only
+npx netbox-to-shumoku -s tokyo-dc -o tokyo.svg
+
+# Group by site
+npx netbox-to-shumoku -g site -f html -o network.html
+
+# JSON export (for integration with other tools)
+npx netbox-to-shumoku -f json -o netbox.json
+
+# Debug mode
+npx netbox-to-shumoku --debug -o network.html
+```
+
+See [NetBox Integration](/docs/netbox) for details.
+
+---
+
+## Integration Workflow
+
+Integrate multiple data sources:
+
+```bash
+# 1. Export JSON from NetBox
+npx netbox-to-shumoku -f json -o netbox.json
+
+# 2. Merge data with custom script
+node merge-data.js netbox.json custom.json > merged.json
+
+# 3. Generate diagram from merged JSON
+npx shumoku render merged.json -f html -o diagram.html
+```
+
+See [Custom Integration](/docs/custom-integration) for details.

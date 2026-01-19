@@ -1,0 +1,226 @@
+---
+title: Multi-file Configuration
+description: Manage large networks across multiple files
+---
+
+Large networks with multiple sites can be managed by splitting files. Click on a subgraph to navigate to its detail sheet, enabling hierarchical navigation.
+
+## Basic Structure
+
+In the parent file, specify `file` on a subgraph to load its content from an external file.
+
+```yaml title="main.yaml"
+name: "Multi-Site Network"
+
+subgraphs:
+  - id: headquarters
+    label: "Headquarters"
+    file: "./headquarters.yaml"    # External file reference
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+
+  - id: branch
+    label: "Branch Office"
+    file: "./branch.yaml"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+
+links:
+  # Links between subgraphs
+  - from:
+      node: hq-router        # Device in headquarters.yaml
+      port: wan1
+    to:
+      node: branch-router    # Device in branch.yaml
+      port: wan1
+    label: "Site-to-Site VPN"
+    type: dashed
+```
+
+```yaml title="headquarters.yaml"
+name: "Headquarters Network"
+
+nodes:
+  - id: hq-router
+    label:
+      - "<b>HQ-Router</b>"
+      - "10.0.0.1"
+    type: router
+
+  - id: hq-switch
+    label: "HQ-Switch"
+    type: l3-switch
+
+links:
+  - from: { node: hq-router, port: lan1 }
+    to: { node: hq-switch, port: uplink }
+    bandwidth: 10G
+```
+
+```yaml title="branch.yaml"
+name: "Branch Office"
+
+nodes:
+  - id: branch-router
+    label:
+      - "<b>Branch-Router</b>"
+      - "10.1.0.1"
+    type: router
+
+  - id: branch-switch
+    label: "Branch-Switch"
+    type: switch
+
+links:
+  - from: { node: branch-router, port: lan1 }
+    to: { node: branch-switch, port: uplink }
+    bandwidth: 1G
+```
+
+## Rendering
+
+```bash
+# Just specify the main file, referenced files are loaded automatically
+npx shumoku render main.yaml -f html -o network.html
+```
+
+## Sheet Navigation
+
+In HTML output:
+
+- **Click a subgraph** → Navigate to detail sheet
+- **Back button** → Return to parent sheet
+- **Export connectors** → Show connection points to other subgraphs
+
+<Callout type="info">
+Export connectors indicate link connection points that cross subgraph boundaries. This makes external connections clear on each sheet.
+</Callout>
+
+## Cross-Subgraph Links
+
+Links between devices defined in different files are defined in the parent file:
+
+```yaml title="main.yaml"
+links:
+  # Connect tokyo-router in tokyo.yaml with osaka-router in osaka.yaml
+  - from:
+      node: tokyo-router
+      port: wan1
+    to:
+      node: osaka-router
+      port: wan1
+    label: "WAN Link"
+    bandwidth: 10G
+```
+
+The parser automatically detects which subgraph each device belongs to.
+
+## Nesting 3+ Levels Deep
+
+Subgraphs can be further nested:
+
+```yaml title="main.yaml"
+subgraphs:
+  - id: japan
+    label: "Japan Region"
+    file: "./japan.yaml"
+```
+
+```yaml title="japan.yaml"
+subgraphs:
+  - id: tokyo
+    label: "Tokyo DC"
+    file: "./tokyo.yaml"
+
+  - id: osaka
+    label: "Osaka DC"
+    file: "./osaka.yaml"
+
+links:
+  - from: { node: tokyo-router }
+    to: { node: osaka-router }
+```
+
+## Use Cases
+
+### Separate Files by Site
+
+```
+network/
+├── main.yaml           # Overall structure
+├── tokyo-dc.yaml       # Tokyo DC
+├── osaka-dc.yaml       # Osaka DC
+└── aws-vpc.yaml        # AWS environment
+```
+
+### Team-Based Management
+
+- Network team → Core network definitions
+- Infrastructure team → Server/DC definitions
+- Cloud team → Cloud environment definitions
+
+### Version Control with Git
+
+```bash
+# Review diffs only for changed files
+git diff osaka-dc.yaml
+```
+
+## Complete Example
+
+```yaml title="main.yaml"
+name: "Enterprise Network"
+description: "Multi-site enterprise network"
+
+settings:
+  theme: light
+
+subgraphs:
+  - id: cloud
+    label: "AWS Cloud"
+    file: "./cloud.yaml"
+    vendor: aws
+    style:
+      fill: "#fff8e1"
+      stroke: "#ff8f00"
+
+  - id: datacenter
+    label: "Data Center"
+    file: "./datacenter.yaml"
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+
+  - id: office
+    label: "Head Office"
+    file: "./office.yaml"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+
+links:
+  # Cloud to DC
+  - from: { node: aws-tgw, port: vpn }
+    to: { node: dc-router, port: wan1 }
+    type: dashed
+    label: "Site-to-Site VPN"
+
+  # DC to Office
+  - from: { node: dc-router, port: wan2 }
+    to: { node: office-router, port: wan1 }
+    bandwidth: 1G
+    label: "MPLS"
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Interactive Features" href="/docs/interactive-features">
+    HTML output navigation details
+  </Card>
+  <Card title="Examples" href="/docs/examples">
+    Multi-file samples
+  </Card>
+</Cards>

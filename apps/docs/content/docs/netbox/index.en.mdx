@@ -1,0 +1,282 @@
+---
+title: NetBox Integration
+description: Fetch network configuration from NetBox and auto-generate Shumoku diagrams
+---
+
+Fetch network configuration from NetBox and auto-generate Shumoku diagrams.
+
+## Installation
+
+<Tabs items={['npm', 'yarn', 'pnpm', 'bun']}>
+  <Tab value="npm">
+    ```bash
+    npm install @shumoku/netbox
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add @shumoku/netbox
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @shumoku/netbox
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bun add @shumoku/netbox
+    ```
+  </Tab>
+</Tabs>
+
+## Quick Start
+
+### Using CLI
+
+```bash
+# Authenticate with environment variables
+export NETBOX_URL=https://netbox.example.com
+export NETBOX_TOKEN=YOUR_API_TOKEN
+
+# Interactive HTML output
+npx netbox-to-shumoku -f html -o network.html
+
+# SVG output
+npx netbox-to-shumoku -o network.svg
+
+# JSON export (for integration with other tools)
+npx netbox-to-shumoku -f json -o netbox.json
+```
+
+### Using as Library
+
+```typescript
+import { NetBoxClient, convertToNetworkGraph } from '@shumoku/netbox'
+import { HierarchicalLayout, svg } from '@shumoku/core'
+
+const client = new NetBoxClient({
+  url: 'https://netbox.example.com',
+  token: 'your-api-token'
+})
+
+const devices = await client.fetchDevices()
+const interfaces = await client.fetchInterfaces()
+const cables = await client.fetchCables()
+
+const graph = convertToNetworkGraph(devices, interfaces, cables)
+
+const layout = new HierarchicalLayout()
+const result = await layout.layoutAsync(graph)
+
+const svgOutput = svg.render(graph, result)
+```
+
+---
+
+## CLI Options
+
+### Connection Options
+
+| Option | Description |
+|--------|-------------|
+| `--url, -u` | NetBox URL (required, or `NETBOX_URL` env var) |
+| `--token, -t` | API token (required, or `NETBOX_TOKEN` env var) |
+| `--insecure, -k` | Skip TLS certificate verification (for self-signed certs) |
+
+### Output Options
+
+| Option | Description |
+|--------|-------------|
+| `--format, -f` | Output format: yaml, json, svg, html (default: auto-detect from extension) |
+| `--output, -o` | Output filename (default: topology) |
+| `--theme` | Theme: light or dark |
+
+### Output Formats
+
+| Format | Description |
+|--------|-------------|
+| `yaml` | YAML definition file (usable by other tools) |
+| `json` | NetworkGraph JSON (integrable with other APIs) |
+| `svg` | Static SVG image |
+| `html` | Interactive HTML (tooltips, pan/zoom) |
+
+### Filtering Options
+
+| Option | Description |
+|--------|-------------|
+| `--site, -s` | Filter by site slug |
+| `--role, -r` | Filter by device role slug |
+| `--status` | Filter by status (active, planned, staged, failed, offline) |
+| `--tag` | Filter by tag slug |
+
+### Display Options
+
+| Option | Description |
+|--------|-------------|
+| `--group-by, -g` | Grouping method: tag, site, location, prefix, none |
+| `--no-ports` | Don't show port names on links |
+| `--no-colors` | Disable cable type color coding |
+| `--color-by-status` | Color devices by status |
+| `--legend` | Show legend (for SVG/HTML output) |
+
+### Other Options
+
+| Option | Description |
+|--------|-------------|
+| `--debug, -d` | Show debug output (API request/response) |
+| `--help, -h` | Show help |
+| `--version, -v` | Show version |
+
+---
+
+## NetBox Setup
+
+### Getting API Token
+
+1. Log in to NetBox
+2. User menu (top right) → **API Tokens**
+3. Click **Add a token**
+4. Set required permissions and create token
+
+### Required Permissions
+
+For read-only access, the following permissions are needed:
+
+- `dcim.view_device`
+- `dcim.view_cable`
+- `dcim.view_site`
+- `dcim.view_interface`
+
+---
+
+## Data Mapping
+
+NetBox data is converted to Shumoku as follows:
+
+| NetBox | Shumoku |
+|--------|---------|
+| Device | Node |
+| Cable | Link |
+| Site | Subgraph |
+| Interface | Port |
+| Device Role | Used for type inference |
+
+### Device Type Auto-Detection
+
+Shumoku `type` is automatically inferred from NetBox `device_role`:
+
+| NetBox Device Role | Shumoku Type |
+|-------------------|--------------|
+| `router`, `core-router` | `router` |
+| `switch`, `access-switch` | `l2-switch` |
+| `l3-switch`, `distribution-switch` | `l3-switch` |
+| `firewall` | `firewall` |
+| `server`, `compute` | `server` |
+| `access-point`, `wireless` | `access-point` |
+| `load-balancer` | `load-balancer` |
+
+---
+
+## Deployment with GitHub Actions
+
+Use GitHub Actions to auto-generate HTML from NetBox and deploy to GitHub Pages.
+
+```yaml
+# .github/workflows/network-diagram.yml
+name: Update Network Diagram
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at 9:00 AM JST
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Generate diagram
+        run: |
+          npx netbox-to-shumoku \
+            -u ${{ secrets.NETBOX_URL }} \
+            -t ${{ secrets.NETBOX_TOKEN }} \
+            -f html -o index
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - uses: actions/deploy-pages@v4
+```
+
+**Setup:**
+1. Add `NETBOX_URL` and `NETBOX_TOKEN` to Settings → Secrets
+2. Set Settings → Pages → Source to "GitHub Actions"
+
+---
+
+## Troubleshooting
+
+Use the `--debug` option to see API request/response details when issues occur:
+
+```bash
+npx netbox-to-shumoku --debug -o network.html
+```
+
+Debug output example:
+```
+[DEBUG] Request: GET https://netbox.example.com/api/dcim/devices/?limit=0
+[DEBUG] Response: 200 OK (234ms)
+[DEBUG] Response data: 15 items
+```
+
+### Connection Error
+
+```
+Error: Failed to connect to NetBox
+```
+
+- Verify URL is correct
+- Verify API token is valid
+- Check network connection
+
+### Self-Signed Certificate Error
+
+```
+Error: fetch failed
+```
+
+Use `--insecure` option for self-signed certificates:
+
+```bash
+npx netbox-to-shumoku --insecure --url https://localhost:1080 ...
+```
+
+**Note:** This option skips TLS certificate verification. Use only in development environments.
+
+### Permission Error
+
+```
+Error: 403 Forbidden
+```
+
+- Verify API token permissions
+- Ensure required permissions are granted
+
+### Devices Not Showing
+
+- Verify device status is `active`
+- Check filter conditions
+- Verify devices are properly registered in NetBox
+
+---
+
+## Next Steps
+
+- [Visualization Features](/docs/netbox/visualization) - Visualize bandwidth, VLANs, cable types
+- [API Reference](/docs/netbox/api) - Detailed library usage

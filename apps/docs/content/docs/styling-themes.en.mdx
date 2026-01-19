@@ -1,0 +1,249 @@
+---
+title: Styles and Themes
+description: Customize the appearance of nodes, links, and subgraphs
+---
+
+Learn how to customize the appearance of nodes, links, and subgraphs.
+
+## Themes
+
+Built-in themes are `light` (default) and `dark`.
+
+```yaml
+settings:
+  theme: dark
+```
+
+### Specify Theme via CLI
+
+```bash
+npx shumoku render network.yaml --theme dark -o diagram.svg
+```
+
+## Node Styling
+
+Apply styles to individual nodes:
+
+```yaml
+nodes:
+  - id: router-1
+    label: "Router"
+    type: router
+    style:
+      fill: "#e3f2fd"           # Background color
+      stroke: "#1565c0"         # Border color
+      strokeWidth: 2            # Border width
+      strokeDasharray: "5 5"    # Dashed line (for planned devices, etc.)
+      textColor: "#333333"      # Text color
+      fontSize: 12              # Font size
+      fontWeight: bold          # Font weight
+      opacity: 0.8              # Opacity
+```
+
+### Representing Planned Devices
+
+```yaml
+nodes:
+  - id: new-switch
+    label:
+      - "new-sw-01"
+      - "(Planned Q2)"
+    type: switch
+    style:
+      stroke: "#9CA3AF"
+      strokeDasharray: "5 5"
+      opacity: 0.7
+```
+
+### Representing Virtual Machines
+
+```yaml
+nodes:
+  - id: vm-web
+    label: "VM-Web"
+    type: server
+    style:
+      strokeDasharray: "4 4"    # Dashed line for virtual
+      opacity: 0.9
+```
+
+## Link Styling
+
+```yaml
+links:
+  - from: router-1
+    to: switch-1
+    style:
+      stroke: "#2196F3"         # Line color
+      strokeWidth: 2            # Line width
+      strokeDasharray: "5 5"    # Dashed line
+      opacity: 0.8              # Opacity
+      minLength: 100            # Minimum length (useful for HA pair spacing)
+```
+
+### Color Coding by Cable Type Example
+
+```yaml
+links:
+  # SMF (Single Mode Fiber) - Yellow
+  - from: router-1
+    to: router-2
+    bandwidth: 100G
+    style:
+      stroke: "#eab308"
+
+  # OM4 (Multimode Fiber) - Cyan
+  - from: switch-1
+    to: switch-2
+    bandwidth: 40G
+    style:
+      stroke: "#06b6d4"
+
+  # Cat6a - Purple
+  - from: switch-1
+    to: server-1
+    bandwidth: 10G
+    style:
+      stroke: "#8b5cf6"
+```
+
+## Subgraph Styling
+
+```yaml
+subgraphs:
+  - id: dmz
+    label: "DMZ"
+    style:
+      fill: "#fff5f5"           # Background color
+      stroke: "#d4a017"         # Border color
+      strokeWidth: 2            # Border width
+      strokeDasharray: "5 5"    # Dashed line
+      labelPosition: top        # Label position
+      labelFontSize: 14         # Label font size
+      padding: 20               # Inner padding
+      nodeSpacing: 50           # Node spacing
+      rankSpacing: 100          # Rank spacing
+```
+
+### Label Position
+
+| labelPosition | Description |
+|---------------|-------------|
+| `top` | Top (default) |
+| `bottom` | Bottom |
+| `left` | Left |
+| `right` | Right |
+
+## Global Settings
+
+Configure diagram-wide settings with `settings`:
+
+```yaml
+settings:
+  direction: TB           # Layout direction
+  theme: light            # Theme
+  nodeSpacing: 50         # Node spacing
+  rankSpacing: 100        # Rank spacing
+  subgraphPadding: 20     # Subgraph inner padding
+```
+
+### Layout Direction
+
+| direction | Aliases | Description |
+|-----------|---------|-------------|
+| `TB` | `top-bottom` | Top to bottom (default) |
+| `BT` | `bottom-top` | Bottom to top |
+| `LR` | `left-right` | Left to right |
+| `RL` | `right-left` | Right to left |
+
+## Legend
+
+Display a legend to explain bandwidth and device types:
+
+```yaml
+settings:
+  legend: true    # Simple enable
+```
+
+Detailed settings:
+
+```yaml
+settings:
+  legend:
+    enabled: true
+    position: top-right       # Position
+    showDeviceTypes: true     # Show device types
+    showBandwidth: true       # Show bandwidth
+    showCableTypes: true      # Show cable types
+    showVlans: true           # Show VLANs
+```
+
+| position | Description |
+|----------|-------------|
+| `top-left` | Top left |
+| `top-right` | Top right (default) |
+| `bottom-left` | Bottom left |
+| `bottom-right` | Bottom right |
+
+## Canvas Settings (Print/Output Size)
+
+Control output size:
+
+```yaml
+settings:
+  canvas:
+    preset: A4              # Paper size preset
+    orientation: landscape  # Landscape
+    dpi: 150                # DPI (for printing)
+    fit: true               # Fit content
+    padding: 20             # Margin
+```
+
+### Presets
+
+`A0`, `A1`, `A2`, `A3`, `A4`, `B0`, `B1`, `B2`, `B3`, `B4`, `letter`, `legal`, `tabloid`
+
+### Custom Size
+
+```yaml
+settings:
+  canvas:
+    width: 1920
+    height: 1080
+```
+
+## Custom Themes (TypeScript)
+
+When using from TypeScript, you can fully customize themes:
+
+```typescript
+import { createTheme, mergeTheme, darkTheme } from 'shumoku'
+
+// Create a new theme
+const customTheme = createTheme({
+  background: '#1a1a2e',
+  node: {
+    fill: '#16213e',
+    stroke: '#0f3460',
+    text: '#e94560'
+  }
+})
+
+// Modify parts of an existing theme
+const myDarkTheme = mergeTheme(darkTheme, {
+  node: {
+    fill: '#2d2d2d'
+  }
+})
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Vendor Icons" href="/docs/vendor-icons">
+    Use Yamaha, AWS icons and more
+  </Card>
+  <Card title="Interactive Features" href="/docs/interactive-features">
+    Pan/zoom, tooltips for HTML output
+  </Card>
+</Cards>

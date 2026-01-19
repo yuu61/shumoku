@@ -1,0 +1,234 @@
+---
+title: Organizing with Groups
+description: Logically group devices using subgraphs
+---
+
+Subgraphs allow you to group devices by logical units such as sites, layers, or racks.
+
+## Basic Subgraph
+
+```yaml
+subgraphs:
+  - id: datacenter
+    label: "Data Center"
+
+nodes:
+  - id: server-1
+    label: "Server 1"
+    type: server
+    parent: datacenter    # Belongs to this subgraph
+```
+
+Use `parent` to specify which subgraph a node belongs to.
+
+## Layer Configuration Example
+
+A typical 3-tier network configuration:
+
+```yaml
+name: "3-Tier Network"
+
+subgraphs:
+  - id: core
+    label: "Core Layer"
+  - id: distribution
+    label: "Distribution Layer"
+  - id: access
+    label: "Access Layer"
+
+nodes:
+  - id: core-rt
+    label: "Core Router"
+    type: router
+    parent: core
+
+  - id: dist-sw-1
+    label: "Dist SW 1"
+    type: l3-switch
+    parent: distribution
+
+  - id: dist-sw-2
+    label: "Dist SW 2"
+    type: l3-switch
+    parent: distribution
+
+  - id: access-sw-1
+    label: "Access SW 1"
+    type: switch
+    parent: access
+
+  - id: access-sw-2
+    label: "Access SW 2"
+    type: switch
+    parent: access
+
+links:
+  - from: core-rt
+    to: dist-sw-1
+    bandwidth: 10G
+  - from: core-rt
+    to: dist-sw-2
+    bandwidth: 10G
+  - from: dist-sw-1
+    to: access-sw-1
+    bandwidth: 1G
+  - from: dist-sw-2
+    to: access-sw-2
+    bandwidth: 1G
+```
+
+## Nested Subgraphs
+
+Subgraphs can be nested:
+
+```yaml
+subgraphs:
+  - id: datacenter
+    label: "Data Center"
+
+  - id: rack-a
+    label: "Rack A"
+    parent: datacenter    # Inside datacenter
+
+  - id: rack-b
+    label: "Rack B"
+    parent: datacenter
+
+nodes:
+  - id: server-1
+    parent: rack-a
+  - id: server-2
+    parent: rack-b
+```
+
+## Subgraph Styling
+
+Customize background color and border:
+
+```yaml
+subgraphs:
+  - id: dmz
+    label: "DMZ"
+    style:
+      fill: "#fff5f5"           # Background color
+      stroke: "#d4a017"         # Border color
+      strokeWidth: 2            # Border width
+      strokeDasharray: "5 5"    # Dashed line
+
+  - id: internal
+    label: "Internal"
+    style:
+      fill: "#f0fff0"
+      stroke: "#228b22"
+```
+
+### Label Position
+
+```yaml
+subgraphs:
+  - id: site-a
+    label: "Site A"
+    style:
+      labelPosition: top    # top, bottom, left, right
+```
+
+## Layout Within Subgraphs
+
+Change layout direction per subgraph:
+
+```yaml
+subgraphs:
+  - id: servers
+    label: "Server Farm"
+    direction: LR    # Left to right (default is TB)
+```
+
+## Cloud Icon Subgraphs
+
+Express AWS VPC and similar as subgraphs:
+
+```yaml
+subgraphs:
+  - id: vpc
+    label: "Production VPC"
+    vendor: aws
+    service: vpc
+    style:
+      fill: "#f5f5f5"
+```
+
+## Control Horizontal Placement with rank
+
+Nodes with the same `rank` value are aligned horizontally:
+
+```yaml
+nodes:
+  - id: sw-1
+    label: "Switch 1"
+    parent: access
+    rank: 1
+
+  - id: sw-2
+    label: "Switch 2"
+    parent: access
+    rank: 1           # Same row as sw-1
+
+  - id: sw-3
+    label: "Switch 3"
+    parent: access
+    rank: 1           # Same row
+```
+
+## Multi-Site Configuration
+
+For networks with multiple sites:
+
+```yaml
+name: "Multi-Site Network"
+
+subgraphs:
+  - id: tokyo
+    label: "Tokyo DC"
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+
+  - id: osaka
+    label: "Osaka DC"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+
+nodes:
+  - id: tokyo-rt
+    label: "Tokyo Router"
+    type: router
+    parent: tokyo
+
+  - id: osaka-rt
+    label: "Osaka Router"
+    type: router
+    parent: osaka
+
+links:
+  # Site-to-site link
+  - from: tokyo-rt
+    to: osaka-rt
+    type: dashed
+    label: "WAN Link"
+```
+
+<Callout type="info">
+For larger multi-site configurations, [Multi-file Configuration](/docs/multi-file) is convenient.
+</Callout>
+
+## Next Steps
+
+<Cards>
+  <Card title="Styles and Themes" href="/docs/styling-themes">
+    Customize colors and themes
+  </Card>
+  <Card title="Multi-file Configuration" href="/docs/multi-file">
+    Manage large networks across multiple files
+  </Card>
+</Cards>

@@ -1,0 +1,547 @@
+---
+title: Examples
+description: Sample network configurations
+---
+
+A collection of copy-paste ready samples.
+
+## Simple Configurations
+
+### 3-Tier Network
+
+Basic Core / Distribution / Access configuration.
+
+```yaml
+name: "Simple Network"
+
+settings:
+  direction: TB
+
+subgraphs:
+  - id: core
+    label: "Core"
+  - id: distribution
+    label: "Distribution"
+  - id: access
+    label: "Access"
+
+nodes:
+  - id: core-rt
+    label: "Core Router"
+    type: router
+    parent: core
+
+  - id: dist-sw-1
+    label: "Dist SW 1"
+    type: l3-switch
+    parent: distribution
+
+  - id: dist-sw-2
+    label: "Dist SW 2"
+    type: l3-switch
+    parent: distribution
+
+  - id: access-sw-1
+    label: "Access SW 1"
+    type: switch
+    parent: access
+
+  - id: access-sw-2
+    label: "Access SW 2"
+    type: switch
+    parent: access
+
+links:
+  - from: core-rt
+    to: dist-sw-1
+    bandwidth: 10G
+
+  - from: core-rt
+    to: dist-sw-2
+    bandwidth: 10G
+
+  - from: dist-sw-1
+    to: access-sw-1
+    bandwidth: 1G
+
+  - from: dist-sw-2
+    to: access-sw-2
+    bandwidth: 1G
+```
+
+---
+
+## Data Center Configurations
+
+### Spine-Leaf
+
+Data center spine-leaf topology.
+
+```yaml
+name: "Data Center"
+
+settings:
+  direction: TB
+
+subgraphs:
+  - id: spine
+    label: "Spine Layer"
+  - id: leaf
+    label: "Leaf Layer"
+  - id: servers
+    label: "Servers"
+
+nodes:
+  - id: spine-1
+    label: "Spine 1"
+    type: l3-switch
+    parent: spine
+
+  - id: spine-2
+    label: "Spine 2"
+    type: l3-switch
+    parent: spine
+
+  - id: leaf-1
+    label: "Leaf 1"
+    type: l3-switch
+    parent: leaf
+
+  - id: leaf-2
+    label: "Leaf 2"
+    type: l3-switch
+    parent: leaf
+
+  - id: srv-1
+    label: "Server 1"
+    type: server
+    parent: servers
+
+  - id: srv-2
+    label: "Server 2"
+    type: server
+    parent: servers
+
+links:
+  # Full mesh: Spine to Leaf
+  - from: spine-1
+    to: leaf-1
+    bandwidth: 100G
+  - from: spine-1
+    to: leaf-2
+    bandwidth: 100G
+  - from: spine-2
+    to: leaf-1
+    bandwidth: 100G
+  - from: spine-2
+    to: leaf-2
+    bandwidth: 100G
+
+  # Leaf to Servers
+  - from: leaf-1
+    to: srv-1
+    bandwidth: 25G
+  - from: leaf-2
+    to: srv-2
+    bandwidth: 25G
+```
+
+---
+
+## Vendor Devices
+
+### Yamaha Enterprise Network
+
+Enterprise network using Yamaha devices.
+
+```yaml
+name: "Enterprise Network"
+
+settings:
+  direction: TB
+
+subgraphs:
+  - id: wan
+    label: "WAN"
+  - id: dmz
+    label: "DMZ"
+  - id: lan
+    label: "LAN"
+
+nodes:
+  - id: internet
+    label: "Internet"
+    type: internet
+    parent: wan
+
+  - id: router
+    label: "RTX3510"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+    parent: wan
+
+  - id: firewall
+    label: "FWX120"
+    type: fw
+    vendor: yamaha
+    model: fwx120
+    parent: dmz
+
+  - id: core-sw
+    label: "SWX3220"
+    type: l3-switch
+    vendor: yamaha
+    model: swx3220-16mt
+    parent: lan
+
+  - id: ap
+    label: "WLX413"
+    type: ap
+    vendor: yamaha
+    model: wlx413
+    parent: lan
+
+  - id: server
+    label: "Server"
+    type: server
+    parent: lan
+
+links:
+  - from: internet
+    to: router
+    label: "PPPoE"
+
+  - from: router
+    to: firewall
+    bandwidth: 1G
+
+  - from: firewall
+    to: core-sw
+    bandwidth: 10G
+
+  - from: core-sw
+    to: ap
+    bandwidth: 2.5G
+
+  - from: core-sw
+    to: server
+    bandwidth: 10G
+```
+
+### Juniper Network
+
+```yaml
+name: "Juniper Network"
+
+settings:
+  direction: LR
+
+nodes:
+  - id: mx
+    label: "MX480"
+    type: router
+    vendor: juniper
+    model: mx480
+
+  - id: srx
+    label: "SRX4600"
+    type: fw
+    vendor: juniper
+    model: srx4600
+
+  - id: qfx-1
+    label: "QFX5120"
+    type: l3-switch
+    vendor: juniper
+    model: qfx5120-48y
+
+  - id: ex-1
+    label: "EX4400"
+    type: switch
+    vendor: juniper
+    model: ex4400-48p
+
+links:
+  - from: mx
+    to: srx
+    bandwidth: 100G
+
+  - from: srx
+    to: qfx-1
+    bandwidth: 100G
+
+  - from: qfx-1
+    to: ex-1
+    bandwidth: 10G
+```
+
+---
+
+## Cloud Configurations
+
+### AWS VPC
+
+```yaml
+name: "AWS Architecture"
+
+settings:
+  direction: TB
+
+subgraphs:
+  - id: vpc
+    label: "VPC"
+    vendor: aws
+    service: vpc
+  - id: public
+    label: "Public Subnet"
+    parent: vpc
+  - id: private
+    label: "Private Subnet"
+    parent: vpc
+
+nodes:
+  - id: igw
+    label: "Internet Gateway"
+    vendor: aws
+    service: vpc
+    resource: internet-gateway
+    parent: vpc
+
+  - id: alb
+    label: "ALB"
+    vendor: aws
+    service: elb
+    resource: application-load-balancer
+    parent: public
+
+  - id: nat
+    label: "NAT Gateway"
+    vendor: aws
+    service: vpc
+    resource: nat-gateway
+    parent: public
+
+  - id: ec2-1
+    label: "Web Server 1"
+    vendor: aws
+    service: ec2
+    resource: instance
+    parent: private
+
+  - id: ec2-2
+    label: "Web Server 2"
+    vendor: aws
+    service: ec2
+    resource: instance
+    parent: private
+
+  - id: rds
+    label: "RDS"
+    vendor: aws
+    service: rds
+    resource: instance
+    parent: private
+
+links:
+  - from: igw
+    to: alb
+
+  - from: alb
+    to: ec2-1
+
+  - from: alb
+    to: ec2-2
+
+  - from: ec2-1
+    to: rds
+
+  - from: ec2-2
+    to: rds
+
+  - from: ec2-1
+    to: nat
+
+  - from: ec2-2
+    to: nat
+```
+
+---
+
+## Advanced Configurations
+
+### Full-Featured Sample
+
+Example using all features: bandwidth, VLANs, HA, legends, etc.
+
+```yaml
+name: "Full Featured Network"
+description: "Comprehensive example showcasing all Shumoku features"
+
+settings:
+  direction: TB
+  theme: light
+  legend: true
+
+subgraphs:
+  - id: site-datacenter
+    label: "Tokyo Data Center"
+    style:
+      fill: "#E3F2FD"
+      stroke: "#1565C0"
+
+  - id: cluster-vmware
+    label: "VMware Cluster"
+    parent: site-datacenter
+    style:
+      fill: "#F3E5F5"
+      stroke: "#7B1FA2"
+      strokeDasharray: "4,2"
+
+  - id: site-office
+    label: "Head Office"
+    style:
+      fill: "#FFF3E0"
+      stroke: "#E65100"
+
+nodes:
+  # HA Pair
+  - id: core-rt-01
+    label:
+      - "<b>core-rt-01</b>"
+      - "10.0.0.1"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+    parent: site-datacenter
+    rank: 0
+
+  - id: core-rt-02
+    label:
+      - "<b>core-rt-02</b>"
+      - "10.0.0.2"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+    parent: site-datacenter
+    rank: 0
+
+  # Core Switch
+  - id: core-sw-01
+    label:
+      - "<b>core-sw-01</b>"
+      - "10.0.1.1"
+    type: l3-switch
+    vendor: juniper
+    model: qfx5120
+    parent: site-datacenter
+    rank: 1
+
+  # Physical Server
+  - id: esxi-01
+    label:
+      - "<b>esxi-01</b>"
+      - "10.0.10.1"
+    type: server
+    parent: cluster-vmware
+
+  # Virtual Machine
+  - id: vm-web-01
+    label:
+      - "<b>vm-web-01</b>"
+      - "10.0.20.10"
+    type: server
+    parent: cluster-vmware
+    style:
+      strokeDasharray: "4,4"
+      opacity: 0.9
+
+  # Planned Device
+  - id: new-sw-01
+    label:
+      - "<b>new-sw-01</b>"
+      - "(Planned Q2)"
+    type: switch
+    parent: site-datacenter
+    style:
+      stroke: "#9CA3AF"
+      strokeDasharray: "5,5"
+      opacity: 0.7
+
+  # Office Devices
+  - id: office-rt-01
+    label:
+      - "<b>office-rt-01</b>"
+      - "10.2.0.1"
+    type: router
+    parent: site-office
+
+  - id: office-ap-01
+    label: "<b>office-ap-01</b>"
+    type: ap
+    vendor: aruba
+    model: ap-505
+    parent: site-office
+
+links:
+  # HA Link
+  - from:
+      node: core-rt-01
+      port: xe-0/0/0
+    to:
+      node: core-rt-02
+      port: xe-0/0/0
+    bandwidth: 100G
+    redundancy: ha
+    label: "HA Keepalive"
+    style:
+      stroke: "#eab308"
+
+  # Core → Switch
+  - from:
+      node: core-rt-01
+      port: xe-0/0/1
+    to:
+      node: core-sw-01
+      port: xe-0/0/0
+    bandwidth: 40G
+    vlan: [100, 200, 300]
+
+  # Switch → Server
+  - from:
+      node: core-sw-01
+      port: ge-0/0/1
+    to:
+      node: esxi-01
+      port: vmnic0
+    bandwidth: 25G
+    vlan: [200]
+
+  # VM Connection (logical link)
+  - from: esxi-01
+    to: vm-web-01
+    bandwidth: 10G
+    type: dashed
+    label: "vSwitch"
+
+  # VPN Tunnel
+  - from:
+      node: core-rt-02
+      port: tun0
+    to:
+      node: office-rt-01
+      port: tun0
+    type: dashed
+    label: "IPsec VPN"
+
+  # Office Internal
+  - from: office-rt-01
+    to: office-ap-01
+    bandwidth: 1G
+```
+
+---
+
+## Multi-file Configuration
+
+For examples managing multiple sites in separate files, see [Multi-file Configuration](/docs/multi-file).

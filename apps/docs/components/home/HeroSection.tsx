@@ -2,49 +2,49 @@ import Link from 'next/link'
 import { cn } from '@/lib/cn'
 import { ArrowRightIcon, CopyIcon } from './icons'
 import { backgrounds, buttonStyles, cardStyles } from './styles'
+import { homeTranslations, type HeroTranslations, type Locale } from './translations'
 
-function StatusBadge() {
+function StatusBadge({ t }: { t: HeroTranslations }) {
   return (
     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium mb-4 sm:mb-8 border border-emerald-500/20">
       <span className="relative flex h-2 w-2">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
       </span>
-      900+ vendor icons
+      {t.badge}
     </div>
   )
 }
 
-function HeroTitle() {
+function HeroTitle({ t }: { t: HeroTranslations }) {
   return (
     <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-8 leading-[0.98]">
-      <span className="text-neutral-900 dark:text-white">Network diagrams,</span>
+      <span className="text-neutral-900 dark:text-white">{t.title1}</span>
       <br />
       <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 bg-clip-text text-transparent">
-        as code.
+        {t.title2}
       </span>
     </h1>
   )
 }
 
-function HeroDescription() {
+function HeroDescription({ t }: { t: HeroTranslations }) {
   return (
     <p className="text-base sm:text-lg lg:text-xl text-neutral-700 dark:text-neutral-300 mb-6 sm:mb-10 leading-relaxed">
-      YAML でネットワーク構成を定義し、美しい SVG ダイアグラムを自動生成。 Git
-      でバージョン管理、CI/CD に統合。
+      {t.description}
     </p>
   )
 }
 
-function CTAButtons() {
+function CTAButtons({ t, locale }: { t: HeroTranslations; locale: string }) {
   return (
     <div className="flex flex-wrap gap-3 mb-6 sm:mb-8">
-      <Link href="/playground" className={cn(...buttonStyles.primary)}>
-        Playground
+      <Link href={`/${locale}/playground`} className={cn(...buttonStyles.primary)}>
+        {t.playground}
         <ArrowRightIcon className="w-4 h-4" />
       </Link>
-      <Link href="/docs" className={cn(...buttonStyles.secondary)}>
-        Documentation
+      <Link href={`/${locale}/docs`} className={cn(...buttonStyles.secondary)}>
+        {t.documentation}
       </Link>
     </div>
   )
@@ -82,7 +82,9 @@ function DiagramPreview() {
   )
 }
 
-export function HeroSection() {
+export function HeroSection({ locale }: { locale: string }) {
+  const t = homeTranslations[locale as Locale]?.hero ?? homeTranslations.en.hero
+
   return (
     <section className="relative">
       <div className="absolute inset-0 bg-white dark:bg-neutral-950 pointer-events-none" />
@@ -90,16 +92,16 @@ export function HeroSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
         <div className="grid lg:grid-cols-2 lg:items-stretch gap-12 lg:gap-16">
-          {/* 左: テキストコンテンツ */}
+          {/* Left: Text content */}
           <div className="max-w-xl">
-            <StatusBadge />
-            <HeroTitle />
-            <HeroDescription />
-            <CTAButtons />
+            <StatusBadge t={t} />
+            <HeroTitle t={t} />
+            <HeroDescription t={t} />
+            <CTAButtons t={t} locale={locale} />
             <InstallCommand />
           </div>
 
-          {/* 右: ダイアグラム */}
+          {/* Right: Diagram */}
           <div className="flex flex-col">
             <DiagramPreview />
           </div>

@@ -1,0 +1,167 @@
+---
+title: Interactive Features
+description: Pan/zoom, tooltips, and touch controls for HTML output
+---
+
+HTML format output provides interactive features.
+
+## HTML Output
+
+```bash
+npx shumoku render network.yaml -f html -o diagram.html
+```
+
+## Pan & Zoom
+
+| Action | Result |
+|--------|--------|
+| **Mouse wheel** | Zoom in/out |
+| **Drag** | Pan (move) |
+| **Double-click** | Reset view |
+
+### Touch Devices
+
+| Action | Result |
+|--------|--------|
+| **Pinch** | Zoom in/out |
+| **One-finger drag** | Pan (move) |
+| **Double-tap** | Reset view |
+
+## Tooltips
+
+Hover over links to see detailed information in tooltips:
+
+- Port names
+- IP addresses
+- Bandwidth
+- VLANs
+
+## Device Modal
+
+Click on a node to display device details in a modal:
+
+- Device name
+- Type
+- Vendor/Model
+- Metadata
+
+## Toolbar
+
+HTML output includes a zoom control toolbar:
+
+- **+** Zoom in
+- **-** Zoom out
+- **Reset** Fit to view
+
+### Hide Toolbar
+
+When using from TypeScript:
+
+```typescript
+import { html } from 'shumoku'
+
+const output = html.render(graph, layout, {
+  toolbar: false
+})
+```
+
+## Hierarchical Navigation
+
+When using [Multi-file Configuration](/docs/multi-file):
+
+- **Click a subgraph** → Navigate to detail sheet
+- **Back button** → Return to parent sheet
+- **Breadcrumbs** → Navigate to any level
+
+## Branding
+
+By default, a "Powered by Shumoku" link appears in the bottom right.
+
+To hide it:
+
+```typescript
+const output = html.render(graph, layout, {
+  branding: false
+})
+```
+
+## SVG data Attributes
+
+SVG elements have data attributes for JavaScript manipulation:
+
+```html
+<!-- Node -->
+<g class="device"
+   data-device-id="router-1"
+   data-device-type="router"
+   data-device-vendor="yamaha"
+   data-device-model="rtx3510">
+
+<!-- Link -->
+<g class="link"
+   data-link-id="link-1"
+   data-link-bandwidth="10G"
+   data-link-vlan="100,200">
+```
+
+### Control data Attributes
+
+```typescript
+import { svg } from 'shumoku'
+
+const output = svg.render(graph, layout, {
+  renderMode: 'interactive',
+  dataAttributes: {
+    device: true,      // Device info
+    link: true,        // Link info
+    metadata: true     // Output metadata as JSON
+  }
+})
+```
+
+## JavaScript API
+
+When embedding in HTML, you can control from JavaScript:
+
+```typescript
+import { html } from 'shumoku'
+
+const output = html.render(graph, layout)
+document.getElementById('container').innerHTML = output
+
+// Get the interactive instance
+const instance = window.shumokuInstance
+
+// Programmatic control
+instance.showDeviceModal('router-1')    // Show device modal
+instance.hideModal()                     // Close modal
+instance.showLinkTooltip('link-1', x, y) // Show tooltip
+instance.hideTooltip()                   // Close tooltip
+instance.resetView()                     // Reset view
+instance.getScale()                      // Get current zoom level
+instance.navigateToSheet('sheet-id')     // Navigate sheet (hierarchical)
+instance.destroy()                       // Clean up event listeners
+```
+
+## Output Format Comparison
+
+| Feature | SVG | HTML | PNG |
+|---------|-----|------|-----|
+| Pan/Zoom | No | Yes | No |
+| Tooltips | No | Yes | No |
+| Touch controls | No | Yes | No |
+| Hierarchical navigation | No | Yes | No |
+| File size | Small | Medium | Large |
+| Editable | Yes | No | No |
+| Document embedding | Yes | iframe | Yes |
+
+## Next Steps
+
+<Cards>
+  <Card title="CLI Reference" href="/docs/cli">
+    Output options details
+  </Card>
+  <Card title="Examples" href="/docs/examples">
+    Sample network collection
+  </Card>
+</Cards>

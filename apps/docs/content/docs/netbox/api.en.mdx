@@ -1,0 +1,277 @@
+---
+title: API Reference
+description: "@shumoku/netbox library API documentation"
+---
+
+API reference for using `@shumoku/netbox` as a library.
+
+## NetBoxClient
+
+Client class for communicating with the NetBox API.
+
+### Constructor
+
+```typescript
+import { NetBoxClient } from '@shumoku/netbox'
+
+const client = new NetBoxClient({
+  url: string,       // NetBox URL
+  token: string,     // API token
+  debug?: boolean    // Enable debug output (default: false)
+})
+```
+
+Specifying `debug: true` outputs API request/response details to the console:
+
+```typescript
+const client = new NetBoxClient({
+  url: 'https://netbox.example.com',
+  token: 'your-api-token',
+  debug: true  // Log API communication
+})
+```
+
+### fetchDevices
+
+Fetch device list.
+
+```typescript
+interface QueryParams {
+  site?: string
+  role?: string
+  status?: 'active' | 'planned' | 'staged' | 'failed' | 'offline'
+  tag?: string
+}
+
+const devices = await client.fetchDevices(filter?: QueryParams)
+```
+
+**Examples:**
+
+```typescript
+// Fetch all devices
+const allDevices = await client.fetchDevices()
+
+// Devices from specific site only
+const tokyoDevices = await client.fetchDevices({ site: 'tokyo-dc' })
+
+// Multiple conditions
+const filtered = await client.fetchDevices({
+  site: 'tokyo-dc',
+  role: 'core-router',
+  status: 'active'
+})
+```
+
+### fetchInterfaces
+
+Fetch interface list.
+
+```typescript
+const interfaces = await client.fetchInterfaces(filter?: QueryParams)
+```
+
+### fetchCables
+
+Fetch cable list.
+
+```typescript
+const cables = await client.fetchCables()
+```
+
+### fetchSites
+
+Fetch site list.
+
+```typescript
+const sites = await client.fetchSites()
+```
+
+---
+
+## convertToNetworkGraph
+
+Convert NetBox data to Shumoku NetworkGraph.
+
+```typescript
+import { convertToNetworkGraph } from '@shumoku/netbox'
+
+const graph = convertToNetworkGraph(
+  deviceResponse,      // Result of fetchDevices
+  interfaceResponse,   // Result of fetchInterfaces
+  cableResponse,       // Result of fetchCables
+  options?: ConverterOptions
+)
+```
+
+### ConverterOptions
+
+```typescript
+interface ConverterOptions {
+  // Theme
+  theme?: 'light' | 'dark'
+
+  // Show port names on links
+  showPorts?: boolean  // default: true
+
+  // Show VLAN info on links
+  showVlans?: boolean
+
+  // Color by cable type
+  colorByCableType?: boolean  // default: true
+
+  // Device grouping method
+  groupBy?: 'tag' | 'site' | 'location' | 'prefix' | 'none'
+
+  // Use device role for type inference
+  useRoleForType?: boolean  // default: true
+
+  // Color by status
+  colorByStatus?: boolean
+
+  // Include virtual machines
+  includeVMs?: boolean
+
+  // Group VMs by cluster
+  groupVMsByCluster?: boolean
+
+  // Show legend
+  legend?: boolean | LegendSettings
+
+  // Custom tag mapping
+  tagMapping?: Record<string, TagMapping>
+}
+```
+
+### Examples
+
+```typescript
+// Basic conversion
+const graph = convertToNetworkGraph(devices, interfaces, cables)
+
+// With options
+const graph = convertToNetworkGraph(devices, interfaces, cables, {
+  groupBy: 'site',
+  colorByCableType: true,
+  colorByStatus: true,
+  showPorts: true,
+  legend: true,
+})
+
+// Customize legend
+const graph = convertToNetworkGraph(devices, interfaces, cables, {
+  legend: {
+    enabled: true,
+    position: 'bottom-right',
+    showDeviceTypes: true,
+    showBandwidth: true,
+    showCableTypes: true,
+    showVlans: false,
+  }
+})
+```
+
+---
+
+## toYaml
+
+Convert NetworkGraph to YAML string.
+
+```typescript
+import { toYaml } from '@shumoku/netbox'
+
+const yamlString = toYaml(graph)
+```
+
+---
+
+## Complete Example
+
+```typescript
+import { NetBoxClient, convertToNetworkGraph, toYaml } from '@shumoku/netbox'
+import { HierarchicalLayout } from '@shumoku/core'
+import { svg, html } from '@shumoku/renderer'
+import { writeFileSync } from 'fs'
+
+async function generateDiagram() {
+  // 1. Fetch data from NetBox
+  const client = new NetBoxClient({
+    url: process.env.NETBOX_URL!,
+    token: process.env.NETBOX_TOKEN!
+  })
+
+  const devices = await client.fetchDevices({ site: 'tokyo-dc' })
+  const interfaces = await client.fetchInterfaces({ site: 'tokyo-dc' })
+  const cables = await client.fetchCables()
+
+  console.log(`Fetched ${devices.results.length} devices`)
+
+  // 2. Convert to NetworkGraph
+  const graph = convertToNetworkGraph(devices, interfaces, cables, {
+    groupBy: 'location',
+    colorByCableType: true,
+    legend: true,
+  })
+
+  // 3. Calculate layout
+  const layout = new HierarchicalLayout()
+  const layoutResult = await layout.layoutAsync(graph)
+
+  // 4. Output
+  // SVG
+  writeFileSync('network.svg', svg.render(graph, layoutResult))
+
+  // HTML (interactive)
+  writeFileSync('network.html', html.render(graph, layoutResult))
+
+  // YAML
+  writeFileSync('network.yaml', toYaml(graph))
+
+  // JSON
+  writeFileSync('network.json', JSON.stringify(graph, null, 2))
+
+  console.log('Done!')
+}
+
+generateDiagram()
+```
+
+---
+
+## HierarchicalConverterOptions
+
+Additional options for hierarchical output.
+
+```typescript
+interface HierarchicalConverterOptions extends ConverterOptions {
+  // Enable hierarchical output
+  hierarchical?: boolean
+
+  // Hierarchy depth
+  hierarchyDepth?: 'site' | 'location' | 'rack'
+
+  // Base path for file references
+  fileBasePath?: string  // default: './'
+}
+```
+
+### convertToHierarchicalYaml
+
+```typescript
+import { convertToHierarchicalYaml } from '@shumoku/netbox'
+
+const result = convertToHierarchicalYaml(
+  deviceResp,
+  interfaceResp,
+  cableResp,
+  {
+    hierarchical: true,
+    hierarchyDepth: 'location',
+    fileBasePath: './',
+  }
+)
+
+// result.main: Content of main.yaml
+// result.files: Map<locationId, yamlContent>
+// result.crossLinks: List of cross-site links
+```

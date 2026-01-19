@@ -1,0 +1,456 @@
+---
+title: YAML Reference
+description: YAML syntax reference for network diagram definitions
+---
+
+Reference for all options available in YAML format.
+
+<Callout type="info">
+To learn how to use it, see [Basic Diagrams](/docs/basic-diagram) or [Organizing with Groups](/docs/organizing-groups).
+</Callout>
+
+## Basic Structure
+
+```yaml
+name: "Network Diagram"
+description: "Optional description"
+
+settings:
+  # Graph settings
+
+subgraphs:
+  # Subgraph (group) definitions
+
+nodes:
+  # Node (device) definitions
+
+links:
+  # Link (connection) definitions
+```
+
+---
+
+## Settings
+
+```yaml
+settings:
+  direction: TB          # Layout direction
+  theme: light           # Theme
+  legend: true           # Show legend
+  nodeSpacing: 50        # Node spacing
+  rankSpacing: 100       # Rank spacing
+  subgraphPadding: 20    # Subgraph inner padding
+  canvas:                # Canvas settings
+    preset: A4
+    orientation: landscape
+    width: 1920
+    height: 1080
+    dpi: 150
+    fit: true
+    padding: 20
+```
+
+### direction
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `TB` | `top-bottom` | Top to bottom |
+| `BT` | `bottom-top` | Bottom to top |
+| `LR` | `left-right` | Left to right |
+| `RL` | `right-left` | Right to left |
+
+### theme
+| Value | Description |
+|-------|-------------|
+| `light` | Light theme |
+| `dark` | Dark theme |
+
+### legend
+Display a legend explaining visual elements like bandwidth, device types, and cable types.
+
+```yaml
+# Simple (default position: top-right)
+legend: true
+
+# Detailed settings
+legend:
+  enabled: true
+  position: top-right      # Position
+  showDeviceTypes: true    # Show device types
+  showBandwidth: true      # Show bandwidth
+  showCableTypes: true     # Show cable types
+  showVlans: true          # Show VLANs
+```
+
+| position | Description |
+|----------|-------------|
+| `top-left` | Top left |
+| `top-right` | Top right (default) |
+| `bottom-left` | Bottom left |
+| `bottom-right` | Bottom right |
+
+### canvas.preset (Paper Size)
+`A0`, `A1`, `A2`, `A3`, `A4`, `B0`, `B1`, `B2`, `B3`, `B4`, `letter`, `legal`, `tabloid`
+
+### canvas.orientation
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `portrait` | `p` | Portrait |
+| `landscape` | `l` | Landscape |
+
+---
+
+## Nodes
+
+```yaml
+nodes:
+  - id: router-1
+    label: "Router 1"
+    type: router
+    shape: rounded
+    parent: subgraph-id
+    rank: 1
+    vendor: yamaha
+    model: rtx3510
+    style:
+      fill: "#ffffff"
+      stroke: "#000000"
+      strokeWidth: 2
+      strokeDasharray: "5 5"
+      textColor: "#333333"
+      fontSize: 12
+      fontWeight: bold
+      opacity: 1.0
+```
+
+### label
+Single line or multi-line:
+```yaml
+label: "Single line"
+
+label:
+  - "<b>Bold title</b>"
+  - "Line 2"
+  - "---"           # Separator line
+  - "Line 3"
+```
+
+### type (Device Type)
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `router` | - | Router |
+| `l3-switch` | - | L3 Switch |
+| `l2-switch` | `switch` | L2 Switch |
+| `firewall` | `fw` | Firewall |
+| `load-balancer` | `lb` | Load Balancer |
+| `server` | - | Server |
+| `access-point` | `ap` | Access Point |
+| `cloud` | - | Cloud |
+| `internet` | - | Internet |
+| `vpn` | - | VPN |
+| `database` | `db` | Database |
+| `generic` | - | Generic |
+
+### shape (Node Shape)
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `rounded` | `round` | Rounded rectangle (default) |
+| `rect` | `rectangle` | Rectangle |
+| `circle` | - | Circle |
+| `diamond` | `rhombus` | Diamond |
+| `hexagon` | - | Hexagon |
+| `cylinder` | `database` | Cylinder |
+| `stadium` | `pill` | Stadium shape |
+| `trapezoid` | - | Trapezoid |
+
+### vendor / model (Vendor Icons)
+Display hardware vendor icons:
+```yaml
+vendor: yamaha
+model: rtx3510
+```
+
+For cloud vendors:
+```yaml
+vendor: aws
+service: ec2
+resource: instances
+```
+
+---
+
+## Links
+
+```yaml
+links:
+  # Simple format
+  - from: router-1
+    to: switch-1
+
+  # With port specification
+  - from:
+      node: router-1
+      port: eth0
+      ip: 192.168.1.1
+    to:
+      node: switch-1
+      port: ge-0/0/0
+
+  # Full specification
+  - id: link-1
+    from: router-1
+    to: switch-1
+    label: "10G Uplink"
+    type: solid
+    arrow: none
+    bandwidth: 10G
+    redundancy: mlag
+    vlan: [10, 20, 30]
+    style:
+      stroke: "#2196F3"
+      strokeWidth: 2
+      strokeDasharray: "5 5"
+      opacity: 1.0
+      minLength: 100
+```
+
+### type (Link Type)
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `solid` | - | Solid line (default) |
+| `dashed` | `dotted` | Dashed line |
+| `thick` | - | Thick line |
+| `double` | - | Double line |
+| `invisible` | `hidden` | Hidden |
+
+### arrow
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `none` | - | No arrow |
+| `forward` | `->` | Forward |
+| `back` | `<-` | Backward |
+| `both` | `<->` | Bidirectional |
+
+### bandwidth
+Specify line bandwidth. Visualized by line thickness (number of lines).
+
+| Value | Aliases | Visualization |
+|-------|---------|---------------|
+| `1G` | `1GbE`, `1Gbit` | 1 line |
+| `10G` | `10GbE`, `10Gbit` | 2 lines |
+| `25G` | `25GbE`, `25Gbit` | 3 lines |
+| `40G` | `40GbE`, `40Gbit` | 4 lines |
+| `100G` | `100GbE`, `100Gbit` | 5 lines |
+
+### redundancy (Redundancy Type)
+| Value | Aliases | Description |
+|-------|---------|-------------|
+| `ha` | `vrrp`, `hsrp`, `glbp`, `keepalive` | HA pair |
+| `vc` | `virtual-chassis` | Virtual Chassis |
+| `vss` | - | VSS |
+| `vpc` | - | vPC |
+| `mlag` | `mclag` | MLAG |
+| `stack` | `stacking`, `irf` | Stack |
+
+### vlan
+Specify VLANs associated with the link. Color-coded based on VLAN ID.
+
+```yaml
+# Single VLAN
+vlan: 10
+
+# Multiple VLANs (trunk)
+vlan: [10, 20, 30]
+```
+
+- Single VLAN: Displayed in color based on VLAN ID
+- Multiple VLANs: Displayed as trunk link with VLAN list in label
+
+---
+
+## Subgraphs
+
+```yaml
+subgraphs:
+  - id: datacenter
+    label: "Data Center"
+    parent: null          # Root level
+    direction: LR         # Internal layout direction
+    vendor: aws
+    service: vpc
+    style:
+      fill: "#f0f8ff"
+      stroke: "#0072bc"
+      strokeWidth: 2
+      strokeDasharray: "5 5"
+      labelPosition: top
+      labelFontSize: 14
+      padding: 20
+      nodeSpacing: 50
+      rankSpacing: 100
+
+  - id: rack-1
+    label: "Rack 1"
+    parent: datacenter    # Nested
+```
+
+### style.labelPosition
+| Value | Description |
+|-------|-------------|
+| `top` | Top |
+| `bottom` | Bottom |
+| `left` | Left |
+| `right` | Right |
+
+---
+
+## Hierarchical Diagrams
+
+Networks with multiple sites can be managed in multi-file configuration.
+
+### Basic Structure
+
+```yaml
+# main.yaml - Parent file
+name: "Multi-Site Network"
+
+subgraphs:
+  - id: headquarters
+    label: "Headquarters"
+    file: "./headquarters.yaml"   # External file reference
+    style:
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+
+  - id: branch
+    label: "Branch Office"
+    file: "./branch.yaml"
+    style:
+      fill: "#e8f5e9"
+      stroke: "#2e7d32"
+
+links:
+  # Links across subgraphs reference devices directly
+  - from:
+      node: hq-router      # Device in headquarters.yaml
+      port: wan1
+    to:
+      node: branch-router  # Device in branch.yaml
+      port: wan1
+    label: "Site-to-Site VPN"
+    type: dashed
+```
+
+```yaml
+# headquarters.yaml - Child file
+name: "Headquarters Network"
+
+nodes:
+  - id: hq-router
+    label: "HQ-Router"
+    type: router
+
+  - id: hq-switch
+    label: "HQ-Switch"
+    type: l3-switch
+
+links:
+  - from: { node: hq-router, port: lan1 }
+    to: { node: hq-switch, port: uplink }
+    bandwidth: 10G
+```
+
+### file (External File Reference)
+
+Specifying the `file` attribute on a subgraph loads its content from an external file.
+
+```yaml
+subgraphs:
+  - id: site-tokyo
+    label: "Tokyo DC"
+    file: "./sites/tokyo.yaml"
+```
+
+### Cross-Subgraph Links
+
+Links between devices in different subgraphs are specified by device name directly.
+The parser automatically detects which subgraph each belongs to and generates export connectors in child sheet views.
+
+```yaml
+links:
+  - from:
+      node: tokyo-router    # Device in tokyo.yaml
+      port: wan1
+    to:
+      node: osaka-router    # Device in osaka.yaml
+      port: wan1
+    label: "WAN Link"
+    bandwidth: 10G
+```
+
+### Sheet Navigation
+
+In hierarchical diagrams, click on a subgraph to navigate to its detail sheet.
+Each sheet displays breadcrumb navigation to return to parent sheets.
+
+---
+
+## Complete Example
+
+```yaml
+name: "Enterprise Network"
+description: "Headquarters network diagram"
+
+settings:
+  direction: TB
+  theme: light
+
+subgraphs:
+  - id: edge
+    label: "Edge Layer"
+    style:
+      fill: "#fff5f5"
+      stroke: "#d4a017"
+
+  - id: core
+    label: "Core Layer"
+    style:
+      fill: "#f0fff0"
+      stroke: "#228b22"
+
+nodes:
+  - id: rt-01
+    label:
+      - "<b>RT-01</b>"
+      - "192.168.1.1"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+    parent: edge
+
+  - id: sw-core-01
+    label: "<b>SW-CORE-01</b>"
+    type: l3-switch
+    vendor: juniper
+    model: ex4100-24mp
+    parent: core
+
+links:
+  - from:
+      node: rt-01
+      port: lan1
+    to:
+      node: sw-core-01
+      port: ge-0/0/0
+    bandwidth: 10G
+    arrow: none
+```
+
+---
+
+## Vendor Icons
+
+| Vendor | Example |
+|--------|---------|
+| Yamaha | `vendor: yamaha`, `model: rtx3510` |
+| Aruba | `vendor: aruba`, `service: access-switch` |
+| AWS | `vendor: aws`, `service: ec2`, `resource: instances` |

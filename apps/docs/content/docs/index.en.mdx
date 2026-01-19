@@ -1,0 +1,109 @@
+---
+title: Getting Started
+description: Install Shumoku and create your first network diagram
+---
+
+## What is Shumoku
+
+Shumoku is a library for **creating network diagrams in Markdown**.
+
+- Define networks in YAML → Generate SVG/HTML/PNG
+- 900+ vendor icons (Yamaha, Aruba, AWS, Juniper)
+- Interactive HTML output (pan/zoom, tooltips)
+- Integration with NetBox and custom APIs
+
+## Installation
+
+<Tabs items={['npm', 'yarn', 'pnpm', 'bun']}>
+  <Tab value="npm">
+    ```bash
+    npm install shumoku
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add shumoku
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add shumoku
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bun add shumoku
+    ```
+  </Tab>
+</Tabs>
+
+## Quick Start
+
+### 1. Define your network in YAML
+
+```yaml title="network.yaml"
+name: "My Network"
+
+nodes:
+  - id: router
+    label: "Core Router"
+    type: router
+
+  - id: switch
+    label: "Main Switch"
+    type: switch
+
+  - id: server
+    label: "Web Server"
+    type: server
+
+links:
+  - from: router
+    to: switch
+    bandwidth: 10G
+
+  - from: switch
+    to: server
+    bandwidth: 1G
+```
+
+### 2. Render with CLI
+
+```bash
+# SVG output
+npx shumoku render network.yaml -o diagram.svg
+
+# Interactive HTML output
+npx shumoku render network.yaml -f html -o diagram.html
+
+# PNG output
+npx shumoku render network.yaml -f png -o diagram.png
+```
+
+### 3. Use vendor icons
+
+```yaml
+nodes:
+  - id: router
+    label: "RTX3510"
+    type: router
+    vendor: yamaha
+    model: rtx3510
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Basic Diagrams" href="/docs/basic-diagram">
+    Nodes, links, and labels basics
+  </Card>
+  <Card title="Organizing with Groups" href="/docs/organizing-groups">
+    Group devices with subgraphs
+  </Card>
+  <Card title="Styles and Themes" href="/docs/styling-themes">
+    Customize appearance
+  </Card>
+  <Card title="Playground" href="/playground">
+    Try in browser
+  </Card>
+</Cards>

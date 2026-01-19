@@ -7,34 +7,35 @@ const navTitle = (
   </>
 )
 
-const navLinks = [
-  {
-    text: 'Docs',
-    url: '/docs',
-  },
-  {
-    text: 'Playground',
-    url: '/playground',
-  },
-]
-
 // For home page and playground
-export function baseOptions(): BaseLayoutProps {
+export function baseOptions(locale: string): BaseLayoutProps {
   return {
     nav: {
       title: navTitle,
     },
-    links: navLinks,
+    links: [
+      {
+        text: 'Docs',
+        url: `/${locale}/docs`,
+      },
+      {
+        text: 'Playground',
+        url: `/${locale}/playground`,
+      },
+    ],
     githubUrl: 'https://github.com/konoe-akitoshi/shumoku',
+    i18n: true,
   }
 }
 
 // For docs pages (no links in sidebar)
-export function docsOptions(): BaseLayoutProps {
+export function docsOptions(locale: string): BaseLayoutProps {
   return {
     nav: {
       title: navTitle,
+      url: `/${locale}`,
     },
     githubUrl: 'https://github.com/konoe-akitoshi/shumoku',
+    i18n: true,
   }
 }

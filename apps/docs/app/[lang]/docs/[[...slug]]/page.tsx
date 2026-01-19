@@ -6,9 +6,13 @@ import { LLMCopyButton, ViewOptions } from '@/components/ai/page-actions'
 import { getPageImage, source } from '@/lib/source'
 import { getMDXComponents } from '@/mdx-components'
 
-export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
-  const params = await props.params
-  const page = source.getPage(params.slug)
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ lang: string; slug?: string[] }>
+}) {
+  const { lang, slug } = await params
+  const page = source.getPage(slug, lang)
   if (!page) notFound()
 
   const MDX = page.data.body
@@ -18,6 +22,8 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
     branch: 'master',
   }
 
+  const githubPath = page.slugs.length === 0 ? 'index' : page.slugs.join('/')
+
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
@@ -26,13 +32,12 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         <LLMCopyButton markdownUrl={`${page.url}.mdx`} />
         <ViewOptions
           markdownUrl={`${page.url}.mdx`}
-          githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/apps/docs/content/docs/${page.slugs.length === 0 ? 'index' : page.slugs.join('/')}.mdx`}
+          githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/apps/docs/content/docs/${githubPath}.mdx`}
         />
       </div>
       <DocsBody>
         <MDX
           components={getMDXComponents({
-            // this allows you to link to other pages with relative file paths
             a: createRelativeLink(source, page),
           })}
         />
@@ -45,9 +50,13 @@ export async function generateStaticParams() {
   return source.generateParams()
 }
 
-export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): Promise<Metadata> {
-  const params = await props.params
-  const page = source.getPage(params.slug)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string; slug?: string[] }>
+}): Promise<Metadata> {
+  const { lang, slug } = await params
+  const page = source.getPage(slug, lang)
   if (!page) notFound()
 
   return {

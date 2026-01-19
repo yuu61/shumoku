@@ -1,0 +1,332 @@
+---
+title: JSON Schema
+description: NetworkGraph JSON format specification
+---
+
+## Purpose of JSON Format
+
+Shumoku's JSON format is designed as an **intermediate format**.
+
+```
+Custom API / NetBox / CMDB / Monitoring Systems
+                ↓
+         Generate JSON
+                ↓
+         Render with Shumoku
+```
+
+**Main use cases:**
+
+- **Programmatic generation** — Dynamically generate network diagrams from custom scripts or APIs
+- **System integration** — Integrate data from CMDBs, monitoring systems, and cloud APIs beyond NetBox
+- **Data merging** — Combine information from multiple sources into a single diagram
+
+<Callout type="info">
+For manual writing, [YAML format](/docs/yaml-reference) is more concise. JSON is suited for auto-generation and system integration.
+</Callout>
+
+## Basic Structure
+
+```json
+{
+  "version": "1.0.0",
+  "name": "Network Name",
+  "description": "Optional description",
+  "nodes": [],
+  "links": [],
+  "subgraphs": [],
+  "settings": {}
+}
+```
+
+## nodes
+
+Define devices on the network (routers, switches, servers, etc.).
+
+```json
+{
+  "nodes": [
+    {
+      "id": "router1",
+      "label": "Core Router",
+      "type": "router",
+      "vendor": "yamaha",
+      "model": "rtx3510",
+      "parent": "dc1"
+    },
+    {
+      "id": "switch1",
+      "label": ["Main Switch", "(Floor 1)"],
+      "type": "l2-switch"
+    }
+  ]
+}
+```
+
+### Node Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier |
+| `label` | string \| string[] | Yes | Display label (array for multi-line) |
+| `type` | string | | Device type |
+| `vendor` | string | | Vendor name (for icons) |
+| `model` | string | | Device model name |
+| `service` | string | | Service name (AWS, etc.) |
+| `resource` | string | | Resource type |
+| `parent` | string | | Subgraph ID to belong to |
+| `rank` | number \| string | | Layer specification (same value for horizontal alignment) |
+| `shape` | string | | Shape (rect, rounded, circle, etc.) |
+| `style` | object | | Custom style |
+| `metadata` | object | | Arbitrary metadata |
+
+### Device Type List
+
+| type | Description |
+|------|-------------|
+| `router` | Router |
+| `l2-switch` | L2 Switch |
+| `l3-switch` | L3 Switch |
+| `firewall` | Firewall |
+| `load-balancer` | Load Balancer |
+| `server` | Server |
+| `access-point` | Access Point |
+| `cloud` | Cloud |
+| `internet` | Internet |
+| `vpn` | VPN |
+| `database` | Database |
+| `generic` | Generic |
+
+---
+
+## links
+
+Define connections between devices.
+
+```json
+{
+  "links": [
+    {
+      "from": { "node": "router1", "port": "ge-0/0/0" },
+      "to": { "node": "switch1", "port": "eth1" },
+      "bandwidth": "10G",
+      "vlan": [100, 200]
+    },
+    {
+      "from": "server1",
+      "to": "switch1",
+      "label": "Management"
+    }
+  ]
+}
+```
+
+### Link Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | | Unique identifier |
+| `from` | string \| object | Yes | Source (node ID or `{node, port, ip}`) |
+| `to` | string \| object | Yes | Destination |
+| `label` | string \| string[] | | Link label |
+| `bandwidth` | string | | Bandwidth (1G, 10G, 25G, 40G, 100G) |
+| `vlan` | number[] | | Array of VLAN IDs |
+| `type` | string | | Line type (solid, dashed, thick, double) |
+| `arrow` | string | | Arrow (none, forward, back, both) |
+| `redundancy` | string | | Redundancy type (ha, vc, vss, vpc, mlag, stack) |
+| `style` | object | | Custom style |
+| `metadata` | object | | Arbitrary metadata |
+
+### Endpoint Format
+
+```json
+// Simple format
+"from": "router1"
+
+// Detailed format
+"from": {
+  "node": "router1",
+  "port": "ge-0/0/0",
+  "ip": "10.0.0.1/30"
+}
+```
+
+---
+
+## subgraphs
+
+Define subgraphs to group devices.
+
+```json
+{
+  "subgraphs": [
+    {
+      "id": "dc1",
+      "label": "Data Center 1",
+      "vendor": "aws",
+      "service": "vpc"
+    },
+    {
+      "id": "rack1",
+      "label": "Rack A",
+      "parent": "dc1"
+    }
+  ]
+}
+```
+
+### Subgraph Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier |
+| `label` | string | Yes | Display label |
+| `parent` | string | | Parent subgraph ID (for nesting) |
+| `children` | string[] | | Array of child subgraph IDs |
+| `direction` | string | | Layout direction (TB, BT, LR, RL) |
+| `vendor` | string | | Vendor name (for icons) |
+| `service` | string | | Service name |
+| `file` | string | | External file reference (hierarchical) |
+| `pins` | object[] | | Boundary connection points |
+| `style` | object | | Custom style |
+
+---
+
+## settings
+
+Define global settings.
+
+```json
+{
+  "settings": {
+    "direction": "TB",
+    "theme": "light",
+    "nodeSpacing": 50,
+    "rankSpacing": 100,
+    "legend": {
+      "enabled": true,
+      "position": "top-right"
+    }
+  }
+}
+```
+
+### Settings Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `direction` | string | Layout direction (TB, BT, LR, RL) |
+| `theme` | string | Theme (light, dark) |
+| `nodeSpacing` | number | Node spacing |
+| `rankSpacing` | number | Rank spacing |
+| `subgraphPadding` | number | Subgraph inner padding |
+| `legend` | boolean \| object | Legend settings |
+| `canvas` | object | Canvas size settings |
+
+---
+
+## Complete Example
+
+```json
+{
+  "version": "1.0.0",
+  "name": "Office Network",
+  "nodes": [
+    {
+      "id": "inet",
+      "label": "Internet",
+      "type": "internet"
+    },
+    {
+      "id": "fw1",
+      "label": "Firewall",
+      "type": "firewall",
+      "vendor": "juniper",
+      "model": "srx300",
+      "parent": "perimeter"
+    },
+    {
+      "id": "core-sw",
+      "label": "Core Switch",
+      "type": "l3-switch",
+      "parent": "core"
+    },
+    {
+      "id": "srv1",
+      "label": "Web Server",
+      "type": "server",
+      "parent": "servers"
+    }
+  ],
+  "links": [
+    {
+      "from": "inet",
+      "to": { "node": "fw1", "port": "ge-0/0/0" }
+    },
+    {
+      "from": { "node": "fw1", "port": "ge-0/0/1" },
+      "to": { "node": "core-sw", "port": "ge-0/0/0" },
+      "bandwidth": "10G"
+    },
+    {
+      "from": { "node": "core-sw", "port": "ge-0/0/1" },
+      "to": { "node": "srv1", "port": "eth0" },
+      "bandwidth": "1G",
+      "vlan": [100]
+    }
+  ],
+  "subgraphs": [
+    { "id": "perimeter", "label": "Perimeter" },
+    { "id": "core", "label": "Core" },
+    { "id": "servers", "label": "Server Room" }
+  ],
+  "settings": {
+    "direction": "TB",
+    "theme": "light"
+  }
+}
+```
+
+---
+
+## Merge Example
+
+Example script to merge JSON from multiple data sources:
+
+```javascript
+// merge-data.js
+import { readFileSync, writeFileSync } from 'fs'
+
+// JSON exported from NetBox
+const netbox = JSON.parse(readFileSync('netbox.json', 'utf-8'))
+
+// Additional data from custom API
+const custom = JSON.parse(readFileSync('custom.json', 'utf-8'))
+
+// Merge nodes (with ID duplication check)
+const existingIds = new Set(netbox.nodes.map(n => n.id))
+for (const node of custom.nodes) {
+  if (!existingIds.has(node.id)) {
+    netbox.nodes.push(node)
+  }
+}
+
+// Add links
+netbox.links.push(...custom.links)
+
+// Add subgraphs
+if (custom.subgraphs) {
+  netbox.subgraphs = netbox.subgraphs || []
+  netbox.subgraphs.push(...custom.subgraphs)
+}
+
+// Output
+writeFileSync('merged.json', JSON.stringify(netbox, null, 2))
+```
+
+Run:
+
+```bash
+node merge-data.js
+npx shumoku render merged.json -o diagram.html
+```

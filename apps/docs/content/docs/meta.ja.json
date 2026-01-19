@@ -1,0 +1,24 @@
+{
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "---Guides---",
+    "basic-diagram",
+    "organizing-groups",
+    "styling-themes",
+    "vendor-icons",
+    "multi-file",
+    "interactive-features",
+    "---Reference---",
+    "yaml-reference",
+    "json-reference",
+    "cli",
+    "---Examples---",
+    "examples",
+    "---Integrations---",
+    "netbox",
+    "custom-integration",
+    "---About---",
+    "about"
+  ]
+}

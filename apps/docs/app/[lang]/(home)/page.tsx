@@ -7,12 +7,18 @@ export const metadata: Metadata = {
   },
 }
 
-export default function HomePage() {
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ lang: string }>
+}) {
+  const { lang } = await params
+
   return (
     <main className="flex-1">
-      <HeroSection />
-      <FeaturesSection />
-      <CTASection />
+      <HeroSection locale={lang} />
+      <FeaturesSection locale={lang} />
+      <CTASection locale={lang} />
     </main>
   )
 }
