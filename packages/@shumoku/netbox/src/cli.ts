@@ -59,7 +59,7 @@ Examples:
   netbox-to-shumoku -f json -o netbox.json   # Export as NetworkGraph JSON
 `
 
-type OutputFormat = 'yaml' | 'json' | 'svg' | 'html'
+type OutputFormat = 'yaml' | 'json' | 'svg' | 'html' | 'png'
 
 function cli() {
   const { values } = parseArgs({
@@ -161,7 +161,7 @@ async function main(): Promise<void> {
 
     // Determine format: explicit --format takes priority, then infer from extension
     const outputBase = opts.output!
-    const extMatch = outputBase.toLowerCase().match(/\.(yaml|yml|json|svg|html|htm)$/)
+    const extMatch = outputBase.toLowerCase().match(/\.(yaml|yml|json|svg|html|htm|png)$/)
     const format: OutputFormat =
       (opts.format as OutputFormat) ??
       (extMatch
@@ -173,7 +173,7 @@ async function main(): Promise<void> {
         : 'yaml')
 
     // Build output path with extension if not present
-    const hasExt = /\.(yaml|yml|json|svg|html|htm)$/i.test(outputBase)
+    const hasExt = /\.(yaml|yml|json|svg|html|htm|png)$/i.test(outputBase)
     const outputPath = resolve(process.cwd(), hasExt ? outputBase : `${outputBase}.${format}`)
 
     // Ensure output directory exists

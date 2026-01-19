@@ -1,5 +1,14 @@
 # @shumoku/netbox
 
+## 0.2.23
+
+### Patch Changes
+
+- Fix double extension issue when output filename already has .png extension
+- Updated dependencies [0e715f4]
+  - @shumoku/renderer@0.2.23
+  - @shumoku/core@0.2.23
+
 ## 0.2.22
 
 ### Patch Changes
