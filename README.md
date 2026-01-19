@@ -8,6 +8,7 @@ Define your network infrastructure in YAML, get publication-ready diagrams autom
 
 [![npm version](https://img.shields.io/npm/v/shumoku.svg)](https://www.npmjs.com/package/shumoku)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/akitoshi)
 
 **[Playground](https://shumoku.packof.me/)** | **[Documentation](https://shumoku.packof.me/docs/yaml-reference)**
 
