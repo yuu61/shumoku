@@ -53,20 +53,24 @@ interface ThemeColors {
 
 const LIGHT_THEME: ThemeColors = {
   backgroundColor: '#ffffff',
-  defaultNodeFill: '#e2e8f0',
-  defaultNodeStroke: '#64748b',
+  // Node: white card with soft shadow (shadow applied via filter)
+  defaultNodeFill: '#ffffff',
+  defaultNodeStroke: '#e2e8f0',
   defaultLinkStroke: '#94a3b8',
+  // Labels
   labelColor: '#1e293b',
   labelSecondaryColor: '#64748b',
+  // Subgraph: thin border, light fill
   subgraphFill: '#f8fafc',
-  subgraphStroke: '#cbd5e1',
-  subgraphLabelColor: '#374151',
-  portFill: '#475569',
-  portStroke: '#1e293b',
-  portLabelBg: '#1e293b',
+  subgraphStroke: '#e2e8f0',
+  subgraphLabelColor: '#64748b',
+  // Ports
+  portFill: '#334155',
+  portStroke: '#0f172a',
+  portLabelBg: '#0f172a',
   portLabelColor: '#ffffff',
   endpointLabelBg: '#ffffff',
-  endpointLabelStroke: '#cbd5e1',
+  endpointLabelStroke: '#e2e8f0',
 }
 
 const DARK_THEME: ThemeColors = {
@@ -85,6 +89,63 @@ const DARK_THEME: ThemeColors = {
   portLabelColor: '#f1f5f9',
   endpointLabelBg: '#1e293b',
   endpointLabelStroke: '#475569',
+}
+
+// ============================================
+// Zone Color Mapping (for subgraph semantic colors)
+// ============================================
+
+interface ZoneColors {
+  fill: string
+  stroke: string
+  text: string
+}
+
+/** Zone color palette based on subgraph name/id */
+const ZONE_COLORS: Record<string, ZoneColors> = {
+  // Cloud/External - Blue
+  cloud: { fill: '#eff6ff', stroke: '#bfdbfe', text: '#3b82f6' },
+  external: { fill: '#eff6ff', stroke: '#bfdbfe', text: '#3b82f6' },
+  internet: { fill: '#eff6ff', stroke: '#bfdbfe', text: '#3b82f6' },
+  aws: { fill: '#eff6ff', stroke: '#bfdbfe', text: '#3b82f6' },
+  azure: { fill: '#eff6ff', stroke: '#bfdbfe', text: '#3b82f6' },
+  gcp: { fill: '#eff6ff', stroke: '#bfdbfe', text: '#3b82f6' },
+  // DMZ/Perimeter - Rose
+  dmz: { fill: '#fff1f2', stroke: '#fecdd3', text: '#e11d48' },
+  perimeter: { fill: '#fff1f2', stroke: '#fecdd3', text: '#e11d48' },
+  edge: { fill: '#fff1f2', stroke: '#fecdd3', text: '#e11d48' },
+  firewall: { fill: '#fff1f2', stroke: '#fecdd3', text: '#e11d48' },
+  // Internal/Campus - Green
+  campus: { fill: '#f0fdf4', stroke: '#bbf7d0', text: '#16a34a' },
+  internal: { fill: '#f0fdf4', stroke: '#bbf7d0', text: '#16a34a' },
+  core: { fill: '#f0fdf4', stroke: '#bbf7d0', text: '#16a34a' },
+  datacenter: { fill: '#f0fdf4', stroke: '#bbf7d0', text: '#16a34a' },
+  dc: { fill: '#f0fdf4', stroke: '#bbf7d0', text: '#16a34a' },
+  lan: { fill: '#f0fdf4', stroke: '#bbf7d0', text: '#16a34a' },
+}
+
+/** Default zone colors (Slate) */
+const DEFAULT_ZONE_COLORS: ZoneColors = {
+  fill: '#f8fafc',
+  stroke: '#e2e8f0',
+  text: '#64748b',
+}
+
+/**
+ * Get zone colors based on subgraph id/label
+ */
+function getZoneColors(id: string, label: string): ZoneColors {
+  const lowerLabel = label.toLowerCase()
+  const lowerId = id.toLowerCase()
+
+  // Try to match by label first, then by id
+  for (const [key, colors] of Object.entries(ZONE_COLORS)) {
+    if (lowerLabel.includes(key) || lowerId.includes(key)) {
+      return colors
+    }
+  }
+
+  return DEFAULT_ZONE_COLORS
 }
 
 // ============================================
@@ -441,6 +502,7 @@ export class SVGRenderer {
   }
 
   private renderDefs(): string {
+    const shadowId = this.options.sheetId ? `node-shadow-${this.options.sheetId}` : 'node-shadow'
     return `<defs>
   <!-- Arrow marker -->
   <marker id="${this.arrowId}" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -449,7 +511,10 @@ export class SVGRenderer {
   <marker id="${this.arrowRedId}" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
     <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
   </marker>
-
+  <!-- Node shadow: ultra-subtle, almost invisible (modern approach) -->
+  <filter id="${shadowId}" x="-10%" y="-10%" width="120%" height="120%">
+    <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#101828" flood-opacity="0.06"/>
+  </filter>
 </defs>`
   }
 
@@ -470,14 +535,21 @@ export class SVGRenderer {
   }`
       : ''
 
+    // Monospace font stack for technical info
+    const monoFont = 'ui-monospace, "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace'
+
     return `<style>${cssVars}
-  .node-label { font-family: ${this.options.fontFamily}; font-size: 12px; fill: ${this.themeColors.labelColor}; }
-  .node-label-bold { font-weight: bold; }
+  /* Node labels: primary name in semibold */
+  .node-label { font-family: ${this.options.fontFamily}; font-size: 14px; font-weight: 600; fill: ${this.themeColors.labelColor}; }
+  .node-label-bold { font-weight: 700; }
+  /* Secondary/metadata labels: smaller, monospace for technical info */
+  .node-label-secondary { font-family: ${monoFont}; font-size: 10px; font-weight: 400; fill: ${this.themeColors.labelSecondaryColor}; }
   .node-icon { color: ${this.themeColors.labelSecondaryColor}; }
   .subgraph-icon { opacity: 0.9; }
-  .subgraph-label { font-family: ${this.options.fontFamily}; font-size: 14px; font-weight: 600; fill: ${this.themeColors.subgraphLabelColor}; }
-  .link-label { font-family: ${this.options.fontFamily}; font-size: 11px; fill: ${this.themeColors.labelSecondaryColor}; }
-  .endpoint-label { font-family: ${this.options.fontFamily}; font-size: 9px; fill: ${this.themeColors.labelColor}; }
+  /* Subgraph/zone labels: uppercase, letterspaced for modern look */
+  .subgraph-label { font-family: ${this.options.fontFamily}; font-size: 11px; font-weight: 700; fill: ${this.themeColors.subgraphLabelColor}; text-transform: uppercase; letter-spacing: 0.05em; }
+  .link-label { font-family: ${monoFont}; font-size: 10px; fill: ${this.themeColors.labelSecondaryColor}; }
+  .endpoint-label { font-family: ${monoFont}; font-size: 9px; fill: ${this.themeColors.labelColor}; }
 </style>`
   }
 
@@ -485,13 +557,16 @@ export class SVGRenderer {
     const { bounds, subgraph } = sg
     const style = subgraph.style || {}
 
-    const fill = style.fill || this.themeColors.subgraphFill
-    const stroke = style.stroke || this.themeColors.subgraphStroke
-    const strokeWidth = style.strokeWidth || 1
+    // Get zone-specific colors based on subgraph id/label
+    const zoneColors = getZoneColors(sg.id, subgraph.label)
+    const fill = style.fill || zoneColors.fill
+    const stroke = style.stroke || zoneColors.stroke
+    const labelColor = zoneColors.text
+    const strokeWidth = style.strokeWidth || 1.5
     const strokeDasharray = style.strokeDasharray || ''
     const labelPos = style.labelPosition || 'top'
 
-    const rx = 8 // Border radius
+    const rx = 12 // Border radius (larger for container/card feel)
 
     // Check if subgraph has vendor icon (service for cloud, model for hardware)
     const iconKey = subgraph.service || subgraph.model
@@ -622,7 +697,7 @@ export class SVGRenderer {
     fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"
     ${strokeDasharray ? `stroke-dasharray="${strokeDasharray}"` : ''} />
   ${iconSvg}
-  <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}">${this.escapeXml(subgraph.label)}</text>${embeddedSvg}
+  <text x="${labelX}" y="${labelY}" class="subgraph-label" text-anchor="${textAnchor}" fill="${labelColor}">${this.escapeXml(subgraph.label)}</text>${embeddedSvg}
   ${portsSvg}
 </g>`
   }
@@ -635,7 +710,11 @@ export class SVGRenderer {
     const bg = this.renderNodeBackground(layoutNode)
     const fg = this.renderNodeForeground(layoutNode)
 
-    return `<g class="node" data-id="${id}"${dataAttrs}>
+    // Apply shadow filter for card-like elevation
+    const shadowId = this.options.sheetId ? `node-shadow-${this.options.sheetId}` : 'node-shadow'
+    const filterAttr = ` filter="url(#${shadowId})"`
+
+    return `<g class="node" data-id="${id}"${dataAttrs}${filterAttr}>
 ${bg}
 ${fg}
 </g>`
@@ -995,11 +1074,18 @@ ${fg}
     }
 
     // Render labels below icon
+    // First line: primary label (device name), subsequent lines: secondary (metadata like IP, VLAN)
     const labelStartY = contentTop + iconHeight + gap + LABEL_LINE_HEIGHT * 0.7 // 0.7 for text baseline adjustment
     for (const [i, line] of labels.entries()) {
       const isBold = line.includes('<b>') || line.includes('<strong>')
       const cleanLine = line.replace(/<\/?b>|<\/?strong>|<br\s*\/?>/gi, '')
-      const className = isBold ? 'node-label node-label-bold' : 'node-label'
+      // First line = primary label, rest = secondary (metadata)
+      const isSecondary = i > 0 && !isBold
+      const className = isBold
+        ? 'node-label node-label-bold'
+        : isSecondary
+          ? 'node-label-secondary'
+          : 'node-label'
       parts.push(
         `<text x="${x}" y="${labelStartY + i * LABEL_LINE_HEIGHT}" class="${className}" text-anchor="middle">${this.escapeXml(cleanLine)}</text>`,
       )
@@ -1233,25 +1319,25 @@ ${fg}
   private renderEndpointLabels(lines: string[], x: number, y: number, anchor: string): string {
     if (lines.length === 0) return ''
 
-    const lineHeight = 11
-    const paddingX = 2
-    const paddingY = 2
-    const charWidth = 4.8 // Approximate character width for 9px font
+    const lineHeight = 12
+    const charWidth = 5.5
+    const paddingX = 4
 
     // Calculate dimensions
     const maxLen = Math.max(...lines.map((l) => l.length))
-    const rectWidth = maxLen * charWidth + paddingX * 2
-    const rectHeight = lines.length * lineHeight + paddingY * 2
+    const rectWidth = maxLen * charWidth + paddingX
+    const rectHeight = lines.length * lineHeight
 
     // Adjust rect position based on text anchor
-    let rectX = x - paddingX
+    let rectX = x - paddingX / 2
     if (anchor === 'middle') {
       rectX = x - rectWidth / 2
     } else if (anchor === 'end') {
-      rectX = x - rectWidth + paddingX
+      rectX = x - rectWidth + paddingX / 2
     }
 
-    const rectY = y - lineHeight + paddingY
+    // Simple offset approach (same as port labels)
+    const rectY = y - lineHeight + 3
 
     let result = `\n<rect x="${rectX}" y="${rectY}" width="${rectWidth}" height="${rectHeight}" rx="2" fill="${this.themeColors.endpointLabelBg}" stroke="${this.themeColors.endpointLabelStroke}" stroke-width="0.5" />`
 
