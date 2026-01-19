@@ -168,11 +168,6 @@ export class SVGRenderer {
     return this.options.sheetId ? `-${this.options.sheetId}` : ''
   }
 
-  /** Get shadow filter ID */
-  private get shadowId(): string {
-    return `shadow${this.idSuffix}`
-  }
-
   /** Get arrow marker ID */
   private get arrowId(): string {
     return `arrow${this.idSuffix}`
@@ -455,10 +450,6 @@ export class SVGRenderer {
     <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
   </marker>
 
-  <!-- Filters -->
-  <filter id="${this.shadowId}" x="-20%" y="-20%" width="140%" height="140%">
-    <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
-  </filter>
 </defs>`
   }
 
@@ -838,26 +829,26 @@ ${fg}
     switch (shape) {
       case 'rect':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
 
       case 'rounded':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="8" ry="8"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
 
       case 'circle': {
         const r = Math.min(halfW, halfH)
         return `<circle cx="${x}" cy="${y}" r="${r}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
       }
 
       case 'diamond':
         return `<polygon points="${x},${y - halfH} ${x + halfW},${y} ${x},${y + halfH} ${x - halfW},${y}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
 
       case 'hexagon': {
         const hx = halfW * 0.866
         return `<polygon points="${x - halfW},${y} ${x - hx},${y - halfH} ${x + hx},${y - halfH} ${x + halfW},${y} ${x + hx},${y + halfH} ${x - hx},${y + halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
       }
 
       case 'cylinder': {
@@ -867,23 +858,23 @@ ${fg}
           <rect x="${x - halfW}" y="${y - halfH + ellipseH}" width="${w}" height="${h - ellipseH * 2}" fill="${fill}" stroke="none" />
           <line x1="${x - halfW}" y1="${y - halfH + ellipseH}" x2="${x - halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
           <line x1="${x + halfW}" y1="${y - halfH + ellipseH}" x2="${x + halfW}" y2="${y + halfH - ellipseH}" stroke="${stroke}" stroke-width="${strokeWidth}" />
-          <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />
+          <ellipse cx="${x}" cy="${y - halfH + ellipseH}" rx="${halfW}" ry="${ellipseH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />
         </g>`
       }
 
       case 'stadium':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="${halfH}" ry="${halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
 
       case 'trapezoid': {
         const indent = w * 0.15
         return `<polygon points="${x - halfW + indent},${y - halfH} ${x + halfW - indent},${y - halfH} ${x + halfW},${y + halfH} ${x - halfW},${y + halfH}"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
       }
 
       default:
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}" rx="4" ry="4"
-          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} filter="url(#${this.shadowId})" />`
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dashAttr} />`
     }
   }
 
@@ -1348,7 +1339,8 @@ ${linePath}`
       const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
       for (const offset of offsets) {
         const offsetPoints = this.offsetPoints(points, offset)
-        const path = this.generatePath(offsetPoints)
+        // Pass offset to generatePath for radius adjustment at bends
+        const path = this.generatePath(offsetPoints, 8, points, offset)
         lines.push(`<path class="link" data-id="${id}" d="${path}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
   ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} pointer-events="none" />`)
@@ -1368,8 +1360,14 @@ ${lines.join('\n')}
 
   /**
    * Generate SVG path string from points with rounded corners
+   * For parallel lines, adjusts corner radius based on offset and turn direction
    */
-  private generatePath(points: { x: number; y: number }[], cornerRadius = 8): string {
+  private generatePath(
+    points: { x: number; y: number }[],
+    cornerRadius = 8,
+    originalPoints?: { x: number; y: number }[],
+    offset?: number,
+  ): string {
     if (points.length < 2) return ''
     if (points.length === 2) {
       return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
@@ -1386,9 +1384,30 @@ ${lines.join('\n')}
       const distPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y)
       const distNext = Math.hypot(next.x - curr.x, next.y - curr.y)
 
+      // Adjust corner radius for parallel lines based on turn direction
+      let adjustedRadius = cornerRadius
+      if (originalPoints && offset !== undefined && i < originalPoints.length - 1) {
+        const origPrev = originalPoints[Math.min(i - 1, originalPoints.length - 1)]
+        const origCurr = originalPoints[Math.min(i, originalPoints.length - 1)]
+        const origNext = originalPoints[Math.min(i + 1, originalPoints.length - 1)]
+
+        // Calculate turn direction using cross product
+        const v1 = { x: origCurr.x - origPrev.x, y: origCurr.y - origPrev.y }
+        const v2 = { x: origNext.x - origCurr.x, y: origNext.y - origCurr.y }
+        const cross = v1.x * v2.y - v1.y * v2.x
+
+        // cross > 0: left turn, cross < 0: right turn
+        // For left turn: positive offset = outside (larger R), negative offset = inside (smaller R)
+        // For right turn: positive offset = inside (smaller R), negative offset = outside (larger R)
+        if (Math.abs(cross) > 0.01) {
+          const turnSign = cross > 0 ? 1 : -1
+          adjustedRadius = Math.max(1, cornerRadius - turnSign * offset)
+        }
+      }
+
       // Limit radius to half the shortest segment
       const maxRadius = Math.min(distPrev, distNext) / 2
-      const radius = Math.min(cornerRadius, maxRadius)
+      const radius = Math.min(adjustedRadius, maxRadius)
 
       if (radius < 1) {
         // Too small for rounding, just use straight line
@@ -1432,7 +1451,7 @@ ${lines.join('\n')}
 
   /**
    * Offset points perpendicular to line direction, handling each segment properly
-   * For orthogonal paths, this maintains parallel lines through bends
+   * For orthogonal paths, calculates intersection point at bends for clean corners
    */
   private offsetPoints(
     points: { x: number; y: number }[],
@@ -1456,23 +1475,71 @@ ${lines.join('\n')}
         const perp = this.getPerpendicular(prev, p)
         result.push({ x: p.x + perp.x * offset, y: p.y + perp.y * offset })
       } else {
-        // Middle point (bend): offset based on incoming segment direction
+        // Middle point (bend): calculate intersection of offset lines
         const prev = points[i - 1]
-        const perp = this.getPerpendicular(prev, p)
-        result.push({ x: p.x + perp.x * offset, y: p.y + perp.y * offset })
-
-        // Also add a point for the outgoing segment if direction changes
         const next = points[i + 1]
+        const perpPrev = this.getPerpendicular(prev, p)
         const perpNext = this.getPerpendicular(p, next)
 
         // Check if direction changed (bend point)
-        if (Math.abs(perp.x - perpNext.x) > 0.01 || Math.abs(perp.y - perpNext.y) > 0.01) {
-          result.push({ x: p.x + perpNext.x * offset, y: p.y + perpNext.y * offset })
+        const directionChanged =
+          Math.abs(perpPrev.x - perpNext.x) > 0.01 || Math.abs(perpPrev.y - perpNext.y) > 0.01
+
+        if (directionChanged) {
+          // Calculate intersection of the two offset lines
+          const intersection = this.getOffsetIntersection(prev, p, next, offset)
+          if (intersection) {
+            result.push(intersection)
+          } else {
+            // Fallback: use simple offset
+            result.push({ x: p.x + perpPrev.x * offset, y: p.y + perpPrev.y * offset })
+          }
+        } else {
+          // No bend, just offset the point
+          result.push({ x: p.x + perpPrev.x * offset, y: p.y + perpPrev.y * offset })
         }
       }
     }
 
     return result
+  }
+
+  /**
+   * Calculate intersection point of two offset lines at a bend
+   */
+  private getOffsetIntersection(
+    prev: { x: number; y: number },
+    curr: { x: number; y: number },
+    next: { x: number; y: number },
+    offset: number,
+  ): { x: number; y: number } | null {
+    const perpPrev = this.getPerpendicular(prev, curr)
+    const perpNext = this.getPerpendicular(curr, next)
+
+    // Offset start point on incoming segment
+    const p1 = { x: prev.x + perpPrev.x * offset, y: prev.y + perpPrev.y * offset }
+    // Offset start point on outgoing segment
+    const p3 = { x: curr.x + perpNext.x * offset, y: curr.y + perpNext.y * offset }
+
+    // Direction vectors
+    const d1 = { x: curr.x - prev.x, y: curr.y - prev.y }
+    const d2 = { x: next.x - curr.x, y: next.y - curr.y }
+
+    // Calculate intersection using parametric form
+    const cross = d1.x * d2.y - d1.y * d2.x
+    if (Math.abs(cross) < 0.0001) {
+      // Lines are parallel, no intersection
+      return null
+    }
+
+    const dx = p3.x - p1.x
+    const dy = p3.y - p1.y
+    const t = (dx * d2.y - dy * d2.x) / cross
+
+    return {
+      x: p1.x + t * d1.x,
+      y: p1.y + t * d1.y,
+    }
   }
 
   /**
