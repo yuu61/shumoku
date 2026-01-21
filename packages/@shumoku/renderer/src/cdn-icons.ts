@@ -146,8 +146,44 @@ export function clearIconCache(): void {
 const dimensionsCache = new Map<string, IconDimensions | null>()
 
 /**
+ * Check if running in browser environment
+ */
+function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof Image !== 'undefined'
+}
+
+/**
+ * Get image dimensions using browser Image element
+ * Works for cross-origin images without CORS headers
+ */
+function getImageDimensionsViaBrowser(
+  url: string,
+  timeout: number,
+): Promise<IconDimensions | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const timeoutId = setTimeout(() => {
+      img.onload = null
+      img.onerror = null
+      resolve(null)
+    }, timeout)
+
+    img.onload = () => {
+      clearTimeout(timeoutId)
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      clearTimeout(timeoutId)
+      resolve(null)
+    }
+    img.src = url
+  })
+}
+
+/**
  * Fetch image dimensions from URL
- * Uses image header parsing for efficiency
+ * Uses image header parsing for efficiency (Node.js)
+ * Falls back to Image.onload for CORS-blocked requests (Browser)
  */
 export async function fetchImageDimensions(
   url: string,
@@ -166,6 +202,12 @@ export async function fetchImageDimensions(
     clearTimeout(timeoutId)
 
     if (!response.ok) {
+      // Fetch failed, try browser fallback
+      if (isBrowser()) {
+        const dimensions = await getImageDimensionsViaBrowser(url, timeout)
+        dimensionsCache.set(url, dimensions)
+        return dimensions
+      }
       dimensionsCache.set(url, null)
       return null
     }
@@ -176,6 +218,12 @@ export async function fetchImageDimensions(
     dimensionsCache.set(url, dimensions)
     return dimensions
   } catch (error) {
+    // Fetch failed (likely CORS), try browser fallback
+    if (isBrowser()) {
+      const dimensions = await getImageDimensionsViaBrowser(url, timeout)
+      dimensionsCache.set(url, dimensions)
+      return dimensions
+    }
     dimensionsCache.set(url, null)
     return null
   }
