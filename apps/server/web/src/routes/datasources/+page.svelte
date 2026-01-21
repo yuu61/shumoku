@@ -90,8 +90,8 @@
   <!-- Header -->
   <div class="flex items-center justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-semibold text-dark-text-emphasis">Data Sources</h1>
-      <p class="text-dark-text-muted mt-1">Manage your Zabbix and other data source connections</p>
+      <h1 class="text-2xl font-semibold text-theme-text-emphasis">Data Sources</h1>
+      <p class="text-theme-text-muted mt-1">Manage your Zabbix and other data source connections</p>
     </div>
     <button class="btn btn-primary" onclick={openCreateModal}>
       <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -113,13 +113,13 @@
     </div>
   {:else if $dataSourcesList.length === 0}
     <div class="card p-12 text-center">
-      <svg class="w-16 h-16 text-dark-text-muted mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <svg class="w-16 h-16 text-theme-text-muted mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <ellipse cx="12" cy="5" rx="9" ry="3"/>
         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
       </svg>
-      <h3 class="text-lg font-medium text-dark-text-emphasis mb-2">No data sources</h3>
-      <p class="text-dark-text-muted mb-4">Add a Zabbix server to start collecting metrics</p>
+      <h3 class="text-lg font-medium text-theme-text-emphasis mb-2">No data sources</h3>
+      <p class="text-theme-text-muted mb-4">Add a Zabbix server to start collecting metrics</p>
       <button class="btn btn-primary" onclick={openCreateModal}>Add Data Source</button>
     </div>
   {:else}
@@ -140,15 +140,15 @@
           {#each $dataSourcesList as ds}
             <tr>
               <td>
-                <a href="/datasources/{ds.id}" class="font-medium text-dark-text-emphasis hover:text-primary">
+                <a href="/datasources/{ds.id}" class="font-medium text-theme-text-emphasis hover:text-primary">
                   {ds.name}
                 </a>
               </td>
               <td>
                 <span class="badge badge-info">{ds.type}</span>
               </td>
-              <td class="text-dark-text-muted text-sm font-mono">{ds.url}</td>
-              <td class="text-dark-text-muted">{ds.pollInterval / 1000}s</td>
+              <td class="text-theme-text-muted text-sm font-mono">{ds.url}</td>
+              <td class="text-theme-text-muted">{ds.pollInterval / 1000}s</td>
               <td>
                 {#if testResult && testingId === null}
                   <span class="badge {testResult.success ? 'badge-success' : 'badge-danger'}">
@@ -187,10 +187,10 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" onclick={closeCreateModal}>
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="bg-dark-bg-elevated border border-dark-border rounded-xl w-full max-w-md m-4" onclick={(e) => e.stopPropagation()}>
-      <div class="flex items-center justify-between p-4 border-b border-dark-border">
-        <h2 class="text-lg font-semibold text-dark-text-emphasis">Add Data Source</h2>
-        <button class="text-dark-text-muted hover:text-dark-text" onclick={closeCreateModal} aria-label="Close">
+    <div class="bg-theme-bg-elevated border border-theme-border rounded-xl w-full max-w-md m-4" onclick={(e) => e.stopPropagation()}>
+      <div class="flex items-center justify-between p-4 border-b border-theme-border">
+        <h2 class="text-lg font-semibold text-theme-text-emphasis">Add Data Source</h2>
+        <button class="text-theme-text-muted hover:text-theme-text" onclick={closeCreateModal} aria-label="Close">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -236,7 +236,7 @@
             placeholder="Enter API token"
             bind:value={formToken}
           />
-          <p class="text-xs text-dark-text-muted mt-1">Optional. Required for authenticated access.</p>
+          <p class="text-xs text-theme-text-muted mt-1">Optional. Required for authenticated access.</p>
         </div>
 
         <div>
@@ -250,7 +250,7 @@
           </select>
         </div>
 
-        <div class="flex justify-end gap-2 pt-4 border-t border-dark-border">
+        <div class="flex justify-end gap-2 pt-4 border-t border-theme-border">
           <button type="button" class="btn btn-secondary" onclick={closeCreateModal}>Cancel</button>
           <button type="submit" class="btn btn-primary" disabled={formSubmitting}>
             {#if formSubmitting}

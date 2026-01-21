@@ -599,8 +599,8 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #0f172a;
-    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background: var(--color-bg-canvas);
+    background-image: radial-gradient(var(--color-border) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
@@ -646,15 +646,15 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    color: #64748b;
+    color: var(--color-text-muted);
     z-index: 5;
   }
 
   .spinner {
     width: 32px;
     height: 32px;
-    border: 2px solid #334155;
-    border-top-color: #60a5fa;
+    border: 2px solid var(--color-border);
+    border-top-color: #3b82f6;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -684,25 +684,25 @@
     position: fixed;
     z-index: 1000;
     padding: 8px 12px;
-    background: rgba(30, 41, 59, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
-    color: #e2e8f0;
+    color: var(--color-text);
     font-size: 12px;
     line-height: 1.5;
     pointer-events: none;
     backdrop-filter: blur(8px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     max-width: 280px;
   }
 
   .tooltip :global(.muted) {
-    color: #94a3b8;
+    color: var(--color-text-muted);
     font-size: 11px;
   }
 
   .tooltip :global(.action) {
-    color: #60a5fa;
+    color: #3b82f6;
     font-size: 11px;
   }
 
@@ -722,10 +722,11 @@
     align-items: center;
     gap: 4px;
     padding: 4px;
-    background: rgba(30, 41, 59, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .control-group button {
@@ -737,14 +738,14 @@
     background: transparent;
     border: none;
     border-radius: 6px;
-    color: #94a3b8;
+    color: var(--color-text-muted);
     cursor: pointer;
     transition: all 0.15s;
   }
 
   .control-group button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e2e8f0;
+    background: var(--color-bg);
+    color: var(--color-text);
   }
 
   .control-group button svg {
@@ -757,7 +758,7 @@
     text-align: center;
     font-size: 11px;
     font-weight: 500;
-    color: #94a3b8;
+    color: var(--color-text-muted);
   }
 
   /* Legend */
@@ -766,17 +767,18 @@
     bottom: 16px;
     left: 16px;
     padding: 12px;
-    background: rgba(30, 41, 59, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 10;
   }
 
   .legend-title {
     font-size: 10px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 8px;
@@ -793,7 +795,7 @@
     align-items: center;
     gap: 8px;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--color-text);
   }
 
   .legend-color {

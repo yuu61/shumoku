@@ -67,7 +67,7 @@
 
 <div class="p-6 h-full flex flex-col">
   <!-- Back link -->
-  <a href="/topologies/{$page.params.id}" class="inline-flex items-center gap-2 text-dark-text-muted hover:text-dark-text mb-4">
+  <a href="/topologies/{$page.params.id}" class="inline-flex items-center gap-2 text-theme-text-muted hover:text-theme-text mb-4">
     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M19 12H5M12 19l-7-7 7-7"/>
     </svg>
@@ -85,12 +85,12 @@
     </div>
   {:else if topology}
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-semibold text-dark-text-emphasis">Edit {topology.name}</h1>
+      <h1 class="text-2xl font-semibold text-theme-text-emphasis">Edit {topology.name}</h1>
     </div>
 
     <div class="card flex-1 flex flex-col overflow-hidden">
       <form class="flex flex-col h-full" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
-        <div class="p-4 border-b border-dark-border space-y-4">
+        <div class="p-4 border-b border-theme-border space-y-4">
           {#if error}
             <div class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">
               {error}
@@ -123,7 +123,7 @@
           ></textarea>
         </div>
 
-        <div class="flex justify-end gap-2 p-4 border-t border-dark-border">
+        <div class="flex justify-end gap-2 p-4 border-t border-theme-border">
           <a href="/topologies/{$page.params.id}" class="btn btn-secondary">Cancel</a>
           <button type="submit" class="btn btn-primary" disabled={saving}>
             {#if saving}

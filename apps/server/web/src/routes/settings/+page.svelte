@@ -8,7 +8,8 @@
   let saving = false
 
   // Local settings (stored in localStorage)
-  let theme = 'dark'
+  // Default to light mode since SVG renderer doesn't fully support dark mode yet
+  let theme = 'light'
   let updateInterval = '30000'
 
   onMount(async () => {
@@ -16,7 +17,7 @@
     const localSettings = localStorage.getItem('shumoku-settings')
     if (localSettings) {
       const parsed = JSON.parse(localSettings)
-      theme = parsed.theme || 'dark'
+      theme = parsed.theme || 'light'
       updateInterval = String(parsed.updateInterval || 30000)
     }
 
@@ -61,8 +62,8 @@
 
 <div class="p-6">
   <div class="mb-8">
-    <h1 class="text-2xl font-semibold text-dark-text-emphasis">Settings</h1>
-    <p class="text-dark-text-muted mt-1">Configure your Shumoku server</p>
+    <h1 class="text-2xl font-semibold text-theme-text-emphasis">Settings</h1>
+    <p class="text-theme-text-muted mt-1">Configure your Shumoku server</p>
   </div>
 
   {#if loading}
@@ -74,15 +75,18 @@
       <!-- Display Settings -->
       <div class="card">
         <div class="card-header">
-          <h2 class="font-medium text-dark-text-emphasis">Display Settings</h2>
+          <h2 class="font-medium text-theme-text-emphasis">Display Settings</h2>
         </div>
         <div class="card-body space-y-4">
           <div>
             <label for="theme" class="label">Theme</label>
             <select id="theme" class="input" bind:value={theme} onchange={saveLocalSettings}>
-              <option value="dark">Dark</option>
               <option value="light">Light</option>
+              <option value="dark">Dark (Beta)</option>
             </select>
+            <p class="text-xs text-theme-text-muted mt-1">
+              Dark mode is in beta. Topology diagrams may not display correctly.
+            </p>
           </div>
 
           <div>
@@ -94,10 +98,10 @@
               <option value="60000">1 minute</option>
               <option value="300000">5 minutes</option>
             </select>
-            <p class="text-xs text-dark-text-muted mt-1">How often to refresh metrics data</p>
+            <p class="text-xs text-theme-text-muted mt-1">How often to refresh metrics data</p>
           </div>
 
-          <p class="text-xs text-dark-text-muted pt-2 border-t border-dark-border">
+          <p class="text-xs text-theme-text-muted pt-2 border-t border-theme-border">
             These settings are saved to your browser's local storage.
           </p>
         </div>
@@ -106,21 +110,21 @@
       <!-- Server Info -->
       <div class="card">
         <div class="card-header">
-          <h2 class="font-medium text-dark-text-emphasis">Server Information</h2>
+          <h2 class="font-medium text-theme-text-emphasis">Server Information</h2>
         </div>
         <div class="card-body">
           <div class="space-y-3">
             <div class="flex justify-between">
-              <span class="text-dark-text-muted">Version</span>
-              <span class="text-dark-text">0.1.0</span>
+              <span class="text-theme-text-muted">Version</span>
+              <span class="text-theme-text">0.1.0</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-dark-text-muted">Database</span>
-              <span class="text-dark-text">SQLite</span>
+              <span class="text-theme-text-muted">Database</span>
+              <span class="text-theme-text">SQLite</span>
             </div>
           </div>
 
-          <div class="mt-4 pt-4 border-t border-dark-border">
+          <div class="mt-4 pt-4 border-t border-theme-border">
             <button class="btn btn-secondary w-full" onclick={handleHealthCheck}>
               Check Server Health
             </button>
@@ -131,10 +135,10 @@
       <!-- About -->
       <div class="card lg:col-span-2">
         <div class="card-header">
-          <h2 class="font-medium text-dark-text-emphasis">About Shumoku</h2>
+          <h2 class="font-medium text-theme-text-emphasis">About Shumoku</h2>
         </div>
         <div class="card-body">
-          <p class="text-dark-text-muted mb-4">
+          <p class="text-theme-text-muted mb-4">
             Shumoku is a modern network topology visualization library for Markdown.
             It enables network engineers to create interactive network diagrams directly in documentation.
           </p>

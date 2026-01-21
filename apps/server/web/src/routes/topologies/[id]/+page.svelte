@@ -51,7 +51,7 @@
 
 <div class="p-6 h-full flex flex-col">
   <!-- Back link -->
-  <a href="/topologies" class="inline-flex items-center gap-2 text-dark-text-muted hover:text-dark-text mb-4">
+  <a href="/topologies" class="inline-flex items-center gap-2 text-theme-text-muted hover:text-theme-text mb-4">
     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M19 12H5M12 19l-7-7 7-7"/>
     </svg>
@@ -71,7 +71,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-4">
-        <h1 class="text-2xl font-semibold text-dark-text-emphasis">{topology.name}</h1>
+        <h1 class="text-2xl font-semibold text-theme-text-emphasis">{topology.name}</h1>
         <!-- Connection status -->
         <div class="flex items-center gap-2 text-xs">
           {#if $metricsConnected}
@@ -79,17 +79,17 @@
             <span class="text-green-400">Live</span>
           {:else}
             <span class="w-2 h-2 bg-gray-500 rounded-full"></span>
-            <span class="text-dark-text-muted">Offline</span>
+            <span class="text-theme-text-muted">Offline</span>
           {/if}
         </div>
       </div>
       <div class="flex items-center gap-2">
         <!-- Metrics toggle -->
-        <label class="flex items-center gap-2 text-sm text-dark-text-muted cursor-pointer">
+        <label class="flex items-center gap-2 text-sm text-theme-text-muted cursor-pointer">
           <input
             type="checkbox"
             bind:checked={enableMetrics}
-            class="w-4 h-4 rounded border-dark-border bg-dark-bg-elevated"
+            class="w-4 h-4 rounded border-theme-border bg-theme-bg-elevated"
           />
           Metrics
         </label>
@@ -121,20 +121,20 @@
     {#if renderData}
       <div class="grid grid-cols-4 gap-4 mt-4">
         <div class="card p-3">
-          <p class="text-xs text-dark-text-muted">Nodes</p>
-          <p class="font-mono text-sm text-dark-text">{renderData.nodeCount}</p>
+          <p class="text-xs text-theme-text-muted">Nodes</p>
+          <p class="font-mono text-sm text-theme-text">{renderData.nodeCount}</p>
         </div>
         <div class="card p-3">
-          <p class="text-xs text-dark-text-muted">Edges</p>
-          <p class="font-mono text-sm text-dark-text">{renderData.edgeCount}</p>
+          <p class="text-xs text-theme-text-muted">Edges</p>
+          <p class="font-mono text-sm text-theme-text">{renderData.edgeCount}</p>
         </div>
         <div class="card p-3">
-          <p class="text-xs text-dark-text-muted">Data Source</p>
-          <p class="text-sm text-dark-text">{topology.dataSourceId || 'None'}</p>
+          <p class="text-xs text-theme-text-muted">Data Source</p>
+          <p class="text-sm text-theme-text">{topology.dataSourceId || 'None'}</p>
         </div>
         <div class="card p-3">
-          <p class="text-xs text-dark-text-muted">Updated</p>
-          <p class="text-sm text-dark-text">{new Date(topology.updatedAt).toLocaleString()}</p>
+          <p class="text-xs text-theme-text-muted">Updated</p>
+          <p class="text-sm text-theme-text">{new Date(topology.updatedAt).toLocaleString()}</p>
         </div>
       </div>
     {/if}

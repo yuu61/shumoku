@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import { browser } from '$app/environment'
   import '../app.css'
   import { page } from '$app/stores'
 
@@ -19,13 +21,32 @@
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
+
+  // Apply saved theme on mount
+  onMount(() => {
+    if (browser) {
+      const localSettings = localStorage.getItem('shumoku-settings')
+      // Default to light mode since SVG renderer doesn't fully support dark mode yet
+      let theme = 'light'
+      if (localSettings) {
+        const parsed = JSON.parse(localSettings)
+        theme = parsed.theme || 'light'
+      }
+
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    }
+  })
 </script>
 
 <div class="flex h-screen">
   <!-- Sidebar -->
-  <aside class="w-64 bg-dark-bg-canvas border-r border-dark-border flex flex-col">
+  <aside class="w-64 bg-theme-bg-canvas border-r border-theme-border flex flex-col">
     <!-- Logo -->
-    <div class="h-16 flex items-center gap-3 px-4 border-b border-dark-border">
+    <div class="h-16 flex items-center gap-3 px-4 border-b border-theme-border">
       <div class="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
         <svg viewBox="0 0 1024 1024" class="w-5 h-5" fill="none">
           <g transform="translate(90,40) scale(1.25)">
@@ -33,7 +54,7 @@
           </g>
         </svg>
       </div>
-      <span class="text-lg font-semibold text-dark-text-emphasis">Shumoku</span>
+      <span class="text-lg font-semibold text-theme-text-emphasis">Shumoku</span>
     </div>
 
     <!-- Navigation -->
@@ -75,8 +96,8 @@
     </nav>
 
     <!-- Version -->
-    <div class="p-4 border-t border-dark-border">
-      <div class="text-xs text-dark-text-muted">
+    <div class="p-4 border-t border-theme-border">
+      <div class="text-xs text-theme-text-muted">
         v0.1.0
       </div>
     </div>

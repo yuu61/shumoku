@@ -82,8 +82,8 @@ links:
   <!-- Header -->
   <div class="flex items-center justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-semibold text-dark-text-emphasis">Topologies</h1>
-      <p class="text-dark-text-muted mt-1">Manage your network topology diagrams</p>
+      <h1 class="text-2xl font-semibold text-theme-text-emphasis">Topologies</h1>
+      <p class="text-theme-text-muted mt-1">Manage your network topology diagrams</p>
     </div>
     <button class="btn btn-primary" onclick={openCreateModal}>
       <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -105,15 +105,15 @@ links:
     </div>
   {:else if $topologiesList.length === 0}
     <div class="card p-12 text-center">
-      <svg class="w-16 h-16 text-dark-text-muted mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <svg class="w-16 h-16 text-theme-text-muted mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <circle cx="12" cy="5" r="3"/>
         <circle cx="5" cy="19" r="3"/>
         <circle cx="19" cy="19" r="3"/>
         <line x1="12" y1="8" x2="5" y2="16"/>
         <line x1="12" y1="8" x2="19" y2="16"/>
       </svg>
-      <h3 class="text-lg font-medium text-dark-text-emphasis mb-2">No topologies</h3>
-      <p class="text-dark-text-muted mb-4">Create your first network topology diagram</p>
+      <h3 class="text-lg font-medium text-theme-text-emphasis mb-2">No topologies</h3>
+      <p class="text-theme-text-muted mb-4">Create your first network topology diagram</p>
       <button class="btn btn-primary" onclick={openCreateModal}>Add Topology</button>
     </div>
   {:else}
@@ -133,7 +133,7 @@ links:
                 </svg>
               </div>
               <button
-                class="text-dark-text-muted hover:text-danger"
+                class="text-theme-text-muted hover:text-danger"
                 onclick={() => handleDelete(topo)}
                 title="Delete"
               >
@@ -144,8 +144,8 @@ links:
               </button>
             </div>
 
-            <h3 class="font-medium text-dark-text-emphasis mb-1">{topo.name}</h3>
-            <p class="text-xs text-dark-text-muted mb-4">
+            <h3 class="font-medium text-theme-text-emphasis mb-1">{topo.name}</h3>
+            <p class="text-xs text-theme-text-muted mb-4">
               Updated {new Date(topo.updatedAt).toLocaleDateString()}
             </p>
 
@@ -169,10 +169,10 @@ links:
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" onclick={closeCreateModal}>
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="bg-dark-bg-elevated border border-dark-border rounded-xl w-full max-w-2xl m-4 max-h-[90vh] flex flex-col" onclick={(e) => e.stopPropagation()}>
-      <div class="flex items-center justify-between p-4 border-b border-dark-border">
-        <h2 class="text-lg font-semibold text-dark-text-emphasis">Add Topology</h2>
-        <button class="text-dark-text-muted hover:text-dark-text" onclick={closeCreateModal} aria-label="Close">
+    <div class="bg-theme-bg-elevated border border-theme-border rounded-xl w-full max-w-2xl m-4 max-h-[90vh] flex flex-col" onclick={(e) => e.stopPropagation()}>
+      <div class="flex items-center justify-between p-4 border-b border-theme-border">
+        <h2 class="text-lg font-semibold text-theme-text-emphasis">Add Topology</h2>
+        <button class="text-theme-text-muted hover:text-theme-text" onclick={closeCreateModal} aria-label="Close">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -207,7 +207,7 @@ links:
             placeholder="Enter your network YAML..."
             bind:value={formYaml}
           ></textarea>
-          <p class="text-xs text-dark-text-muted mt-1">
+          <p class="text-xs text-theme-text-muted mt-1">
             Define your network topology using YAML format.
             <a href="https://shumoku-docs.dev/yaml-spec" target="_blank" class="text-primary hover:underline">
               View documentation
@@ -216,7 +216,7 @@ links:
         </div>
       </form>
 
-      <div class="flex justify-end gap-2 p-4 border-t border-dark-border">
+      <div class="flex justify-end gap-2 p-4 border-t border-theme-border">
         <button type="button" class="btn btn-secondary" onclick={closeCreateModal}>Cancel</button>
         <button type="button" class="btn btn-primary" onclick={handleCreate} disabled={formSubmitting}>
           {#if formSubmitting}

@@ -5,16 +5,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Grafana-inspired dark theme colors
-        dark: {
-          bg: '#111217',
-          'bg-elevated': '#181b1f',
-          'bg-canvas': '#0b0c0e',
-          border: '#2c2f36',
-          text: '#ccccdc',
-          'text-muted': '#8e8e9a',
-          'text-emphasis': '#ffffff',
-        },
+        // Theme colors using CSS variables (defined in app.css)
+        'theme-bg': 'var(--color-bg)',
+        'theme-bg-elevated': 'var(--color-bg-elevated)',
+        'theme-bg-canvas': 'var(--color-bg-canvas)',
+        'theme-border': 'var(--color-border)',
+        'theme-text': 'var(--color-text)',
+        'theme-text-muted': 'var(--color-text-muted)',
+        'theme-text-emphasis': 'var(--color-text-emphasis)',
         // Shumoku brand colors
         primary: {
           DEFAULT: '#7FE4C1',

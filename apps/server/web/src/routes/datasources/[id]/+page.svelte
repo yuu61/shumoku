@@ -97,7 +97,7 @@
 
 <div class="p-6">
   <!-- Back link -->
-  <a href="/datasources" class="inline-flex items-center gap-2 text-dark-text-muted hover:text-dark-text mb-4">
+  <a href="/datasources" class="inline-flex items-center gap-2 text-theme-text-muted hover:text-theme-text mb-4">
     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M19 12H5M12 19l-7-7 7-7"/>
     </svg>
@@ -115,7 +115,7 @@
     </div>
   {:else if dataSource}
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-semibold text-dark-text-emphasis">{dataSource.name}</h1>
+      <h1 class="text-2xl font-semibold text-theme-text-emphasis">{dataSource.name}</h1>
       <button class="btn btn-danger" onclick={handleDelete}>Delete</button>
     </div>
 
@@ -124,7 +124,7 @@
       <div class="lg:col-span-2">
         <div class="card">
           <div class="card-header">
-            <h2 class="font-medium text-dark-text-emphasis">Configuration</h2>
+            <h2 class="font-medium text-theme-text-emphasis">Configuration</h2>
           </div>
           <form class="card-body space-y-4" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
             {#if error}
@@ -152,7 +152,7 @@
                 placeholder="Enter new token to update"
                 bind:value={formToken}
               />
-              <p class="text-xs text-dark-text-muted mt-1">
+              <p class="text-xs text-theme-text-muted mt-1">
                 {dataSource.token ? 'Token is set. Enter a new value to update.' : 'No token set.'}
               </p>
             </div>
@@ -168,7 +168,7 @@
               </select>
             </div>
 
-            <div class="flex justify-end pt-4 border-t border-dark-border">
+            <div class="flex justify-end pt-4 border-t border-theme-border">
               <button type="submit" class="btn btn-primary" disabled={saving}>
                 {#if saving}
                   <span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
@@ -184,7 +184,7 @@
       <div>
         <div class="card">
           <div class="card-header">
-            <h2 class="font-medium text-dark-text-emphasis">Connection Test</h2>
+            <h2 class="font-medium text-theme-text-emphasis">Connection Test</h2>
           </div>
           <div class="card-body">
             <button class="btn btn-secondary w-full mb-4" onclick={handleTest} disabled={testing}>
@@ -214,9 +214,9 @@
                     <span class="font-medium text-danger">Failed</span>
                   {/if}
                 </div>
-                <p class="text-sm text-dark-text-muted">{testResult.message}</p>
+                <p class="text-sm text-theme-text-muted">{testResult.message}</p>
                 {#if testResult.version}
-                  <p class="text-xs text-dark-text-muted mt-1">Zabbix version: {testResult.version}</p>
+                  <p class="text-xs text-theme-text-muted mt-1">Zabbix version: {testResult.version}</p>
                 {/if}
               </div>
             {/if}
@@ -226,24 +226,24 @@
         <!-- Info -->
         <div class="card mt-4">
           <div class="card-header">
-            <h2 class="font-medium text-dark-text-emphasis">Info</h2>
+            <h2 class="font-medium text-theme-text-emphasis">Info</h2>
           </div>
           <div class="card-body text-sm space-y-2">
             <div class="flex justify-between">
-              <span class="text-dark-text-muted">ID</span>
-              <span class="font-mono text-dark-text">{dataSource.id}</span>
+              <span class="text-theme-text-muted">ID</span>
+              <span class="font-mono text-theme-text">{dataSource.id}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-dark-text-muted">Type</span>
-              <span class="text-dark-text">{dataSource.type}</span>
+              <span class="text-theme-text-muted">Type</span>
+              <span class="text-theme-text">{dataSource.type}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-dark-text-muted">Created</span>
-              <span class="text-dark-text">{new Date(dataSource.createdAt).toLocaleString()}</span>
+              <span class="text-theme-text-muted">Created</span>
+              <span class="text-theme-text">{new Date(dataSource.createdAt).toLocaleString()}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-dark-text-muted">Updated</span>
-              <span class="text-dark-text">{new Date(dataSource.updatedAt).toLocaleString()}</span>
+              <span class="text-theme-text-muted">Updated</span>
+              <span class="text-theme-text">{new Date(dataSource.updatedAt).toLocaleString()}</span>
             </div>
           </div>
         </div>
