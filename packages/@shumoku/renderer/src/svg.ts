@@ -569,13 +569,13 @@ export class SVGRenderer {
 
     const rx = 12 // Border radius (larger for container/card feel)
 
-    // Check if subgraph has vendor icon (service for cloud, model for hardware)
+    // Check if subgraph has icon (user-specified, vendor, or type-based)
     // AWS uses service/resource format (e.g., ec2/instance)
     const iconKey =
       subgraph.service && subgraph.resource
         ? `${subgraph.service}/${subgraph.resource}`
         : subgraph.service || subgraph.model
-    const hasIcon = subgraph.vendor && iconKey
+    const hasIcon = subgraph.icon || (subgraph.vendor && iconKey)
     const iconSize = 24
     const iconPadding = 8
 
@@ -593,11 +593,16 @@ export class SVGRenderer {
       labelY = bounds.y + 20
     }
 
-    // Render vendor icon if available
+    // Render icon if available
     let iconSvg = ''
     if (hasIcon) {
-      // Try CDN icons first for supported vendors
-      if (hasCDNIcons(subgraph.vendor!)) {
+      // User-specified icon URL takes highest priority
+      if (subgraph.icon) {
+        iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+    <image href="${subgraph.icon}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet" />
+  </g>`
+      } else if (hasCDNIcons(subgraph.vendor!)) {
+        // Try CDN icons for supported vendors
         const cdnUrl = getCDNIconUrl(subgraph.vendor!, iconKey!)
         iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
     <image href="${cdnUrl}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet" />
@@ -980,6 +985,16 @@ ${fg}
   ): { width: number; height: number; svg: string } | null {
     // Cap icon width at MAX_ICON_WIDTH_RATIO of node width to leave room for ports
     const maxIconWidth = Math.round(w * MAX_ICON_WIDTH_RATIO)
+
+    // User-specified icon URL takes highest priority
+    if (node.icon) {
+      const iconSize = Math.min(DEFAULT_ICON_SIZE, maxIconWidth)
+      return {
+        width: iconSize,
+        height: iconSize,
+        svg: `<image href="${node.icon}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet" />`,
+      }
+    }
 
     // Try vendor-specific icon first (service for cloud, model for hardware)
     // AWS uses service/resource format (e.g., ec2/instance)
