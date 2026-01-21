@@ -27,11 +27,25 @@ export function createTopologiesApi(): Hono {
       if (!parsed) {
         return c.json({ error: 'Topology not found' }, 404)
       }
+
+      // Convert LayoutResult Maps to plain objects for JSON serialization
+      // Cytoscape converter expects { nodeId: { x, y } } format
+      const layoutNodes: Record<string, { x: number; y: number }> = {}
+      for (const [nodeId, layoutNode] of parsed.layout.nodes) {
+        layoutNodes[nodeId] = {
+          x: layoutNode.position.x,
+          y: layoutNode.position.y,
+        }
+      }
+
       return c.json({
         id: parsed.id,
         name: parsed.name,
         graph: parsed.graph,
-        layout: parsed.layout,
+        layout: {
+          nodes: layoutNodes,
+          bounds: parsed.layout.bounds,
+        },
         metrics: parsed.metrics,
         dataSourceId: parsed.dataSourceId,
         mapping: parsed.mapping,
@@ -52,8 +66,10 @@ export function createTopologiesApi(): Hono {
       }
 
       // Use renderEmbeddable for full interactive output
+      // Provide empty icon dimensions (icons will use default sizes)
+      const emptyIconDimensions = { byUrl: new Map(), byKey: new Map() }
       const output = renderEmbeddable(
-        { graph: parsed.graph, layout: parsed.layout, iconDimensions: null },
+        { graph: parsed.graph, layout: parsed.layout, iconDimensions: emptyIconDimensions },
         { hierarchical: true, toolbar: false },
       )
 

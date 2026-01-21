@@ -7,7 +7,7 @@ import type { Database } from 'bun:sqlite'
 import type { LayoutResult, NetworkGraph } from '@shumoku/core'
 import { sampleNetwork } from '@shumoku/core'
 import { BunHierarchicalLayout } from '../layout.js'
-import { YamlParser } from '@shumoku/parser-yaml'
+import { YamlParser, HierarchicalParser, createMemoryFileResolver } from '@shumoku/parser-yaml'
 import { getDatabase, generateId, timestamp } from '../db/index.js'
 import type { Topology, TopologyInput, MetricsData, ZabbixMapping } from '../types.js'
 
@@ -217,8 +217,10 @@ export class TopologyService {
    * Parse a topology and generate layout
    */
   private async parseTopology(topology: Topology): Promise<ParsedTopology> {
-    const graph = await this.parseYaml(topology.yamlContent)
-    const layoutResult = await this.layout.layout(graph)
+    // Use hierarchical parsing for sample network
+    const allowFileRefs = this.isSampleNetwork(topology.yamlContent)
+    const graph = await this.parseYaml(topology.yamlContent, allowFileRefs)
+    const layoutResult = await this.layout.layoutAsync(graph)
     const metrics = this.createEmptyMetrics(graph)
 
     let mapping: ZabbixMapping | undefined
@@ -244,19 +246,36 @@ export class TopologyService {
   /**
    * Parse YAML content to NetworkGraph
    */
-  private async parseYaml(yamlContent: string): Promise<NetworkGraph> {
+  private async parseYaml(yamlContent: string, allowFileRefs = false): Promise<NetworkGraph> {
     // Check if the content has any file references (hierarchical)
     const hasFileRefs = yamlContent.includes('file:')
 
     if (hasFileRefs) {
-      // For now, we don't support file references in DB-stored topologies
-      // They should be resolved/flattened before saving
-      throw new Error('File references (file:) are not supported in uploaded topologies. Please flatten your YAML.')
+      if (!allowFileRefs) {
+        throw new Error('File references (file:) are not supported in uploaded topologies. Please flatten your YAML.')
+      }
+
+      // Parse hierarchically using memory resolver with sampleNetwork files
+      const files = new Map<string, string>()
+      for (const file of sampleNetwork) {
+        files.set(file.name, file.content)
+      }
+      const resolver = createMemoryFileResolver(files, '')
+      const parser = new HierarchicalParser(resolver)
+      const result = await parser.parse(yamlContent, 'main.yaml')
+      return result.graph
     }
 
     const parser = new YamlParser()
     const result = parser.parse(yamlContent)
     return result.graph
+  }
+
+  /**
+   * Parse YAML for sample network (allows file references)
+   */
+  private async parseSampleYaml(yamlContent: string): Promise<NetworkGraph> {
+    return this.parseYaml(yamlContent, true)
   }
 
   /**
@@ -315,6 +334,7 @@ export class TopologyService {
 
   /**
    * Initialize with sample topology if database is empty
+   * Uses the comprehensive hierarchical sample network from @shumoku/core/fixtures
    */
   async initializeSample(): Promise<void> {
     const existing = this.list()
@@ -331,49 +351,29 @@ export class TopologyService {
       return
     }
 
-    // Note: The sample network has file references (hierarchical structure)
-    // For DB-stored topologies, we don't support file: references
-    // So we create a simplified single-file version for demonstration
-    // In production, users would upload their own flattened YAML files
+    // Validate by parsing with hierarchical support
+    await this.parseSampleYaml(mainFile.content)
 
-    // Create a simple sample topology instead of the hierarchical one
-    const sampleYaml = `name: Sample Network
-nodes:
-  - id: router1
-    label: Core Router
-    type: router
-  - id: switch1
-    label: Distribution Switch
-    type: switch
-  - id: switch2
-    label: Access Switch
-    type: switch
-  - id: server1
-    label: Web Server
-    type: server
-  - id: server2
-    label: Database Server
-    type: server
-links:
-  - from: router1
-    to: switch1
-    bandwidth: 10G
-  - from: switch1
-    to: switch2
-    bandwidth: 1G
-  - from: switch1
-    to: server1
-    bandwidth: 1G
-  - from: switch2
-    to: server2
-    bandwidth: 1G
-`
+    // Insert directly (bypassing create() which doesn't allow file refs)
+    const id = await generateId()
+    const now = timestamp()
 
-    await this.create({
-      name: 'Sample Network',
-      yamlContent: sampleYaml,
-    })
+    this.db
+      .prepare(
+        `
+      INSERT INTO topologies (id, name, yaml_content, data_source_id, mapping_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+      )
+      .run(id, 'Sample Network', mainFile.content, null, null, now, now)
 
-    console.log('[TopologyService] Sample network created')
+    console.log('[TopologyService] Sample network created (hierarchical)')
+  }
+
+  /**
+   * Check if content is the sample network's main.yaml (has file references)
+   */
+  private isSampleNetwork(yamlContent: string): boolean {
+    return yamlContent.includes('file:') && yamlContent.includes('./cloud.yaml')
   }
 }

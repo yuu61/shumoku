@@ -22,5 +22,11 @@
     "typescript": "^5.7.3",
     "vite": "^6.0.7"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@types/cytoscape": "^3.31.0",
+    "cytoscape": "^3.33.1",
+    "cytoscape-elk": "^2.3.0",
+    "panzoom": "^9.4.3"
+  }
 }

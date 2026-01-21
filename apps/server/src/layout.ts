@@ -3,7 +3,6 @@
  * Uses web-worker package to make elkjs work in Bun
  */
 
-// @ts-expect-error - elkjs types are not available for elk-api.js
 import ELKApi from 'elkjs/lib/elk-api.js'
 import Worker from 'web-worker'
 import { createRequire } from 'node:module'

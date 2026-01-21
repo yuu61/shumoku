@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation'
   import { api } from '$lib/api'
   import { metricsConnected } from '$lib/stores'
-  import NetworkDiagram from '$lib/components/NetworkDiagram.svelte'
+  import InteractiveSvgDiagram from '$lib/components/InteractiveSvgDiagram.svelte'
   import type { Topology } from '$lib/types'
 
   let topology: Topology | null = null
@@ -110,10 +110,10 @@
       </div>
     </div>
 
-    <!-- Network Diagram -->
+    <!-- Network Diagram (Interactive SVG) -->
     <div class="card flex-1 overflow-hidden">
       <div class="h-full">
-        <NetworkDiagram {topologyId} {enableMetrics} />
+        <InteractiveSvgDiagram {topologyId} {enableMetrics} />
       </div>
     </div>
 

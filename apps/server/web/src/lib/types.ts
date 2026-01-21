@@ -190,3 +190,72 @@ export interface TopologyContext {
   dataSourceId?: string
   mapping?: ZabbixMapping
 }
+
+// NetworkGraph types for Cytoscape converter
+export interface NetworkNode {
+  id: string
+  label?: string | string[]
+  type?: string
+  vendor?: string
+  model?: string
+  icon?: string
+  parent?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface NetworkLinkEndpoint {
+  node: string
+  port?: string
+  ip?: string
+}
+
+export interface NetworkLink {
+  id?: string
+  from: string | NetworkLinkEndpoint
+  to: string | NetworkLinkEndpoint
+  label?: string
+  bandwidth?: string
+  vlan?: number | number[]
+  type?: 'solid' | 'dashed'
+  arrow?: 'forward' | 'backward' | 'both' | 'none'
+  redundancy?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface NetworkSubgraph {
+  id: string
+  label?: string
+  parent?: string
+  file?: string
+  vendor?: string
+  service?: string
+  resource?: string
+  style?: {
+    fill?: string
+    stroke?: string
+    strokeWidth?: number
+    strokeDasharray?: string
+  }
+}
+
+export interface NetworkGraph {
+  name?: string
+  nodes: NetworkNode[]
+  links: NetworkLink[]
+  subgraphs?: NetworkSubgraph[]
+}
+
+export interface LayoutResult {
+  nodes: Record<string, { x: number; y: number }>
+  subgraphs?: Record<string, { x: number; y: number; width: number; height: number }>
+}
+
+export interface ParsedTopologyResponse {
+  id: string
+  name: string
+  graph: NetworkGraph
+  layout: LayoutResult
+  metrics: MetricsData
+  dataSourceId?: string
+  mapping?: ZabbixMapping
+}
