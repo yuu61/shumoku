@@ -8,11 +8,9 @@ await esbuild.build({
   entryPoints: ['dist/index.js'],
   bundle: true,
   platform: 'node',
-  target: 'node22',
+  target: 'esnext',
   format: 'esm',
   outfile: 'dist/bundle.js',
-  // Mark native modules as external (cannot be bundled)
-  external: ['better-sqlite3'],
   // Use browser entry point for renderer (avoids resvg native module)
   alias: {
     '@shumoku/renderer': path.resolve(__dirname, '../../packages/@shumoku/renderer/dist/index.js'),

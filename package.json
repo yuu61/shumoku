@@ -19,8 +19,9 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
+    "dev": "turbo run dev --filter='!@shumoku/server'",
+    "build": "turbo run build --filter='!@shumoku/server'",
+    "build:all": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "format": "biome format --write .",

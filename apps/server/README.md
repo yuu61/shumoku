@@ -4,80 +4,98 @@ Real-time network topology visualization server with Zabbix integration for Shum
 
 ## Features
 
+- **Web UI Configuration**: Grafana-like interface for managing data sources and topologies
 - **Real-time Metrics**: WebSocket-based live updates for link utilization and node status
 - **Weathermap Visualization**: Color-coded links based on traffic utilization
 - **Zabbix Integration**: Pull metrics from Zabbix monitoring system
-- **Docker Ready**: Container deployment with configurable settings
-- **Interactive UI**: Pan, zoom, and explore network topologies
+- **Docker Ready**: Single container deployment with SQLite persistence
+- **Interactive Diagrams**: Pan, zoom, and explore network topologies
 
-## Quick Start
+## Quick Start (Docker)
 
-### Development
+```bash
+cd apps/server
+
+# Build and start
+docker compose up -d
+
+# Or with custom port
+SHUMOKU_PORT=8080 docker compose up -d
+```
+
+Open http://localhost:3000 to access the Web UI.
+
+## Development
 
 ```bash
 # From repository root
-cd apps/server
 bun install
+bun run build
+
+# Start development server
+cd apps/server
 bun run dev
 ```
 
-Open http://localhost:3000 to view the dashboard.
+Open http://localhost:3000 to view the application.
 
-### Production (Docker)
+## Data Persistence
 
-```bash
-# Build and run
-docker-compose up -d
+All configuration is stored in SQLite and managed via the Web UI:
 
-# Or build manually
-docker build -t shumoku-server -f apps/server/Dockerfile .
-docker run -p 3000:3000 shumoku-server
-```
+- **Data Sources**: Configure Zabbix API connections
+- **Topologies**: Upload and manage network topology YAML files
+- **Settings**: Application-wide configuration
 
-## Configuration
+Data is persisted in `/data/shumoku.db` (Docker volume: `shumoku-data`).
 
-Create a `config.yaml` file (see `config.example.yaml` for reference):
+## Web UI
 
-```yaml
-server:
-  port: 3000
-  host: 0.0.0.0
+### Pages
 
-# Optional: Zabbix integration
-zabbix:
-  url: https://zabbix.example.com
-  token: ${ZABBIX_TOKEN}  # Environment variable
-  pollInterval: 30000     # Polling interval in ms
+| Path | Description |
+|------|-------------|
+| `/` | Home - Dashboard overview |
+| `/topologies` | Topology list and management |
+| `/topologies/:id` | Topology viewer with live metrics |
+| `/datasources` | Data source (Zabbix) configuration |
+| `/settings` | Application settings |
 
-# Network topologies to serve
-topologies:
-  - name: main-network
-    file: /data/topologies/main.yaml
-    mapping: /data/mappings/main-mapping.yaml
+### Managing Data Sources
 
-# Weathermap color thresholds
-weathermap:
-  thresholds:
-    - value: 0
-      color: '#73BF69'   # Green
-    - value: 50
-      color: '#FADE2A'   # Yellow
-    - value: 75
-      color: '#FF9830'   # Orange
-    - value: 90
-      color: '#FF0000'   # Red
-```
+1. Navigate to **Data Sources** in the sidebar
+2. Click **Add Data Source**
+3. Enter Zabbix server URL and API token
+4. Click **Test Connection** to verify
+5. Save the configuration
+
+### Managing Topologies
+
+1. Navigate to **Topologies** in the sidebar
+2. Click **Add Topology**
+3. Upload a YAML topology file or paste YAML content
+4. Optionally link to a data source for live metrics
+5. Configure Zabbix mapping for nodes and links
 
 ## API
 
 ### HTTP Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /` | Dashboard with topology list |
-| `GET /topology/:name` | Interactive topology view |
-| `GET /api/topologies` | List all topology names (JSON) |
-| `GET /api/topology/:name` | Topology details with metrics (JSON) |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/datasources` | GET | List all data sources |
+| `/api/datasources` | POST | Create data source |
+| `/api/datasources/:id` | GET | Get data source details |
+| `/api/datasources/:id` | PUT | Update data source |
+| `/api/datasources/:id` | DELETE | Delete data source |
+| `/api/datasources/:id/test` | POST | Test connection |
+| `/api/topologies` | GET | List all topologies |
+| `/api/topologies` | POST | Create topology |
+| `/api/topologies/:id` | GET | Get topology details |
+| `/api/topologies/:id` | PUT | Update topology |
+| `/api/topologies/:id` | DELETE | Delete topology |
+| `/api/topologies/:id/render` | GET | Get rendered SVG |
+| `/api/health` | GET | Health check |
 
 ### WebSocket
 
@@ -87,10 +105,7 @@ Connect to `ws://<host>/ws` for real-time metrics.
 
 ```javascript
 // Subscribe to topology updates
-{ "type": "subscribe", "topology": "main-network" }
-
-// Change update interval (5s - 5min)
-{ "type": "setInterval", "interval": 10000 }
+{ "type": "subscribe", "topology": "<topology-id>" }
 
 // Filter specific nodes/links
 { "type": "filter", "nodes": ["router1"], "links": ["link-0"] }
@@ -103,7 +118,7 @@ Connect to `ws://<host>/ws` for real-time metrics.
   "type": "metrics",
   "data": {
     "nodes": {
-      "router1": { "status": "up", "cpu": 23.5 }
+      "router1": { "status": "up" }
     },
     "links": {
       "link-0": { "status": "up", "utilization": 45.2 }
@@ -113,26 +128,27 @@ Connect to `ws://<host>/ws` for real-time metrics.
 }
 ```
 
-## Zabbix Mapping
-
-Create a mapping file to connect topology elements to Zabbix:
+## Topology YAML Format
 
 ```yaml
-# nodes: Map by host ID or name
+name: My Network
 nodes:
-  router1:
-    hostId: "10084"
-  switch1:
-    hostName: "sw-core-01"
-
-# links: Map by item ID or interface
+  - id: router1
+    label: Core Router
+    type: router
+  - id: switch1
+    label: Distribution Switch
+    type: switch
+  - id: server1
+    label: Web Server
+    type: server
 links:
-  link-0:
-    in: "12345"       # Item ID for inbound traffic
-    out: "12346"      # Item ID for outbound traffic
-    capacity: 10000000000  # 10Gbps
-  link-1:
-    interface: "eth0"  # Auto-discover by interface name
+  - from: router1
+    to: switch1
+    bandwidth: 10G
+  - from: switch1
+    to: server1
+    bandwidth: 1G
 ```
 
 ## Environment Variables
@@ -141,24 +157,81 @@ links:
 |----------|-------------|---------|
 | `PORT` | Server port | 3000 |
 | `HOST` | Bind address | 0.0.0.0 |
-| `SHUMOKU_CONFIG` | Config file path | ./config.yaml |
-| `ZABBIX_URL` | Zabbix API URL | - |
-| `ZABBIX_TOKEN` | Zabbix API token | - |
-| `ZABBIX_POLL_INTERVAL` | Polling interval (ms) | 30000 |
+| `DATA_DIR` | Data directory for SQLite | /data |
+| `SHUMOKU_PORT` | External port (Docker Compose) | 3000 |
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌────────────────┐     ┌───────────┐
-│   Browser   │────►│ Shumoku Server │────►│  Zabbix   │
-│   (Viewer)  │◄────│   (Node.js)    │◄────│    API    │
-└─────────────┘     └────────────────┘     └───────────┘
-    WebSocket        HTTP + WebSocket
+┌─────────────────────────────────────────────────────────────┐
+│                      Browser (SPA)                          │
+│  ┌─────────┐  ┌─────────────────────────────────────────┐  │
+│  │ Sidebar │  │  Main Content (Topology / Settings)     │  │
+│  └─────────┘  └─────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    HTTP / WebSocket
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                   Shumoku Server (Bun)                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │  API Routes  │  │  WebSocket   │  │ Static Files │      │
+│  │   /api/*     │  │    /ws       │  │  /assets/*   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│         │                                                   │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Services (DataSource, Topology, Metrics)            │  │
+│  └──────────────────────────────────────────────────────┘  │
+│         │                                                   │
+│  ┌──────────────┐  ┌──────────────┐                        │
+│  │   SQLite     │  │  Zabbix API  │                        │
+│  │   /data/     │  │  (External)  │                        │
+│  └──────────────┘  └──────────────┘                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-The server:
-1. Loads topology YAML files on startup
-2. Computes layout using ELK.js
-3. Polls Zabbix for metrics (or generates mock data)
-4. Broadcasts updates to connected WebSocket clients
-5. Clients update SVG elements dynamically
+## Docker Compose
+
+The `compose.yaml` provides a production-ready configuration:
+
+```yaml
+services:
+  shumoku:
+    build:
+      context: ../..
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "${SHUMOKU_PORT:-3000}:3000"
+    volumes:
+      - shumoku-data:/data
+    restart: unless-stopped
+
+volumes:
+  shumoku-data:
+```
+
+### Commands
+
+```bash
+# Start
+docker compose up -d
+
+# Stop
+docker compose down
+
+# View logs
+docker compose logs -f
+
+# Rebuild after code changes
+docker compose up -d --build
+
+# Backup database
+docker compose cp shumoku:/data/shumoku.db ./backup.db
+
+# Restore database
+docker compose cp ./backup.db shumoku:/data/shumoku.db
+```
+
+## License
+
+MIT

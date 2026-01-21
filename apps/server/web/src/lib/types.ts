@@ -2,6 +2,8 @@
  * Frontend type definitions
  */
 
+import type { MetricsData } from './stores/metrics'
+
 export type DataSourceType = 'zabbix'
 
 export interface DataSource {
@@ -169,12 +171,6 @@ export interface SubgraphStyleContext {
   stroke: string
   strokeWidth: number
   labelColor: string
-}
-
-export interface MetricsData {
-  nodes: Record<string, { status: 'up' | 'down' | 'unknown' }>
-  links: Record<string, { status: 'up' | 'down' | 'unknown'; utilization?: number }>
-  timestamp: number
 }
 
 export interface TopologyContext {

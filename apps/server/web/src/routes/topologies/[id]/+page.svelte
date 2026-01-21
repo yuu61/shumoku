@@ -13,14 +13,15 @@
   let error = ''
   let enableMetrics = true
 
-  $: topologyId = $page.params.id
+  // Get ID from route params (always defined for this route)
+  $: topologyId = $page.params.id!
 
   onMount(async () => {
     try {
       // Fetch topology metadata and render data for stats
       const [topoData, renderResponse] = await Promise.all([
-        api.topologies.get($page.params.id),
-        fetch(`/api/topologies/${$page.params.id}/render`).then((r) => r.json()),
+        api.topologies.get(topologyId),
+        fetch(`/api/topologies/${topologyId}/render`).then((r) => r.json()),
       ])
       topology = topoData
       renderData = { nodeCount: renderResponse.nodeCount, edgeCount: renderResponse.edgeCount }
@@ -36,7 +37,7 @@
       return
     }
     try {
-      await api.topologies.delete($page.params.id)
+      await api.topologies.delete(topologyId)
       goto('/topologies')
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to delete'

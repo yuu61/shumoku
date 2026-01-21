@@ -5,7 +5,8 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { HierarchicalLayout, sampleNetwork, type NetworkGraph } from '@shumoku/core'
+import { sampleNetwork, type NetworkGraph } from '@shumoku/core'
+import { BunHierarchicalLayout } from './layout.js'
 import {
   HierarchicalParser,
   createMemoryFileResolver,
@@ -33,11 +34,11 @@ function createFileResolver(): FileResolver {
 export class TopologyManager {
   private config: Config
   private topologies: Map<string, TopologyInstance> = new Map()
-  private layout: HierarchicalLayout
+  private layout: BunHierarchicalLayout
 
   constructor(config: Config) {
     this.config = config
-    this.layout = new HierarchicalLayout()
+    this.layout = new BunHierarchicalLayout()
   }
 
   /**

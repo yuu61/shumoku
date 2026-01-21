@@ -1,34 +1,25 @@
-# Build stage
-FROM oven/bun:1 AS builder
+# syntax=docker/dockerfile:1.4
 
-# Install build dependencies for native modules (better-sqlite3)
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# ============================================
+# Build stage
+# ============================================
+FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# ============================================
-# Copy monorepo config files
-# ============================================
+# Copy monorepo config and required packages
 COPY package.json bun.lock turbo.json tsconfig.base.json ./
-
-# ============================================
-# Copy only required packages (server and its dependencies)
-# Excludes: @shumoku/icons (not needed), @shumoku/netbox (not needed),
-#           shumoku (wrapper), apps/docs
-# ============================================
 COPY packages/@shumoku/core/ ./packages/@shumoku/core/
 COPY packages/@shumoku/parser-yaml/ ./packages/@shumoku/parser-yaml/
 COPY packages/@shumoku/renderer/ ./packages/@shumoku/renderer/
 COPY apps/server/ ./apps/server/
 
-# ============================================
-# Install dependencies and build
-# ============================================
-RUN bun install
+# Install dependencies with cache mount
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install
+
+# Build server
+WORKDIR /app/apps/server
 RUN bun run build
 
 # Build web UI
@@ -37,29 +28,20 @@ RUN bun install && bun run build
 
 # Bundle server into single file
 WORKDIR /app/apps/server
-RUN node esbuild.config.js
+RUN bun run esbuild.config.js
 
 # ============================================
-# Production stage
+# Production stage - Bun runtime
 # ============================================
-FROM node:22-slim
+FROM oven/bun:1-slim
 
 WORKDIR /app
 
-# Install curl for health check and build tools for native modules
-RUN apt-get update && apt-get install -y \
-    curl \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# Install curl for health check
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Copy bundled server
 COPY --from=builder /app/apps/server/dist/bundle.js ./server.js
-
-# Create package.json and install better-sqlite3 native module
-RUN echo '{"type": "module", "dependencies": {"better-sqlite3": "^11.8.1"}}' > package.json \
-    && npm install --omit=dev
 
 # Copy web UI build
 COPY --from=builder /app/apps/server/web/build ./web/build
@@ -77,4 +59,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
-CMD ["node", "server.js"]
+CMD ["bun", "run", "server.js"]

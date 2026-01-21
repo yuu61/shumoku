@@ -3,7 +3,7 @@
  * Manages Zabbix and other data source connections
  */
 
-import type Database from 'better-sqlite3'
+import type { Database } from 'bun:sqlite'
 import { getDatabase, generateId, timestamp } from '../db/index.js'
 import type { DataSource, DataSourceInput, DataSourceType } from '../types.js'
 
@@ -32,7 +32,7 @@ function rowToDataSource(row: DataSourceRow): DataSource {
 }
 
 export class DataSourceService {
-  private db: Database.Database
+  private db: Database
 
   constructor() {
     this.db = getDatabase()
@@ -42,7 +42,7 @@ export class DataSourceService {
    * Get all data sources
    */
   list(): DataSource[] {
-    const rows = this.db.prepare('SELECT * FROM data_sources ORDER BY created_at DESC').all() as DataSourceRow[]
+    const rows = this.db.query('SELECT * FROM data_sources ORDER BY created_at DESC').all() as DataSourceRow[]
     return rows.map(rowToDataSource)
   }
 
@@ -50,7 +50,7 @@ export class DataSourceService {
    * Get a single data source by ID
    */
   get(id: string): DataSource | null {
-    const row = this.db.prepare('SELECT * FROM data_sources WHERE id = ?').get(id) as DataSourceRow | undefined
+    const row = this.db.query('SELECT * FROM data_sources WHERE id = ?').get(id) as DataSourceRow | undefined
     return row ? rowToDataSource(row) : null
   }
 
@@ -58,7 +58,7 @@ export class DataSourceService {
    * Get a data source by name
    */
   getByName(name: string): DataSource | null {
-    const row = this.db.prepare('SELECT * FROM data_sources WHERE name = ?').get(name) as DataSourceRow | undefined
+    const row = this.db.query('SELECT * FROM data_sources WHERE name = ?').get(name) as DataSourceRow | undefined
     return row ? rowToDataSource(row) : null
   }
 
@@ -70,7 +70,7 @@ export class DataSourceService {
     const now = timestamp()
 
     this.db
-      .prepare(
+      .query(
         `
       INSERT INTO data_sources (id, name, type, url, token, poll_interval, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -122,7 +122,7 @@ export class DataSourceService {
     values.push(timestamp())
     values.push(id)
 
-    this.db.prepare(`UPDATE data_sources SET ${updates.join(', ')} WHERE id = ?`).run(...values)
+    this.db.query(`UPDATE data_sources SET ${updates.join(', ')} WHERE id = ?`).run(...values)
 
     return this.get(id)
   }
@@ -131,7 +131,7 @@ export class DataSourceService {
    * Delete a data source
    */
   delete(id: string): boolean {
-    const result = this.db.prepare('DELETE FROM data_sources WHERE id = ?').run(id)
+    const result = this.db.query('DELETE FROM data_sources WHERE id = ?').run(id)
     return result.changes > 0
   }
 

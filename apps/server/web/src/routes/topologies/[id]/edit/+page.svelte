@@ -5,6 +5,9 @@
   import { api } from '$lib/api'
   import type { Topology, DataSource } from '$lib/types'
 
+  // Get ID from route params (always defined for this route)
+  $: id = $page.params.id!
+
   let topology: Topology | null = null
   let dataSources: DataSource[] = []
   let loading = true
@@ -19,7 +22,7 @@
   onMount(async () => {
     try {
       const [topoData, dsData] = await Promise.all([
-        api.topologies.get($page.params.id),
+        api.topologies.get(id),
         api.dataSources.list(),
       ])
       topology = topoData
@@ -44,12 +47,12 @@
     error = ''
 
     try {
-      await api.topologies.update($page.params.id, {
+      await api.topologies.update(id, {
         name: formName.trim(),
         yamlContent: formYaml,
         dataSourceId: formDataSourceId || undefined,
       })
-      goto(`/topologies/${$page.params.id}`)
+      goto(`/topologies/${id}`)
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to save'
     } finally {

@@ -3,9 +3,10 @@
  * Manages network topologies with database persistence
  */
 
-import type Database from 'better-sqlite3'
+import type { Database } from 'bun:sqlite'
 import type { LayoutResult, NetworkGraph } from '@shumoku/core'
-import { HierarchicalLayout, sampleNetwork } from '@shumoku/core'
+import { sampleNetwork } from '@shumoku/core'
+import { BunHierarchicalLayout } from '../layout.js'
 import { YamlParser } from '@shumoku/parser-yaml'
 import { getDatabase, generateId, timestamp } from '../db/index.js'
 import type { Topology, TopologyInput, MetricsData, ZabbixMapping } from '../types.js'
@@ -46,20 +47,20 @@ export interface ParsedTopology {
 }
 
 export class TopologyService {
-  private db: Database.Database
-  private layout: HierarchicalLayout
+  private db: Database
+  private layout: BunHierarchicalLayout
   private cache: Map<string, ParsedTopology> = new Map()
 
   constructor() {
     this.db = getDatabase()
-    this.layout = new HierarchicalLayout()
+    this.layout = new BunHierarchicalLayout()
   }
 
   /**
    * Get all topologies from the database
    */
   list(): Topology[] {
-    const rows = this.db.prepare('SELECT * FROM topologies ORDER BY name ASC').all() as TopologyRow[]
+    const rows = this.db.query('SELECT * FROM topologies ORDER BY name ASC').all() as TopologyRow[]
     return rows.map(rowToTopology)
   }
 
@@ -67,7 +68,7 @@ export class TopologyService {
    * Get a single topology by ID
    */
   get(id: string): Topology | null {
-    const row = this.db.prepare('SELECT * FROM topologies WHERE id = ?').get(id) as TopologyRow | undefined
+    const row = this.db.query('SELECT * FROM topologies WHERE id = ?').get(id) as TopologyRow | undefined
     return row ? rowToTopology(row) : null
   }
 
@@ -75,7 +76,7 @@ export class TopologyService {
    * Get a topology by name
    */
   getByName(name: string): Topology | null {
-    const row = this.db.prepare('SELECT * FROM topologies WHERE name = ?').get(name) as TopologyRow | undefined
+    const row = this.db.query('SELECT * FROM topologies WHERE name = ?').get(name) as TopologyRow | undefined
     return row ? rowToTopology(row) : null
   }
 
@@ -146,7 +147,7 @@ export class TopologyService {
     values.push(timestamp())
     values.push(id)
 
-    this.db.prepare(`UPDATE topologies SET ${updates.join(', ')} WHERE id = ?`).run(...values)
+    this.db.query(`UPDATE topologies SET ${updates.join(', ')} WHERE id = ?`).run(...values)
 
     // Clear cache to force re-parse
     this.cache.delete(id)
@@ -164,7 +165,7 @@ export class TopologyService {
     }
 
     const mappingJson = JSON.stringify(mapping)
-    this.db.prepare('UPDATE topologies SET mapping_json = ?, updated_at = ? WHERE id = ?').run(mappingJson, timestamp(), id)
+    this.db.query('UPDATE topologies SET mapping_json = ?, updated_at = ? WHERE id = ?').run(mappingJson, timestamp(), id)
 
     // Clear cache to force re-parse
     this.cache.delete(id)
@@ -176,7 +177,7 @@ export class TopologyService {
    * Delete a topology
    */
   delete(id: string): boolean {
-    const result = this.db.prepare('DELETE FROM topologies WHERE id = ?').run(id)
+    const result = this.db.query('DELETE FROM topologies WHERE id = ?').run(id)
     this.cache.delete(id)
     return result.changes > 0
   }

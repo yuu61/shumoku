@@ -157,9 +157,11 @@ export interface HierarchicalLayoutOptions {
   subgraphLabelHeight?: number
   /** Pre-resolved icon dimensions for CDN icons (URL -> dimensions) */
   iconDimensions?: Map<string, IconDimensions>
+  /** Custom ELK instance (for Bun compatibility) */
+  elk?: InstanceType<typeof ELK>
 }
 
-const DEFAULT_OPTIONS: Required<HierarchicalLayoutOptions> = {
+const DEFAULT_OPTIONS: Omit<Omit<Required<HierarchicalLayoutOptions>, 'elk'>, 'elk'> = {
   direction: 'TB',
   nodeWidth: 180,
   nodeHeight: 60,
@@ -175,12 +177,13 @@ const DEFAULT_OPTIONS: Required<HierarchicalLayoutOptions> = {
 // ============================================
 
 export class HierarchicalLayout {
-  private options: Required<HierarchicalLayoutOptions>
+  private options: Omit<Omit<Required<HierarchicalLayoutOptions>, 'elk'>, 'elk'>
   private elk: InstanceType<typeof ELK>
 
   constructor(options?: HierarchicalLayoutOptions) {
-    this.options = { ...DEFAULT_OPTIONS, ...options }
-    this.elk = new ELK()
+    const { elk, ...rest } = options ?? {}
+    this.options = { ...DEFAULT_OPTIONS, ...rest }
+    this.elk = elk ?? new ELK()
   }
 
   /**
@@ -226,7 +229,7 @@ export class HierarchicalLayout {
     }
   }
 
-  private getEffectiveOptions(graph: NetworkGraph): Required<HierarchicalLayoutOptions> {
+  private getEffectiveOptions(graph: NetworkGraph): Omit<Required<HierarchicalLayoutOptions>, 'elk'> {
     const settings = graph.settings
     const dynamicSpacing = this.calculateDynamicSpacing(graph)
 
@@ -274,7 +277,7 @@ export class HierarchicalLayout {
    */
   private buildElkGraph(
     graph: NetworkGraph,
-    options: Required<HierarchicalLayoutOptions>,
+    options: Omit<Required<HierarchicalLayoutOptions>, 'elk'>,
     nodePorts: Map<string, NodePortInfo>,
     haPairs: { nodeA: string; nodeB: string }[],
   ): ElkNode {
@@ -699,7 +702,7 @@ export class HierarchicalLayout {
     graph: NetworkGraph,
     elkGraph: ElkNode,
     nodePorts: Map<string, NodePortInfo>,
-    _options: Required<HierarchicalLayoutOptions>,
+    _options: Omit<Required<HierarchicalLayoutOptions>, 'elk'>,
   ): LayoutResult {
     const layoutNodes = new Map<string, LayoutNode>()
     const layoutSubgraphs = new Map<string, LayoutSubgraph>()
@@ -1324,4 +1327,3 @@ export class HierarchicalLayout {
 }
 
 // Default instance
-export const hierarchicalLayout = new HierarchicalLayout()

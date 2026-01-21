@@ -5,6 +5,9 @@
   import { api } from '$lib/api'
   import type { DataSource, ConnectionTestResult } from '$lib/types'
 
+  // Get ID from route params (always defined for this route)
+  $: id = $page.params.id!
+
   let dataSource: DataSource | null = null
   let loading = true
   let error = ''
@@ -20,7 +23,7 @@
 
   onMount(async () => {
     try {
-      dataSource = await api.dataSources.get($page.params.id)
+      dataSource = await api.dataSources.get(id)
       formName = dataSource.name
       formUrl = dataSource.url
       formToken = '' // Don't show existing token
@@ -53,7 +56,7 @@
         updates.token = formToken.trim()
       }
 
-      dataSource = await api.dataSources.update($page.params.id, updates)
+      dataSource = await api.dataSources.update(id, updates)
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to save'
     } finally {
@@ -65,7 +68,7 @@
     testing = true
     testResult = null
     try {
-      testResult = await api.dataSources.test($page.params.id)
+      testResult = await api.dataSources.test(id)
     } catch (e) {
       testResult = {
         success: false,
@@ -80,7 +83,7 @@
       return
     }
     try {
-      await api.dataSources.delete($page.params.id)
+      await api.dataSources.delete(id)
       goto('/datasources')
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to delete'

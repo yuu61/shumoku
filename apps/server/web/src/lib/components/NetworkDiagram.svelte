@@ -170,7 +170,23 @@
     }
   }
 
-  // Watch for metrics changes
+  // Track previous enableMetrics state to detect changes
+  let prevEnableMetrics = enableMetrics
+
+  // Watch for metrics toggle
+  $: if (topologyId && prevEnableMetrics !== enableMetrics) {
+    prevEnableMetrics = enableMetrics
+    if (enableMetrics) {
+      metricsStore.connect()
+      metricsStore.subscribeToTopology(topologyId)
+    } else {
+      metricsStore.disconnect()
+      // Reload SVG to reset all styles to original
+      loadContent()
+    }
+  }
+
+  // Apply metrics when data changes
   $: if (enableMetrics && $metricsData && svgElement) {
     applyMetrics($metricsData)
   }
@@ -180,6 +196,7 @@
   onMount(async () => {
     await loadContent()
 
+    // Initial metrics connection
     if (enableMetrics && topologyId) {
       metricsStore.connect()
       metricsStore.subscribeToTopology(topologyId)
@@ -190,9 +207,7 @@
   })
 
   onDestroy(() => {
-    if (enableMetrics) {
-      metricsStore.unsubscribe()
-    }
+    metricsStore.disconnect()
     if (interactiveInstance) {
       interactiveInstance.destroy()
     }
@@ -308,3 +323,4 @@
     color: #94a3b8;
   }
 </style>
+

@@ -1,20 +1,20 @@
 /**
  * Database Connection
- * SQLite connection management using better-sqlite3
+ * SQLite connection management using bun:sqlite
  */
 
-import Database from 'better-sqlite3'
+import { Database } from 'bun:sqlite'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { initializeSchema, runMigrations } from './schema.js'
 
-let db: Database.Database | null = null
+let db: Database | null = null
 
 /**
  * Get the database instance
  * Creates and initializes if not already done
  */
-export function getDatabase(): Database.Database {
+export function getDatabase(): Database {
   if (!db) {
     throw new Error('Database not initialized. Call initDatabase() first.')
   }
@@ -25,7 +25,7 @@ export function getDatabase(): Database.Database {
  * Initialize the database connection
  * @param dataDir - Directory to store the database file
  */
-export function initDatabase(dataDir: string = '/data'): Database.Database {
+export function initDatabase(dataDir: string = '/data'): Database {
   if (db) {
     return db
   }
@@ -41,7 +41,7 @@ export function initDatabase(dataDir: string = '/data'): Database.Database {
   db = new Database(dbPath)
 
   // Enable WAL mode for better concurrent access
-  db.pragma('journal_mode = WAL')
+  db.exec('PRAGMA journal_mode = WAL')
 
   // Initialize schema
   initializeSchema(db)

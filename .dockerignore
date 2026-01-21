@@ -1,0 +1,25 @@
+# Dependencies (will be installed in container)
+**/node_modules/
+
+# Build outputs
+apps/server/dist/
+apps/server/web/.svelte-kit/
+apps/server/web/build/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Packages not needed for server
+packages/@shumoku/icons/
+packages/@shumoku/netbox/
+packages/shumoku/
+apps/docs/
+
+# Misc
+**/*.log
+.changeset/
+.turbo/

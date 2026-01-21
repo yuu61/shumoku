@@ -1,12 +1,14 @@
+# Shumoku Server - Docker Compose Configuration
+# Usage: docker compose up -d
+
 services:
   shumoku:
     build:
       context: ../..
       dockerfile: apps/server/Dockerfile
     ports:
-      - "3000:3000"
+      - "${SHUMOKU_PORT:-3000}:3000"
     volumes:
-      # Data persistence (SQLite database)
       - shumoku-data:/data
     environment:
       - PORT=3000
@@ -22,3 +24,4 @@ services:
 
 volumes:
   shumoku-data:
+    name: shumoku-data

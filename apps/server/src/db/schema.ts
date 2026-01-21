@@ -3,13 +3,13 @@
  * Table definitions and initialization for SQLite
  */
 
-import type Database from 'better-sqlite3'
+import type { Database } from 'bun:sqlite'
 
 /**
  * Initialize database schema
  * Creates all required tables if they don't exist
  */
-export function initializeSchema(db: Database.Database): void {
+export function initializeSchema(db: Database): void {
   db.exec(`
     -- Data sources (Zabbix connection info)
     CREATE TABLE IF NOT EXISTS data_sources (
@@ -60,9 +60,9 @@ export function initializeSchema(db: Database.Database): void {
  * Run database migrations
  * Handles schema updates for existing databases
  */
-export function runMigrations(db: Database.Database): void {
+export function runMigrations(db: Database): void {
   // Get current schema version
-  const versionResult = db.prepare("SELECT value FROM settings WHERE key = 'schema_version'").get() as
+  const versionResult = db.query("SELECT value FROM settings WHERE key = 'schema_version'").get() as
     | { value: string }
     | undefined
   const currentVersion = versionResult ? Number.parseInt(versionResult.value, 10) : 0
@@ -70,12 +70,12 @@ export function runMigrations(db: Database.Database): void {
   // Apply migrations
   if (currentVersion < 1) {
     // Initial schema - already created in initializeSchema
-    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', '1')").run()
+    db.query("INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', '1')").run()
   }
 
   // Future migrations can be added here:
   // if (currentVersion < 2) {
   //   db.exec(`ALTER TABLE ...`)
-  //   db.prepare("UPDATE settings SET value = '2' WHERE key = 'schema_version'").run()
+  //   db.query("UPDATE settings SET value = '2' WHERE key = 'schema_version'").run()
   // }
 }

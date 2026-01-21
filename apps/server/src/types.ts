@@ -206,10 +206,9 @@ export interface ZabbixMapping {
 // ============================================
 
 export interface ClientState {
-  subscribedTopology?: string
-  interval: number
-  filter?: {
-    nodes?: Set<string>
-    links?: Set<string>
+  subscribedTopology: string | null
+  filter: {
+    nodes: string[]
+    links: string[]
   }
 }
