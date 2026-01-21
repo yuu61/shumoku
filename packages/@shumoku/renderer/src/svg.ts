@@ -27,6 +27,7 @@ import {
   MAX_ICON_WIDTH_RATIO,
 } from '@shumoku/core'
 
+import { getCDNIconUrl, hasCDNIcons } from './cdn-icons.js'
 import type { DataAttributeOptions, RenderMode } from './types.js'
 
 // ============================================
@@ -569,7 +570,11 @@ export class SVGRenderer {
     const rx = 12 // Border radius (larger for container/card feel)
 
     // Check if subgraph has vendor icon (service for cloud, model for hardware)
-    const iconKey = subgraph.service || subgraph.model
+    // AWS uses service/resource format (e.g., ec2/instance)
+    const iconKey =
+      subgraph.service && subgraph.resource
+        ? `${subgraph.service}/${subgraph.resource}`
+        : subgraph.service || subgraph.model
     const hasIcon = subgraph.vendor && iconKey
     const iconSize = 24
     const iconPadding = 8
@@ -591,32 +596,41 @@ export class SVGRenderer {
     // Render vendor icon if available
     let iconSvg = ''
     if (hasIcon) {
-      const iconEntry = getVendorIconEntry(subgraph.vendor!, iconKey!, subgraph.resource)
-      if (iconEntry) {
-        const iconContent = iconEntry[this.iconTheme] || iconEntry.default
-        const viewBox = iconEntry.viewBox || '0 0 48 48'
+      // Try CDN icons first for supported vendors
+      if (hasCDNIcons(subgraph.vendor!)) {
+        const cdnUrl = getCDNIconUrl(subgraph.vendor!, iconKey!)
+        iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+    <image href="${cdnUrl}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet" />
+  </g>`
+      } else {
+        // Fallback to embedded icons
+        const iconEntry = getVendorIconEntry(subgraph.vendor!, iconKey!, subgraph.resource)
+        if (iconEntry) {
+          const iconContent = iconEntry[this.iconTheme] || iconEntry.default
+          const viewBox = iconEntry.viewBox || '0 0 48 48'
 
-        // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
-        if (iconContent.startsWith('<svg')) {
-          const viewBoxMatch = iconContent.match(/viewBox="0 0 (\d+) (\d+)"/)
-          if (viewBoxMatch) {
-            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
-            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
-            const aspectRatio = vbWidth / vbHeight
-            const iconWidth = Math.round(iconSize * aspectRatio)
-            iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+          // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
+          if (iconContent.startsWith('<svg')) {
+            const viewBoxMatch = iconContent.match(/viewBox="0 0 (\d+) (\d+)"/)
+            if (viewBoxMatch) {
+              const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
+              const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
+              const aspectRatio = vbWidth / vbHeight
+              const iconWidth = Math.round(iconSize * aspectRatio)
+              iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
     <svg width="${iconWidth}" height="${iconSize}" viewBox="0 0 ${vbWidth} ${vbHeight}">
       ${iconContent.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')}
     </svg>
   </g>`
-          }
-        } else {
-          // Use viewBox from entry
-          iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+            }
+          } else {
+            // Use viewBox from entry
+            iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
     <svg width="${iconSize}" height="${iconSize}" viewBox="${viewBox}">
       ${iconContent}
     </svg>
   </g>`
+          }
         }
       }
     }
@@ -968,8 +982,26 @@ ${fg}
     const maxIconWidth = Math.round(w * MAX_ICON_WIDTH_RATIO)
 
     // Try vendor-specific icon first (service for cloud, model for hardware)
-    const iconKey = node.service || node.model
+    // AWS uses service/resource format (e.g., ec2/instance)
+    const iconKey =
+      node.service && node.resource
+        ? `${node.service}/${node.resource}`
+        : node.service || node.model
     if (node.vendor && iconKey) {
+      // Try CDN icons first for supported vendors
+      if (hasCDNIcons(node.vendor)) {
+        const cdnUrl = getCDNIconUrl(node.vendor, iconKey)
+        // Use <image> element to fetch from CDN
+        // Default to square icon; browser will handle aspect ratio with preserveAspectRatio
+        const iconSize = Math.min(DEFAULT_ICON_SIZE, maxIconWidth)
+        return {
+          width: iconSize,
+          height: iconSize,
+          svg: `<image href="${cdnUrl}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet" />`,
+        }
+      }
+
+      // Fallback to embedded icons for vendors not on CDN
       const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
       if (iconEntry) {
         const vendorIcon = iconEntry[this.iconTheme] || iconEntry.default

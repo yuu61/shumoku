@@ -9,6 +9,17 @@ import * as svg from './svg.js'
 
 export { svg, html, png }
 
+// CDN icon utilities
+export {
+  clearIconCache,
+  DEFAULT_CDN_CONFIG,
+  fetchCDNIcon,
+  getCDNIconUrl,
+  getIconExtension,
+  hasCDNIcons,
+} from './cdn-icons.js'
+export type { CDNConfig } from './cdn-icons.js'
+
 // Re-export SheetData for hierarchical rendering
 export type { SheetData } from './html/index.js'
 // Types
