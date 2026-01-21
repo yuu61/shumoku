@@ -12,9 +12,9 @@ import {
   type LayoutResult,
   type NetworkGraph,
 } from '@shumoku/core'
-import { resolveIconDimensionsForGraph, type ResolvedIconDimensions } from './cdn-icons.js'
-import * as html from './html/index.js'
+import { type ResolvedIconDimensions, resolveIconDimensionsForGraph } from './cdn-icons.js'
 import type { SheetData } from './html/index.js'
+import * as html from './html/index.js'
 import { collectIconUrls, SVGRenderer } from './svg.js'
 
 /**

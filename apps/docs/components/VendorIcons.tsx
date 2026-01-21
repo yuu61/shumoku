@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/cn'
 import {
-  type VendorKey,
   getIconUrl,
+  type VendorKey,
   vendorConfig,
   vendorIcons,
   vendorOrder,

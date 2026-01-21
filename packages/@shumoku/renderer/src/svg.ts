@@ -20,9 +20,9 @@ import type {
 import { DEFAULT_ICON_SIZE, getDeviceIcon, ICON_LABEL_GAP, LABEL_LINE_HEIGHT } from '@shumoku/core'
 
 import {
-  type IconDimensions,
   getCDNIconUrl,
   hasCDNIcons,
+  type IconDimensions,
   resolveAllIconDimensions,
 } from './cdn-icons.js'
 import type { DataAttributeOptions, RenderMode } from './types.js'

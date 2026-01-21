@@ -3,15 +3,15 @@
  * Renders NetworkGraph to PNG (Node.js only)
  */
 
-import type { LayoutResult, NetworkGraph } from '@shumoku/core'
 import { Resvg } from '@resvg/resvg-js'
+import type { LayoutResult, NetworkGraph } from '@shumoku/core'
 import {
+  type CDNConfig,
   fetchCDNIcon,
   getCDNIconUrl,
   hasCDNIcons,
-  resolveAllIconDimensions,
-  type CDNConfig,
   type IconDimensions,
+  resolveAllIconDimensions,
 } from './cdn-icons.js'
 import * as svg from './svg.js'
 

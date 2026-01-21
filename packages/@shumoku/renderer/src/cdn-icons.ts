@@ -119,7 +119,7 @@ export async function fetchCDNIcon(url: string, timeout: number = 3000): Promise
 
     iconCache.set(url, dataUrl)
     return dataUrl
-  } catch (error) {
+  } catch {
     // Timeout or network error
     iconCache.set(url, null)
     return null
@@ -214,7 +214,7 @@ export async function fetchImageDimensions(
 
     dimensionsCache.set(url, dimensions)
     return dimensions
-  } catch (error) {
+  } catch {
     // Fetch failed (likely CORS), try browser fallback
     if (isBrowser()) {
       const dimensions = await getImageDimensionsViaBrowser(url, timeout)

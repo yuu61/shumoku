@@ -4,8 +4,8 @@
  * Adds PNG rendering support using resvg-js
  */
 
-import * as png from './png.js'
 import type { PreparedRender } from './pipeline.js'
+import * as png from './png.js'
 
 // Re-export everything from base pipeline
 export * from './pipeline.js'

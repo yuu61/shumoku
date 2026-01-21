@@ -9,26 +9,7 @@ import * as svg from './svg.js'
 
 export { svg, html, png }
 
-// Unified render pipeline (PNG throws in browser, use Canvas API instead)
-export {
-  prepareRender,
-  renderGraphToHtml,
-  renderGraphToHtmlHierarchical,
-  renderGraphToPng,
-  renderGraphToSvg,
-  renderHtml,
-  renderHtmlHierarchical,
-  renderPng,
-  renderSvg,
-} from './pipeline.browser.js'
-export type {
-  HTMLRenderOptions,
-  PNGRenderOptions,
-  PreparedRender,
-  PrepareOptions,
-  SVGRenderOptions,
-} from './pipeline.browser.js'
-
+export type { CDNConfig, IconDimensions, ResolvedIconDimensions } from './cdn-icons.js'
 // CDN icon utilities
 export {
   clearIconCache,
@@ -42,10 +23,27 @@ export {
   resolveIconDimensions,
   resolveIconDimensionsForGraph,
 } from './cdn-icons.js'
-export type { CDNConfig, IconDimensions, ResolvedIconDimensions } from './cdn-icons.js'
-
 // Re-export SheetData for hierarchical rendering
 export type { SheetData } from './html/index.js'
+export type {
+  HTMLRenderOptions,
+  PNGRenderOptions,
+  PreparedRender,
+  PrepareOptions,
+  SVGRenderOptions,
+} from './pipeline.browser.js'
+// Unified render pipeline (PNG throws in browser, use Canvas API instead)
+export {
+  prepareRender,
+  renderGraphToHtml,
+  renderGraphToHtmlHierarchical,
+  renderGraphToPng,
+  renderGraphToSvg,
+  renderHtml,
+  renderHtmlHierarchical,
+  renderPng,
+  renderSvg,
+} from './pipeline.browser.js'
 // Types
 export type {
   DataAttributeOptions,
