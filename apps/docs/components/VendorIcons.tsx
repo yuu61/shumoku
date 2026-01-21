@@ -150,12 +150,7 @@ export function VendorIcons() {
                       </code>
                     </td>
                     <td className="px-4 py-2">
-                      <img
-                        src={url}
-                        alt={id}
-                        className="h-12 w-12 object-contain"
-                        loading="lazy"
-                      />
+                      <img src={url} alt={id} className="h-12 w-12 object-contain" loading="lazy" />
                     </td>
                   </tr>
                 ))}

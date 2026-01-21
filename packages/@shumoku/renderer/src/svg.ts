@@ -17,12 +17,7 @@ import type {
   NodeShape,
   ThemeType,
 } from '@shumoku/core'
-import {
-  DEFAULT_ICON_SIZE,
-  getDeviceIcon,
-  ICON_LABEL_GAP,
-  LABEL_LINE_HEIGHT,
-} from '@shumoku/core'
+import { DEFAULT_ICON_SIZE, getDeviceIcon, ICON_LABEL_GAP, LABEL_LINE_HEIGHT } from '@shumoku/core'
 
 import {
   type IconDimensions,

@@ -145,11 +145,7 @@ async function main(): Promise<void> {
     const extMatch = outputBase.toLowerCase().match(/\.(svg|html|htm|png)$/)
     const format: OutputFormat =
       (values.format as OutputFormat) ??
-      (extMatch
-        ? extMatch[1] === 'htm'
-          ? 'html'
-          : (extMatch[1] as OutputFormat)
-        : 'svg')
+      (extMatch ? (extMatch[1] === 'htm' ? 'html' : (extMatch[1] as OutputFormat)) : 'svg')
 
     // Build output path
     const hasExt = /\.(svg|html|htm|png)$/i.test(outputBase)

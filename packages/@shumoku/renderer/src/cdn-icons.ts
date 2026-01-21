@@ -84,10 +84,7 @@ const notFoundCache = new Set<string>()
  * Fetch icon from CDN with timeout and caching
  * Returns base64 data URL or null if fetch failed
  */
-export async function fetchCDNIcon(
-  url: string,
-  timeout: number = 3000,
-): Promise<string | null> {
+export async function fetchCDNIcon(url: string, timeout: number = 3000): Promise<string | null> {
   // Check cache
   if (iconCache.has(url)) {
     return iconCache.get(url) ?? null
@@ -270,7 +267,11 @@ function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | n
   }
 
   // SVG: parse viewBox or width/height attributes
-  if (url.endsWith('.svg') || (data[0] === 0x3c && data[1] === 0x3f) || (data[0] === 0x3c && data[1] === 0x73)) {
+  if (
+    url.endsWith('.svg') ||
+    (data[0] === 0x3c && data[1] === 0x3f) ||
+    (data[0] === 0x3c && data[1] === 0x73)
+  ) {
     const text = new TextDecoder().decode(data)
 
     // Try viewBox first
