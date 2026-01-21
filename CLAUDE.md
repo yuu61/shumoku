@@ -71,6 +71,23 @@ Converts YAML network definitions to `NetworkGraph`. Supports:
 
 ### Renderer (`@shumoku/renderer`)
 
+**Pipeline API** (`src/pipeline.ts`): Unified render pipeline
+- `prepareRender()` - Resolve icon dimensions and compute layout
+- `renderSvg()` - Render to SVG from prepared data
+- `renderHtml()` - Render to interactive HTML
+- `renderPng()` - Render to PNG (Node.js only, requires @resvg/resvg-js)
+
+**Convenience functions**: One-liner API
+- `renderGraphToSvg()` - Direct graph to SVG
+- `renderGraphToHtml()` - Direct graph to HTML
+- `renderGraphToPng()` - Direct graph to PNG
+
+**CDN Icons** (`src/cdn-icons.ts`): Icon dimension resolution
+- Fetches icon dimensions from `https://icons.shumoku.packof.me`
+- Supports proper aspect ratio rendering for vendor icons
+- Browser fallback uses Image.onload for CORS-blocked requests
+
+**Low-level renderers**:
 - `svg.render()` - Pure SVG output
 - `html.render()` - Interactive HTML with pan/zoom, tooltips
 - `html.renderHierarchical()` - Multi-sheet navigation for hierarchical networks
@@ -83,8 +100,13 @@ Converts YAML network definitions to `NetworkGraph`. Supports:
 
 ### Data Flow
 ```
-YAML input → YamlParser.parse() → NetworkGraph → HierarchicalLayout.layout() → LayoutResult → svg/html.render() → Output
+YAML input → YamlParser.parse() → NetworkGraph → prepareRender() → PreparedRender → renderSvg/Html/Png() → Output
 ```
+
+Pipeline internally handles:
+1. Icon dimension resolution (CDN fetch with caching)
+2. Layout computation (HierarchicalLayout)
+3. Rendering with proper icon aspect ratios
 
 ## Versioning
 
@@ -112,13 +134,19 @@ const graph: NetworkGraph = {
   settings?: NetworkSettings
 }
 
-// Using layout engine
-const layout = new HierarchicalLayout()
-const result: LayoutResult = await layout.layout(graph)
+// Recommended: Use pipeline API (handles icon dimensions automatically)
+import { prepareRender, renderSvg, renderHtml, renderPng } from '@shumoku/renderer'
 
-// Rendering
-const svgOutput = svg.render(graph, result)
-const htmlOutput = html.render(graph, result)
+const prepared = await prepareRender(graph)
+const svgOutput = await renderSvg(prepared)
+const htmlOutput = renderHtml(prepared)
+const pngBuffer = await renderPng(prepared)  // Node.js only
+
+// Or use convenience functions
+import { renderGraphToSvg, renderGraphToHtml } from '@shumoku/renderer'
+
+const svg = await renderGraphToSvg(graph)
+const html = await renderGraphToHtml(graph)
 ```
 
 ## Testing

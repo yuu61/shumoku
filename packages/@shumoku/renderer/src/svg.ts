@@ -4,7 +4,6 @@
  */
 
 import type {
-  IconThemeVariant,
   LayoutLink,
   LayoutNode,
   LayoutPort,
@@ -18,15 +17,14 @@ import type {
   NodeShape,
   ThemeType,
 } from '@shumoku/core'
-import {
-  DEFAULT_ICON_SIZE,
-  getDeviceIcon,
-  getVendorIconEntry,
-  ICON_LABEL_GAP,
-  LABEL_LINE_HEIGHT,
-  MAX_ICON_WIDTH_RATIO,
-} from '@shumoku/core'
+import { DEFAULT_ICON_SIZE, getDeviceIcon, ICON_LABEL_GAP, LABEL_LINE_HEIGHT } from '@shumoku/core'
 
+import {
+  getCDNIconUrl,
+  hasCDNIcons,
+  type IconDimensions,
+  resolveAllIconDimensions,
+} from './cdn-icons.js'
 import type { DataAttributeOptions, RenderMode } from './types.js'
 
 // ============================================
@@ -186,6 +184,11 @@ export interface SVGRendererOptions {
    * Used to embed child SVG content into parent subgraph boxes
    */
   embeddedContent?: Map<string, EmbeddedSubgraphContent>
+  /**
+   * Pre-resolved icon dimensions (URL -> dimensions)
+   * Used to render icons at correct aspect ratio
+   */
+  iconDimensions?: Map<string, IconDimensions>
 }
 
 const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
@@ -195,6 +198,7 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
   dataAttributes: { device: true, link: true, metadata: true },
   sheetId: '',
   embeddedContent: new Map(),
+  iconDimensions: new Map(),
 }
 
 // ============================================
@@ -204,7 +208,6 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
 export class SVGRenderer {
   private options: Required<SVGRendererOptions>
   private themeColors: ThemeColors = LIGHT_THEME
-  private iconTheme: IconThemeVariant = 'default'
 
   constructor(options?: SVGRendererOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
@@ -246,20 +249,12 @@ export class SVGRenderer {
     return theme === 'dark' ? DARK_THEME : LIGHT_THEME
   }
 
-  /**
-   * Get icon theme variant based on theme type
-   */
-  private getIconTheme(theme?: ThemeType): IconThemeVariant {
-    return theme === 'dark' ? 'dark' : 'light'
-  }
-
   render(graph: NetworkGraph, layout: LayoutResult): string {
     const { bounds } = layout
 
     // Set theme colors based on graph settings
     const theme = graph.settings?.theme
     this.themeColors = this.getThemeColors(theme)
-    this.iconTheme = this.getIconTheme(theme)
 
     // Calculate legend dimensions if enabled
     const legendSettings = this.getLegendSettings(graph.settings?.legend)
@@ -568,57 +563,69 @@ export class SVGRenderer {
 
     const rx = 12 // Border radius (larger for container/card feel)
 
-    // Check if subgraph has vendor icon (service for cloud, model for hardware)
-    const iconKey = subgraph.service || subgraph.model
-    const hasIcon = subgraph.vendor && iconKey
-    const iconSize = 24
+    // Check if subgraph has icon (user-specified or CDN-supported vendor)
+    // AWS uses service/resource format (e.g., ec2/instance)
+    const iconKey =
+      subgraph.service && subgraph.resource
+        ? `${subgraph.service}/${subgraph.resource}`
+        : subgraph.service || subgraph.model
+    const hasIcon = subgraph.icon || (subgraph.vendor && iconKey && hasCDNIcons(subgraph.vendor))
+    const defaultIconSize = 24
     const iconPadding = 8
+
+    // Get icon URL and dimensions for sizing calculations
+    let iconUrl: string | undefined
+    let iconWidth = defaultIconSize
+    let iconHeight = defaultIconSize
+
+    if (subgraph.icon) {
+      iconUrl = subgraph.icon
+      const dims = this.options.iconDimensions.get(subgraph.icon)
+      if (dims) {
+        const aspectRatio = dims.width / dims.height
+        if (aspectRatio >= 1) {
+          iconHeight = defaultIconSize
+          iconWidth = Math.round(defaultIconSize * aspectRatio)
+        } else {
+          iconHeight = defaultIconSize
+          iconWidth = Math.round(defaultIconSize * aspectRatio)
+        }
+      }
+    } else if (subgraph.vendor && iconKey && hasCDNIcons(subgraph.vendor)) {
+      iconUrl = getCDNIconUrl(subgraph.vendor, iconKey)
+      const dims = this.options.iconDimensions.get(iconUrl)
+      if (dims) {
+        const aspectRatio = dims.width / dims.height
+        if (aspectRatio >= 1) {
+          iconHeight = defaultIconSize
+          iconWidth = Math.round(defaultIconSize * aspectRatio)
+        } else {
+          iconHeight = defaultIconSize
+          iconWidth = Math.round(defaultIconSize * aspectRatio)
+        }
+      }
+    }
 
     // Calculate icon position (top-left corner)
     const iconX = bounds.x + iconPadding
     const iconY = bounds.y + iconPadding
 
     // Label position - shift right if there's an icon
-    let labelX = hasIcon ? bounds.x + iconSize + iconPadding * 2 : bounds.x + 10
+    let labelX = hasIcon ? bounds.x + iconWidth + iconPadding * 2 : bounds.x + 10
     let labelY = bounds.y + 20
     const textAnchor = 'start'
 
     if (labelPos === 'top') {
-      labelX = hasIcon ? bounds.x + iconSize + iconPadding * 2 : bounds.x + 10
+      labelX = hasIcon ? bounds.x + iconWidth + iconPadding * 2 : bounds.x + 10
       labelY = bounds.y + 20
     }
 
-    // Render vendor icon if available
+    // Render icon if available (user-specified URL or CDN URL)
     let iconSvg = ''
-    if (hasIcon) {
-      const iconEntry = getVendorIconEntry(subgraph.vendor!, iconKey!, subgraph.resource)
-      if (iconEntry) {
-        const iconContent = iconEntry[this.iconTheme] || iconEntry.default
-        const viewBox = iconEntry.viewBox || '0 0 48 48'
-
-        // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
-        if (iconContent.startsWith('<svg')) {
-          const viewBoxMatch = iconContent.match(/viewBox="0 0 (\d+) (\d+)"/)
-          if (viewBoxMatch) {
-            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
-            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
-            const aspectRatio = vbWidth / vbHeight
-            const iconWidth = Math.round(iconSize * aspectRatio)
-            iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
-    <svg width="${iconWidth}" height="${iconSize}" viewBox="0 0 ${vbWidth} ${vbHeight}">
-      ${iconContent.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')}
-    </svg>
+    if (hasIcon && iconUrl) {
+      iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
+    <image href="${iconUrl}" width="${iconWidth}" height="${iconHeight}" preserveAspectRatio="xMidYMid meet" />
   </g>`
-          }
-        } else {
-          // Use viewBox from entry
-          iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
-    <svg width="${iconSize}" height="${iconSize}" viewBox="${viewBox}">
-      ${iconContent}
-    </svg>
-  </g>`
-        }
-      }
     }
 
     // Hierarchical navigation attributes
@@ -958,73 +965,72 @@ ${fg}
   }
 
   /**
-   * Calculate icon dimensions for a node
+   * Calculate icon render size based on pre-resolved dimensions
+   * Returns dimensions that maintain aspect ratio within constraints
    */
+  private calculateIconSize(
+    dimensions: IconDimensions | undefined,
+    maxWidth: number,
+    defaultSize: number = DEFAULT_ICON_SIZE,
+  ): { width: number; height: number } {
+    if (!dimensions) {
+      // Fallback to square
+      const size = Math.min(defaultSize, maxWidth)
+      return { width: size, height: size }
+    }
+
+    const aspectRatio = dimensions.width / dimensions.height
+
+    if (aspectRatio >= 1) {
+      // Horizontal or square image: constrain by height
+      let height = defaultSize
+      let width = Math.round(height * aspectRatio)
+      if (width > maxWidth) {
+        width = maxWidth
+        height = Math.round(width / aspectRatio)
+      }
+      return { width, height }
+    } else {
+      // Vertical image: constrain by height
+      const height = defaultSize
+      const width = Math.round(height * aspectRatio)
+      return { width, height }
+    }
+  }
+
   private calculateIconInfo(
     node: Node,
     w: number,
   ): { width: number; height: number; svg: string } | null {
-    // Cap icon width at MAX_ICON_WIDTH_RATIO of node width to leave room for ports
-    const maxIconWidth = Math.round(w * MAX_ICON_WIDTH_RATIO)
+    // Use full node width as max; layout engine already calculated appropriate size
+    const maxIconWidth = w
+
+    // User-specified icon URL takes highest priority
+    if (node.icon) {
+      const dims = this.options.iconDimensions.get(node.icon)
+      const { width, height } = this.calculateIconSize(dims, maxIconWidth)
+      return {
+        width,
+        height,
+        svg: `<image href="${node.icon}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
+      }
+    }
 
     // Try vendor-specific icon first (service for cloud, model for hardware)
-    const iconKey = node.service || node.model
-    if (node.vendor && iconKey) {
-      const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
-      if (iconEntry) {
-        const vendorIcon = iconEntry[this.iconTheme] || iconEntry.default
-        const viewBox = iconEntry.viewBox || '0 0 48 48'
-
-        // Check if icon is a nested SVG (PNG-based with custom viewBox in content)
-        if (vendorIcon.startsWith('<svg')) {
-          const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
-          if (viewBoxMatch) {
-            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
-            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
-            const aspectRatio = vbWidth / vbHeight
-            let iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
-            let iconHeight = DEFAULT_ICON_SIZE
-            if (iconWidth > maxIconWidth) {
-              iconWidth = maxIconWidth
-              iconHeight = Math.round(maxIconWidth / aspectRatio)
-            }
-            const innerSvg = vendorIcon.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')
-            return {
-              width: iconWidth,
-              height: iconHeight,
-              svg: `<svg width="${iconWidth}" height="${iconHeight}" viewBox="0 0 ${vbWidth} ${vbHeight}">${innerSvg}</svg>`,
-            }
-          }
-        }
-
-        // Parse viewBox for aspect ratio calculation
-        const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
-        if (vbMatch) {
-          const vbWidth = Number.parseInt(vbMatch[3], 10)
-          const vbHeight = Number.parseInt(vbMatch[4], 10)
-          const aspectRatio = vbWidth / vbHeight
-          let iconWidth =
-            Math.abs(aspectRatio - 1) < 0.01
-              ? DEFAULT_ICON_SIZE
-              : Math.round(DEFAULT_ICON_SIZE * aspectRatio)
-          let iconHeight = DEFAULT_ICON_SIZE
-          if (iconWidth > maxIconWidth) {
-            iconWidth = maxIconWidth
-            iconHeight = Math.round(maxIconWidth / aspectRatio)
-          }
-          return {
-            width: iconWidth,
-            height: iconHeight,
-            svg: `<svg width="${iconWidth}" height="${iconHeight}" viewBox="${viewBox}">${vendorIcon}</svg>`,
-          }
-        }
-
-        // Fallback: use viewBox directly
-        return {
-          width: DEFAULT_ICON_SIZE,
-          height: DEFAULT_ICON_SIZE,
-          svg: `<svg width="${DEFAULT_ICON_SIZE}" height="${DEFAULT_ICON_SIZE}" viewBox="${viewBox}">${vendorIcon}</svg>`,
-        }
+    // AWS uses service/resource format (e.g., ec2/instance)
+    const iconKey =
+      node.service && node.resource
+        ? `${node.service}/${node.resource}`
+        : node.service || node.model
+    // Use CDN icons for supported vendors
+    if (node.vendor && iconKey && hasCDNIcons(node.vendor)) {
+      const cdnUrl = getCDNIconUrl(node.vendor, iconKey)
+      const dims = this.options.iconDimensions.get(cdnUrl)
+      const { width, height } = this.calculateIconSize(dims, maxIconWidth)
+      return {
+        width,
+        height,
+        svg: `<image href="${cdnUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
       }
     }
 
@@ -1785,9 +1791,60 @@ ${lines.join('\n')}
 export interface RenderOptions extends SVGRendererOptions {}
 
 /**
- * Render NetworkGraph to SVG string
+ * Render NetworkGraph to SVG string (sync)
  */
 export function render(graph: NetworkGraph, layout: LayoutResult, options?: RenderOptions): string {
   const renderer = new SVGRenderer(options)
   return renderer.render(graph, layout)
+}
+
+/**
+ * Collect all icon URLs from a NetworkGraph
+ */
+export function collectIconUrls(graph: NetworkGraph): string[] {
+  const urls = new Set<string>()
+
+  for (const node of graph.nodes) {
+    if (node.icon) {
+      urls.add(node.icon)
+    } else if (node.vendor && hasCDNIcons(node.vendor)) {
+      const iconKey =
+        node.service && node.resource
+          ? `${node.service}/${node.resource}`
+          : node.service || node.model
+      if (iconKey) {
+        urls.add(getCDNIconUrl(node.vendor, iconKey))
+      }
+    }
+  }
+
+  if (graph.subgraphs) {
+    for (const sg of graph.subgraphs) {
+      if (sg.icon) {
+        urls.add(sg.icon)
+      }
+    }
+  }
+
+  return Array.from(urls)
+}
+
+/**
+ * Render NetworkGraph to SVG string (async)
+ * Pre-resolves icon dimensions for correct aspect ratios
+ * Use this in Node.js environments for CDN icons
+ */
+export async function renderAsync(
+  graph: NetworkGraph,
+  layout: LayoutResult,
+  options?: RenderOptions,
+): Promise<string> {
+  const urls = collectIconUrls(graph)
+  let iconDimensions = options?.iconDimensions
+
+  if (!iconDimensions && urls.length > 0) {
+    iconDimensions = await resolveAllIconDimensions(urls)
+  }
+
+  return render(graph, layout, { ...options, iconDimensions })
 }

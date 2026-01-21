@@ -10,12 +10,27 @@ npm install @shumoku/icons @shumoku/core
 
 ## Supported Vendors
 
-| Vendor | Icons | Description |
-|--------|-------|-------------|
-| Yamaha | 103 | Network equipment (RTX, SWX, WLX series) |
-| Aruba | 55 | Wireless and switching |
-| AWS | 477 | Cloud services icons |
-| Juniper | 343 | Network equipment |
+| Vendor | Icons | Format | Description |
+|--------|-------|--------|-------------|
+| Yamaha | 103 | PNG | Network equipment (RTX, SWX, WLX series) |
+| Aruba | 55 | SVG | Wireless and switching |
+| AWS | 477 | SVG | Cloud services icons |
+| Juniper | 343 | PNG | Network equipment |
+
+## CDN Hosting
+
+Icons are hosted on CDN at `https://icons.shumoku.packof.me` for optimal loading.
+
+```
+https://icons.shumoku.packof.me/v1/{vendor}/{model}.{png|svg}
+```
+
+Examples:
+- `https://icons.shumoku.packof.me/v1/yamaha/rtx3510.png`
+- `https://icons.shumoku.packof.me/v1/aws/ec2-instance.svg`
+- `https://icons.shumoku.packof.me/v1/juniper/srx4100.png`
+
+The renderer automatically fetches icon dimensions from CDN for proper aspect ratio rendering.
 
 ## Usage
 

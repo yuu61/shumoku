@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/cn'
 import { ArrowRightIcon, CopyIcon } from './icons'
 import { backgrounds, buttonStyles, cardStyles } from './styles'
-import { homeTranslations, type HeroTranslations, type Locale } from './translations'
+import { type HeroTranslations, homeTranslations, type Locale } from './translations'
 
 function StatusBadge({ t }: { t: HeroTranslations }) {
   return (

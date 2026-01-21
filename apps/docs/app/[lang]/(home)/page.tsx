@@ -7,11 +7,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function HomePage({
-  params,
-}: {
-  params: Promise<{ lang: string }>
-}) {
+export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
 
   return (

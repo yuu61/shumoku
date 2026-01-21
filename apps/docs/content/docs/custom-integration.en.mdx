@@ -61,14 +61,25 @@ const networkGraph = {
 ### 3. Render
 
 ```typescript
-import { HierarchicalLayoutEngine, SvgRenderer } from 'shumoku'
+import { renderGraphToSvg, renderGraphToHtml, renderGraphToPng } from '@shumoku/renderer'
 
-const engine = new HierarchicalLayoutEngine()
-const layout = await engine.layout(networkGraph)
+// One-liner API (recommended)
+const svg = await renderGraphToSvg(networkGraph)
+const html = await renderGraphToHtml(networkGraph)
+const pngBuffer = await renderGraphToPng(networkGraph)  // Node.js only
 
-const renderer = new SvgRenderer()
-const svg = renderer.render(layout)
+// Or use the pipeline API for more control
+import { prepareRender, renderSvg, renderHtml, renderPng } from '@shumoku/renderer'
+
+const prepared = await prepareRender(networkGraph)
+const svg = await renderSvg(prepared)
+const html = renderHtml(prepared)
+const png = await renderPng(prepared)  // Node.js only
 ```
+
+<Callout type="info">
+The pipeline automatically resolves icon dimensions from CDN for proper aspect ratio rendering.
+</Callout>
 
 ## CLI Workflow
 

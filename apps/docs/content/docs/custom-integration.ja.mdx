@@ -61,14 +61,25 @@ const networkGraph = {
 ### 3. レンダリング
 
 ```typescript
-import { HierarchicalLayoutEngine, SvgRenderer } from 'shumoku'
+import { renderGraphToSvg, renderGraphToHtml, renderGraphToPng } from '@shumoku/renderer'
 
-const engine = new HierarchicalLayoutEngine()
-const layout = await engine.layout(networkGraph)
+// ワンライナー API（推奨）
+const svg = await renderGraphToSvg(networkGraph)
+const html = await renderGraphToHtml(networkGraph)
+const pngBuffer = await renderGraphToPng(networkGraph)  // Node.js のみ
 
-const renderer = new SvgRenderer()
-const svg = renderer.render(layout)
+// より細かい制御が必要な場合はパイプライン API を使用
+import { prepareRender, renderSvg, renderHtml, renderPng } from '@shumoku/renderer'
+
+const prepared = await prepareRender(networkGraph)
+const svg = await renderSvg(prepared)
+const html = renderHtml(prepared)
+const png = await renderPng(prepared)  // Node.js のみ
 ```
+
+<Callout type="info">
+パイプラインは CDN からアイコンの寸法を自動的に解決し、適切なアスペクト比でレンダリングします。
+</Callout>
 
 ## CLI でのワークフロー
 

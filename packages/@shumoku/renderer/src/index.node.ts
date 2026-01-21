@@ -9,8 +9,41 @@ import * as svg from './svg.js'
 
 export { svg, html, png }
 
+export type { CDNConfig, IconDimensions, ResolvedIconDimensions } from './cdn-icons.js'
+// CDN icon utilities
+export {
+  clearIconCache,
+  DEFAULT_CDN_CONFIG,
+  fetchCDNIcon,
+  fetchImageDimensions,
+  getCDNIconUrl,
+  getIconExtension,
+  hasCDNIcons,
+  resolveAllIconDimensions,
+  resolveIconDimensions,
+  resolveIconDimensionsForGraph,
+} from './cdn-icons.js'
 // Re-export SheetData for hierarchical rendering
 export type { SheetData } from './html/index.js'
+export type {
+  HTMLRenderOptions,
+  PNGRenderOptions,
+  PreparedRender,
+  PrepareOptions,
+  SVGRenderOptions,
+} from './pipeline.node.js'
+// Unified render pipeline (with PNG support)
+export {
+  prepareRender,
+  renderGraphToHtml,
+  renderGraphToHtmlHierarchical,
+  renderGraphToPng,
+  renderGraphToSvg,
+  renderHtml,
+  renderHtmlHierarchical,
+  renderPng,
+  renderSvg,
+} from './pipeline.node.js'
 // Types
 export type {
   DataAttributeOptions,

@@ -3,14 +3,22 @@ title: Vendor Icons
 description: Use Yamaha, AWS, Juniper, and other vendor icons
 ---
 
-Shumoku includes over 900 vendor icons.
+Shumoku includes over 900 vendor icons hosted on CDN for optimal loading.
 
-| Vendor | Icon Count | Use Cases |
-|--------|------------|-----------|
-| Yamaha | 103 | Routers, switches, APs, VoIP |
-| Aruba | 55 | Switches, APs, controllers |
-| AWS | 477 | Cloud services |
-| Juniper | 343 | Routers, switches, firewalls |
+| Vendor | Icon Count | Format | Use Cases |
+|--------|------------|--------|-----------|
+| Yamaha | 103 | PNG | Routers, switches, APs, VoIP |
+| Aruba | 55 | SVG | Switches, APs, controllers |
+| AWS | 477 | SVG | Cloud services |
+| Juniper | 343 | PNG | Routers, switches, firewalls |
+
+## CDN Hosting
+
+Icons are automatically loaded from `https://icons.shumoku.packof.me`. The renderer fetches icon dimensions to ensure proper aspect ratio rendering.
+
+<Callout type="info">
+Icons are cached and dimensions are resolved automatically. No manual configuration needed.
+</Callout>
 
 ## Auto Registration
 

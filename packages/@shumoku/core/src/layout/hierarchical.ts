@@ -14,17 +14,17 @@ import {
   ESTIMATED_CHAR_WIDTH,
   ICON_LABEL_GAP,
   LABEL_LINE_HEIGHT,
-  MAX_ICON_WIDTH_RATIO,
   MIN_PORT_SPACING,
   NODE_HORIZONTAL_PADDING,
   NODE_VERTICAL_PADDING,
   PORT_LABEL_FONT_SIZE,
   PORT_LABEL_PADDING,
 } from '../constants.js'
-import { getDeviceIcon, getVendorIconEntry } from '../icons/index.js'
+import { getDeviceIcon } from '../icons/index.js'
 import {
   type Bounds,
   getNodeId,
+  type IconDimensions,
   type LayoutDirection,
   type LayoutLink,
   type LayoutNode,
@@ -155,6 +155,8 @@ export interface HierarchicalLayoutOptions {
   rankSpacing?: number
   subgraphPadding?: number
   subgraphLabelHeight?: number
+  /** Pre-resolved icon dimensions for CDN icons (URL -> dimensions) */
+  iconDimensions?: Map<string, IconDimensions>
 }
 
 const DEFAULT_OPTIONS: Required<HierarchicalLayoutOptions> = {
@@ -165,6 +167,7 @@ const DEFAULT_OPTIONS: Required<HierarchicalLayoutOptions> = {
   rankSpacing: 60,
   subgraphPadding: 24,
   subgraphLabelHeight: 24,
+  iconDimensions: new Map(),
 }
 
 // ============================================
@@ -1070,62 +1073,44 @@ export class HierarchicalLayout {
     }
   }
 
-  private calculateNodeHeight(node: Node, portCount = 0): number {
+  /**
+   * Get icon key for a node (service/resource or service or model)
+   */
+  private getIconKey(node: Node): string | undefined {
+    if (node.service && node.resource) {
+      return `${node.service}/${node.resource}`
+    }
+    return node.service || node.model
+  }
+
+  /**
+   * Get icon aspect ratio for a node
+   * Returns null if no CDN icon dimensions available
+   */
+  private getIconAspectRatio(node: Node): number | null {
+    const iconKey = this.getIconKey(node)
+    if (!node.vendor || !iconKey) return null
+
+    // Use pre-resolved CDN icon dimensions
+    const dimensionKey = `${node.vendor.toLowerCase()}/${iconKey.toLowerCase().replace(/\//g, '-')}`
+    const cdnDims = this.options.iconDimensions.get(dimensionKey)
+    if (cdnDims) {
+      return cdnDims.width / cdnDims.height
+    }
+
+    return null
+  }
+
+  private calculateNodeHeight(node: Node, _portCount = 0): number {
     const lines = Array.isArray(node.label) ? node.label.length : 1
     const labelHeight = lines * LABEL_LINE_HEIGHT
 
-    const labels = Array.isArray(node.label) ? node.label : [node.label]
-    const maxLabelLength = Math.max(...labels.map((l) => l.length))
-    const labelWidth = maxLabelLength * ESTIMATED_CHAR_WIDTH
-    const portWidth = portCount > 0 ? (portCount + 1) * MIN_PORT_SPACING : 0
-    const baseContentWidth = Math.max(labelWidth, portWidth)
-    const baseNodeWidth = Math.max(
-      this.options.nodeWidth,
-      baseContentWidth + NODE_HORIZONTAL_PADDING,
-    )
-    const maxIconWidth = Math.round(baseNodeWidth * MAX_ICON_WIDTH_RATIO)
-
+    // Calculate icon height (fixed at DEFAULT_ICON_SIZE for CDN icons)
     let iconHeight = 0
-    const iconKey = node.service || node.model
-    if (node.vendor && iconKey) {
-      const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
-      if (iconEntry) {
-        const vendorIcon = iconEntry.default
-        const viewBox = iconEntry.viewBox || '0 0 48 48'
-
-        if (vendorIcon.startsWith('<svg')) {
-          const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
-          if (viewBoxMatch) {
-            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
-            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
-            const aspectRatio = vbWidth / vbHeight
-            const iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
-            iconHeight = DEFAULT_ICON_SIZE
-            if (iconWidth > maxIconWidth) {
-              iconHeight = Math.round(maxIconWidth / aspectRatio)
-            }
-          } else {
-            iconHeight = DEFAULT_ICON_SIZE
-          }
-        } else {
-          const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
-          if (vbMatch) {
-            const vbWidth = Number.parseInt(vbMatch[3], 10)
-            const vbHeight = Number.parseInt(vbMatch[4], 10)
-            const aspectRatio = vbWidth / vbHeight
-            const iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
-            iconHeight = DEFAULT_ICON_SIZE
-            if (iconWidth > maxIconWidth) {
-              iconHeight = Math.round(maxIconWidth / aspectRatio)
-            }
-          } else {
-            iconHeight = DEFAULT_ICON_SIZE
-          }
-        }
-      }
-    }
-
-    if (iconHeight === 0 && node.type && getDeviceIcon(node.type)) {
+    const aspectRatio = this.getIconAspectRatio(node)
+    if (aspectRatio !== null) {
+      iconHeight = DEFAULT_ICON_SIZE
+    } else if (node.type && getDeviceIcon(node.type)) {
       iconHeight = DEFAULT_ICON_SIZE
     }
 
@@ -1161,40 +1146,16 @@ export class HierarchicalLayout {
     const edgeMargin = Math.round(MIN_PORT_SPACING / 2)
     const portWidth = maxPortsPerSide > 0 ? (maxPortsPerSide - 1) * portSpacing + edgeMargin * 2 : 0
 
-    const paddedContentWidth = Math.max(labelWidth, 0) + NODE_HORIZONTAL_PADDING
-    const baseNodeWidth = Math.max(paddedContentWidth, portWidth)
-
-    const maxIconWidth = Math.round(baseNodeWidth * MAX_ICON_WIDTH_RATIO)
+    // Calculate icon width based on aspect ratio
     let iconWidth = DEFAULT_ICON_SIZE
-    const iconKey = node.service || node.model
-    if (node.vendor && iconKey) {
-      const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
-      if (iconEntry) {
-        const vendorIcon = iconEntry.default
-        const viewBox = iconEntry.viewBox || '0 0 48 48'
-
-        if (vendorIcon.startsWith('<svg')) {
-          const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
-          if (viewBoxMatch) {
-            const vbWidth = Number.parseInt(viewBoxMatch[1], 10)
-            const vbHeight = Number.parseInt(viewBoxMatch[2], 10)
-            const aspectRatio = vbWidth / vbHeight
-            iconWidth = Math.min(Math.round(DEFAULT_ICON_SIZE * aspectRatio), maxIconWidth)
-          }
-        } else {
-          const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
-          if (vbMatch) {
-            const vbWidth = Number.parseInt(vbMatch[3], 10)
-            const vbHeight = Number.parseInt(vbMatch[4], 10)
-            const aspectRatio = vbWidth / vbHeight
-            iconWidth = Math.min(Math.round(DEFAULT_ICON_SIZE * aspectRatio), maxIconWidth)
-          }
-        }
-      }
+    const aspectRatio = this.getIconAspectRatio(node)
+    if (aspectRatio !== null) {
+      iconWidth = Math.round(DEFAULT_ICON_SIZE * aspectRatio)
     }
 
+    const paddedContentWidth = Math.max(labelWidth, 0) + NODE_HORIZONTAL_PADDING
     const paddedIconLabelWidth = Math.max(iconWidth, labelWidth) + NODE_HORIZONTAL_PADDING
-    return Math.max(paddedIconLabelWidth, portWidth)
+    return Math.max(paddedIconLabelWidth, portWidth, paddedContentWidth)
   }
 
   private calculateTotalBounds(

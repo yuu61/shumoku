@@ -4,6 +4,16 @@
  */
 
 // ============================================
+// Icon Dimensions
+// ============================================
+
+/** Icon dimensions for aspect ratio calculation */
+export interface IconDimensions {
+  width: number
+  height: number
+}
+
+// ============================================
 // Node Types
 // ============================================
 
@@ -89,6 +99,12 @@ export interface Node {
    * Resource type within the service (e.g., 'instance', 'nat-gateway')
    */
   resource?: string
+
+  /**
+   * Custom icon URL (overrides vendor/type icons)
+   * Supports any image URL (PNG, SVG, etc.)
+   */
+  icon?: string
 }
 
 // ============================================
@@ -312,6 +328,12 @@ export interface Subgraph {
    * Resource type within the service (e.g., 'instance', 'nat-gateway')
    */
   resource?: string
+
+  /**
+   * Custom icon URL (overrides vendor/type icons)
+   * Supports any image URL (PNG, SVG, etc.)
+   */
+  icon?: string
 
   /**
    * File reference for external sheet definition (KiCad-style hierarchy)
