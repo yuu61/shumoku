@@ -4,6 +4,16 @@
  */
 
 // ============================================
+// Icon Dimensions
+// ============================================
+
+/** Icon dimensions for aspect ratio calculation */
+export interface IconDimensions {
+  width: number
+  height: number
+}
+
+// ============================================
 // Node Types
 // ============================================
 

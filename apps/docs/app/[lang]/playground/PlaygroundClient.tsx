@@ -1,7 +1,7 @@
 'use client'
 
-import type { SheetData } from '@shumoku/renderer'
-import { html } from '@shumoku/renderer'
+import type { ResolvedIconDimensions, SheetData } from '@shumoku/renderer'
+import { html, resolveIconDimensionsForGraph, svg as svgRenderer } from '@shumoku/renderer'
 import { INTERACTIVE_IIFE } from '@shumoku/renderer/iife-string'
 import { useEffect, useRef, useState } from 'react'
 import type { LayoutResult, NetworkGraph } from 'shumoku'
@@ -312,14 +312,23 @@ export default function PlaygroundClient() {
         sheetsRef.current = null
       }
 
-      const layout = new HierarchicalLayout()
+      // Resolve icon dimensions before layout
+      const iconUrls = svgRenderer.collectIconUrls(graph)
+      const iconDims = iconUrls.length > 0 ? await resolveIconDimensionsForGraph(iconUrls) : null
+
+      // Layout with icon dimensions for proper node sizing
+      const layout = new HierarchicalLayout({
+        iconDimensions: iconDims?.byKey,
+      })
       const layoutRes = await layout.layoutAsync(graph)
 
       // Store for Open Viewer
       graphRef.current = graph
       layoutRef.current = layoutRes
 
-      const svgOutput = svg.render(graph, layoutRes)
+      const svgOutput = await svg.renderAsync(graph, layoutRes, {
+        iconDimensions: iconDims?.byUrl,
+      })
       setSvgContent(svgOutput)
       setError(null)
     } catch (e) {
@@ -362,7 +371,7 @@ export default function PlaygroundClient() {
     if (!graphRef.current || !layoutRef.current) return null
 
     if (format === 'svg') {
-      return svg.render(graphRef.current, layoutRef.current)
+      return svg.renderAsync(graphRef.current, layoutRef.current)
     }
     // HTML: check for hierarchical sheets
     const sheetDataMap = await buildHierarchicalSheets()

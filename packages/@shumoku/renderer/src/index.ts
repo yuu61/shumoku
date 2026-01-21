@@ -14,11 +14,15 @@ export {
   clearIconCache,
   DEFAULT_CDN_CONFIG,
   fetchCDNIcon,
+  fetchImageDimensions,
   getCDNIconUrl,
   getIconExtension,
   hasCDNIcons,
+  resolveAllIconDimensions,
+  resolveIconDimensions,
+  resolveIconDimensionsForGraph,
 } from './cdn-icons.js'
-export type { CDNConfig } from './cdn-icons.js'
+export type { CDNConfig, IconDimensions, ResolvedIconDimensions } from './cdn-icons.js'
 
 // Re-export SheetData for hierarchical rendering
 export type { SheetData } from './html/index.js'

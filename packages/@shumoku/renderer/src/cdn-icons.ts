@@ -3,6 +3,12 @@
  * Generates CDN URLs for vendor icons
  */
 
+/** Icon dimensions */
+export interface IconDimensions {
+  width: number
+  height: number
+}
+
 /** CDN configuration */
 export interface CDNConfig {
   /** CDN base URL */
@@ -129,4 +135,193 @@ export async function fetchCDNIcon(
 export function clearIconCache(): void {
   iconCache.clear()
   notFoundCache.clear()
+  dimensionsCache.clear()
+}
+
+// ============================================
+// Icon Dimensions Resolution
+// ============================================
+
+/** Cache for icon dimensions */
+const dimensionsCache = new Map<string, IconDimensions | null>()
+
+/**
+ * Fetch image dimensions from URL
+ * Uses image header parsing for efficiency
+ */
+export async function fetchImageDimensions(
+  url: string,
+  timeout: number = 3000,
+): Promise<IconDimensions | null> {
+  // Check cache
+  if (dimensionsCache.has(url)) {
+    return dimensionsCache.get(url) ?? null
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const response = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      dimensionsCache.set(url, null)
+      return null
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const dimensions = parseImageDimensions(new Uint8Array(arrayBuffer), url)
+
+    dimensionsCache.set(url, dimensions)
+    return dimensions
+  } catch (error) {
+    dimensionsCache.set(url, null)
+    return null
+  }
+}
+
+/**
+ * Parse image dimensions from binary data
+ * Supports PNG, JPEG, SVG, GIF
+ */
+function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | null {
+  // PNG: dimensions at bytes 16-23
+  if (data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) {
+    const width = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19]
+    const height = (data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23]
+    return { width, height }
+  }
+
+  // JPEG: search for SOF0 marker (0xFFC0)
+  if (data[0] === 0xff && data[1] === 0xd8) {
+    let offset = 2
+    while (offset < data.length - 8) {
+      if (data[offset] === 0xff) {
+        const marker = data[offset + 1]
+        // SOF0, SOF1, SOF2 markers contain dimensions
+        if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+          const height = (data[offset + 5] << 8) | data[offset + 6]
+          const width = (data[offset + 7] << 8) | data[offset + 8]
+          return { width, height }
+        }
+        // Skip to next marker
+        const length = (data[offset + 2] << 8) | data[offset + 3]
+        offset += 2 + length
+      } else {
+        offset++
+      }
+    }
+  }
+
+  // GIF: dimensions at bytes 6-9
+  if (data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46) {
+    const width = data[6] | (data[7] << 8)
+    const height = data[8] | (data[9] << 8)
+    return { width, height }
+  }
+
+  // SVG: parse viewBox or width/height attributes
+  if (url.endsWith('.svg') || (data[0] === 0x3c && data[1] === 0x3f) || (data[0] === 0x3c && data[1] === 0x73)) {
+    const text = new TextDecoder().decode(data)
+
+    // Try viewBox first
+    const viewBoxMatch = text.match(/viewBox=["']([^"']+)["']/)
+    if (viewBoxMatch) {
+      const parts = viewBoxMatch[1].trim().split(/\s+/)
+      if (parts.length >= 4) {
+        return { width: parseFloat(parts[2]), height: parseFloat(parts[3]) }
+      }
+    }
+
+    // Try width/height attributes
+    const widthMatch = text.match(/\bwidth=["'](\d+(?:\.\d+)?)(?:px)?["']/)
+    const heightMatch = text.match(/\bheight=["'](\d+(?:\.\d+)?)(?:px)?["']/)
+    if (widthMatch && heightMatch) {
+      return { width: parseFloat(widthMatch[1]), height: parseFloat(heightMatch[1]) }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Resolve dimensions for an icon URL
+ * Fetches the image and parses dimensions from binary data
+ */
+export async function resolveIconDimensions(
+  url: string,
+  config: CDNConfig = DEFAULT_CDN_CONFIG,
+): Promise<IconDimensions | null> {
+  return fetchImageDimensions(url, config.timeout)
+}
+
+/**
+ * Resolve dimensions for multiple icon URLs in parallel
+ */
+export async function resolveAllIconDimensions(
+  urls: string[],
+  config: CDNConfig = DEFAULT_CDN_CONFIG,
+): Promise<Map<string, IconDimensions>> {
+  // Resolve all dimensions in parallel
+  const results = await Promise.all(
+    urls.map(async (url) => {
+      const dimensions = await resolveIconDimensions(url, config)
+      return [url, dimensions] as const
+    }),
+  )
+
+  // Build result map (only include found dimensions)
+  const map = new Map<string, IconDimensions>()
+  for (const [url, dimensions] of results) {
+    if (dimensions) {
+      map.set(url, dimensions)
+    }
+  }
+
+  return map
+}
+
+/**
+ * Result of resolving icon dimensions for a graph
+ */
+export interface ResolvedIconDimensions {
+  /** Map keyed by full URL (for svg.render) */
+  byUrl: Map<string, IconDimensions>
+  /** Map keyed by simple format vendor/model (for layout engine) */
+  byKey: Map<string, IconDimensions>
+}
+
+/**
+ * Extract simple key from CDN URL
+ * https://icons.shumoku.packof.me/v1/yamaha/rtx1210.png -> yamaha/rtx1210
+ */
+function extractKeyFromUrl(url: string): string | null {
+  const match = url.match(/\/v1\/([^/]+)\/([^.]+)\./)
+  if (match) {
+    return `${match[1]}/${match[2]}`
+  }
+  return null
+}
+
+/**
+ * Resolve icon dimensions and return both URL-keyed and simple-keyed maps
+ * Use byUrl for svg.render, byKey for layout engine
+ */
+export async function resolveIconDimensionsForGraph(
+  urls: string[],
+  config: CDNConfig = DEFAULT_CDN_CONFIG,
+): Promise<ResolvedIconDimensions> {
+  const byUrl = await resolveAllIconDimensions(urls, config)
+
+  // Build simple key map
+  const byKey = new Map<string, IconDimensions>()
+  for (const [url, dims] of byUrl) {
+    const key = extractKeyFromUrl(url)
+    if (key) {
+      byKey.set(key, dims)
+    }
+  }
+
+  return { byUrl, byKey }
 }

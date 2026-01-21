@@ -198,10 +198,10 @@ async function main(): Promise<void> {
         }
       } else if (format === 'png') {
         console.log('Rendering PNG...')
-        writeFileSync(outputPath, png.render(graph, layoutResult))
+        writeFileSync(outputPath, await png.render(graph, layoutResult))
       } else {
         console.log('Rendering SVG...')
-        writeFileSync(outputPath, svg.render(graph, layoutResult), 'utf-8')
+        writeFileSync(outputPath, await svg.renderAsync(graph, layoutResult), 'utf-8')
       }
     } else if (format === 'json') {
       console.log('Exporting NetworkGraph JSON...')
