@@ -20,7 +20,7 @@ import {
   PORT_LABEL_FONT_SIZE,
   PORT_LABEL_PADDING,
 } from '../constants.js'
-import { getDeviceIcon, getVendorIconEntry } from '../icons/index.js'
+import { getDeviceIcon } from '../icons/index.js'
 import {
   type Bounds,
   getNodeId,
@@ -1085,41 +1085,20 @@ export class HierarchicalLayout {
 
   /**
    * Get icon aspect ratio for a node
-   * Returns null if no icon is available
+   * Returns null if no CDN icon dimensions available
    */
   private getIconAspectRatio(node: Node): number | null {
     const iconKey = this.getIconKey(node)
     if (!node.vendor || !iconKey) return null
 
-    // Check pre-resolved CDN icon dimensions first
+    // Use pre-resolved CDN icon dimensions
     const dimensionKey = `${node.vendor.toLowerCase()}/${iconKey.toLowerCase().replace(/\//g, '-')}`
     const cdnDims = this.options.iconDimensions.get(dimensionKey)
     if (cdnDims) {
       return cdnDims.width / cdnDims.height
     }
 
-    // Fallback to embedded icons
-    const iconEntry = getVendorIconEntry(node.vendor, iconKey, node.resource)
-    if (!iconEntry) return null
-
-    const vendorIcon = iconEntry.default
-    const viewBox = iconEntry.viewBox || '0 0 48 48'
-
-    // Check for nested SVG with viewBox
-    if (vendorIcon.startsWith('<svg')) {
-      const viewBoxMatch = vendorIcon.match(/viewBox="0 0 (\d+) (\d+)"/)
-      if (viewBoxMatch) {
-        return Number.parseInt(viewBoxMatch[1], 10) / Number.parseInt(viewBoxMatch[2], 10)
-      }
-    }
-
-    // Parse viewBox attribute
-    const vbMatch = viewBox.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
-    if (vbMatch) {
-      return Number.parseInt(vbMatch[3], 10) / Number.parseInt(vbMatch[4], 10)
-    }
-
-    return 1 // Default to square
+    return null
   }
 
   private calculateNodeHeight(node: Node, _portCount = 0): number {
