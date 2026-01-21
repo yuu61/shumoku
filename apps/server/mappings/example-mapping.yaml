@@ -1,0 +1,33 @@
+# Zabbix Mapping Example
+# Maps network topology elements to Zabbix hosts and items
+
+# Node to Zabbix host mapping
+nodes:
+  # Map by Zabbix host ID (most reliable)
+  router1:
+    hostId: "10084"
+
+  # Map by Zabbix host name
+  switch1:
+    hostName: "sw-core-01"
+
+  # Nodes without explicit mapping will be matched by:
+  # 1. Node ID (e.g., "router1" matches host named "router1")
+  # 2. Node label (first line)
+
+# Link to Zabbix item mapping
+links:
+  # Map by Zabbix item IDs (for traffic in/out)
+  link-0:
+    in: "12345"      # Item ID for incoming traffic
+    out: "12346"     # Item ID for outgoing traffic
+    capacity: 10000000000  # Link capacity in bps (10Gbps)
+
+  # Map by interface name (will auto-discover items)
+  link-1:
+    interface: "eth0"  # Interface name on the source host
+    # capacity will be inferred from link bandwidth if not specified
+
+  # Links without explicit mapping will:
+  # 1. Use interface name from link definition (e.g., "router1:eth0")
+  # 2. Try to find any net.if.in/net.if.out items on the source host

@@ -15,6 +15,7 @@ import {
 import { type ResolvedIconDimensions, resolveIconDimensionsForGraph } from './cdn-icons.js'
 import type { SheetData } from './html/index.js'
 import * as html from './html/index.js'
+import { getNavigationStyles } from './html/navigation.js'
 import { collectIconUrls, SVGRenderer } from './svg.js'
 
 /**
@@ -59,6 +60,32 @@ export interface HTMLRenderOptions {
   branding?: boolean
   /** Show toolbar */
   toolbar?: boolean
+}
+
+/**
+ * Options for embeddable rendering
+ */
+export interface EmbeddableRenderOptions {
+  /** Enable hierarchical navigation features */
+  hierarchical?: boolean
+  /** Include zoom toolbar controls */
+  toolbar?: boolean
+}
+
+/**
+ * Embeddable render output - SVG with separate CSS and setup info
+ */
+export interface EmbeddableRenderOutput {
+  /** Interactive SVG content with data attributes for tooltips/hover */
+  svg: string
+  /** CSS styles for interactivity (hover, tooltips, etc.) */
+  css: string
+  /** Container ID for the SVG (used by init script) */
+  containerId: string
+  /** Whether hierarchical navigation is enabled */
+  hierarchical: boolean
+  /** ViewBox info for the SVG */
+  viewBox: { x: number; y: number; width: number; height: number }
 }
 
 /**
@@ -155,6 +182,206 @@ export async function renderHtmlHierarchical(
     ...options,
     iconDimensions: prepared.iconDimensions?.byUrl,
   })
+}
+
+/**
+ * Render embeddable output: SVG + CSS for embedding in external applications.
+ *
+ * Unlike renderHtml which returns a complete HTML page, this returns
+ * structured output that can be embedded in frameworks like React, Vue, Svelte.
+ *
+ * Usage:
+ * 1. Insert the SVG into a container element
+ * 2. Add the CSS to a style tag or stylesheet
+ * 3. Call initInteractive({ target: containerElement }) to enable interactivity
+ *
+ * @example
+ * ```typescript
+ * import { prepareRender, renderEmbeddable, initInteractive } from '@shumoku/renderer'
+ *
+ * const prepared = await prepareRender(graph)
+ * const output = renderEmbeddable(prepared)
+ *
+ * // In your component:
+ * container.innerHTML = output.svg
+ * styleTag.textContent = output.css
+ * initInteractive({ target: container })
+ * ```
+ */
+export function renderEmbeddable(
+  prepared: PreparedRender,
+  options?: EmbeddableRenderOptions,
+): EmbeddableRenderOutput {
+  const hierarchical = options?.hierarchical ?? hasHierarchicalContent(prepared.graph)
+
+  // Render SVG with interactive mode (includes data attributes)
+  const renderer = new SVGRenderer({
+    renderMode: 'interactive',
+    iconDimensions: prepared.iconDimensions?.byUrl,
+  })
+  const svg = renderer.render(prepared.graph, prepared.layout)
+
+  // Build CSS for interactivity
+  const css = generateEmbeddableCSS(hierarchical, options?.toolbar ?? false)
+
+  // Compute viewBox from layout bounds with padding
+  const bounds = prepared.layout.bounds
+  const padding = 40
+  const viewBox = {
+    x: bounds.x - padding,
+    y: bounds.y - padding,
+    width: bounds.width + padding * 2,
+    height: bounds.height + padding * 2,
+  }
+
+  return {
+    svg,
+    css,
+    containerId: 'shumoku-container',
+    hierarchical,
+    viewBox,
+  }
+}
+
+/**
+ * Check if graph has hierarchical content (subgraphs with files)
+ */
+function hasHierarchicalContent(graph: NetworkGraph): boolean {
+  if (!graph.subgraphs) return false
+  return graph.subgraphs.some((sg) => 'file' in sg && sg.file)
+}
+
+/**
+ * Generate CSS for embeddable SVG interactivity
+ */
+function generateEmbeddableCSS(hierarchical: boolean, toolbar: boolean): string {
+  const baseCSS = `
+/* Shumoku Embeddable Styles */
+.shumoku-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  background: white;
+  background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.shumoku-container.dragging { cursor: grabbing; }
+.shumoku-container > svg { width: 100%; height: 100%; display: block; }
+
+/* Node interactivity */
+.node { cursor: pointer; }
+.node rect,
+.node circle,
+.node polygon { transition: filter 0.15s ease, stroke 0.15s ease; }
+.node:hover rect,
+.node:hover circle,
+.node:hover polygon {
+  filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.5));
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+}
+
+/* Port interactivity */
+.port { cursor: pointer; }
+.port rect { transition: filter 0.15s; }
+.port:hover rect { filter: brightness(1.1); }
+
+/* Link interactivity */
+.link-hit-area { cursor: pointer; }
+.link { transition: stroke-width 0.15s ease, filter 0.15s ease; }
+.link-group:hover .link {
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* Subgraph interactivity */
+.subgraph[data-has-sheet] { cursor: pointer; }
+.subgraph[data-has-sheet] > rect { transition: filter 0.15s; }
+.subgraph[data-has-sheet]:hover > rect {
+  filter: brightness(1.05) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+}
+
+/* Spotlight highlight overlay */
+.shumoku-spotlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Tooltip styles */
+.shumoku-tooltip {
+  position: absolute;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.95);
+  color: white;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1000;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  white-space: pre-wrap;
+}
+.shumoku-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(15, 23, 42, 0.95);
+}
+`
+
+  const toolbarCSS = toolbar
+    ? `
+/* Toolbar styles */
+.shumoku-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+.shumoku-toolbar-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.shumoku-toolbar button {
+  padding: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+.shumoku-toolbar button:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+.shumoku-zoom-text {
+  min-width: 50px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+`
+    : ''
+
+  const navCSS = hierarchical ? getNavigationStyles() : ''
+
+  return baseCSS + toolbarCSS + navCSS
 }
 
 // ============================================================================

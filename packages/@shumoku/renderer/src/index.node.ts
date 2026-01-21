@@ -26,6 +26,8 @@ export {
 // Re-export SheetData for hierarchical rendering
 export type { SheetData } from './html/index.js'
 export type {
+  EmbeddableRenderOptions,
+  EmbeddableRenderOutput,
   HTMLRenderOptions,
   PNGRenderOptions,
   PreparedRender,
@@ -35,6 +37,7 @@ export type {
 // Unified render pipeline (with PNG support)
 export {
   prepareRender,
+  renderEmbeddable,
   renderGraphToHtml,
   renderGraphToHtmlHierarchical,
   renderGraphToPng,
@@ -44,6 +47,8 @@ export {
   renderPng,
   renderSvg,
 } from './pipeline.node.js'
+// Re-export initInteractive for manual initialization
+export { initInteractive } from './html/index.js'
 // Types
 export type {
   DataAttributeOptions,

@@ -1,0 +1,34 @@
+{
+  "name": "@shumoku/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Real-time network topology visualization server with Zabbix integration",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:bundle": "tsc && node esbuild.config.js",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@hono/node-ws": "^1.1.0",
+    "@shumoku/core": "workspace:*",
+    "@shumoku/parser-yaml": "workspace:*",
+    "@shumoku/renderer": "workspace:*",
+    "better-sqlite3": "^11.8.1",
+    "hono": "^4.7.11",
+    "js-yaml": "^4.1.0",
+    "nanoid": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.0.7",
+    "esbuild": "^0.25.2",
+    "typescript": "^5.9.3"
+  }
+}

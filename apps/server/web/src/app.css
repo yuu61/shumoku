@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply min-h-screen;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-text-muted;
+  }
+}
+
+@layer components {
+  /* Button styles */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-dark-bg hover:bg-primary-dark focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-bg-elevated text-dark-text border border-dark-border hover:bg-dark-border focus:ring-dark-border;
+  }
+
+  .btn-danger {
+    @apply bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20 focus:ring-danger;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-3 py-2 text-sm bg-dark-bg-canvas border border-dark-border rounded-lg placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-dark-text-muted mb-1.5;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-dark-bg-elevated border border-dark-border rounded-xl;
+  }
+
+  .card-header {
+    @apply px-4 py-3 border-b border-dark-border;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  /* Table styles */
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table th {
+    @apply px-4 py-3 text-left text-xs font-medium text-dark-text-muted uppercase tracking-wider bg-dark-bg;
+  }
+
+  .table td {
+    @apply px-4 py-3 border-t border-dark-border;
+  }
+
+  .table tr:hover td {
+    @apply bg-dark-bg;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded;
+  }
+
+  .badge-success {
+    @apply bg-success/20 text-success;
+  }
+
+  .badge-warning {
+    @apply bg-warning/20 text-warning;
+  }
+
+  .badge-danger {
+    @apply bg-danger/20 text-danger;
+  }
+
+  .badge-info {
+    @apply bg-info/20 text-info;
+  }
+
+  /* Navigation */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 text-sm text-dark-text-muted rounded-lg hover:bg-dark-bg-elevated hover:text-dark-text transition-colors;
+  }
+
+  .nav-item.active {
+    @apply bg-primary/10 text-primary;
+  }
+
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-success {
+    @apply bg-success;
+  }
+
+  .status-dot-warning {
+    @apply bg-warning;
+  }
+
+  .status-dot-danger {
+    @apply bg-danger;
+  }
+
+  .status-dot-unknown {
+    @apply bg-dark-text-muted;
+  }
+}

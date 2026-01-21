@@ -1,0 +1,81 @@
+/**
+ * Database Connection
+ * SQLite connection management using better-sqlite3
+ */
+
+import Database from 'better-sqlite3'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { initializeSchema, runMigrations } from './schema.js'
+
+let db: Database.Database | null = null
+
+/**
+ * Get the database instance
+ * Creates and initializes if not already done
+ */
+export function getDatabase(): Database.Database {
+  if (!db) {
+    throw new Error('Database not initialized. Call initDatabase() first.')
+  }
+  return db
+}
+
+/**
+ * Initialize the database connection
+ * @param dataDir - Directory to store the database file
+ */
+export function initDatabase(dataDir: string = '/data'): Database.Database {
+  if (db) {
+    return db
+  }
+
+  // Ensure data directory exists
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true })
+  }
+
+  const dbPath = path.join(dataDir, 'shumoku.db')
+  console.log(`[Database] Opening database at: ${dbPath}`)
+
+  db = new Database(dbPath)
+
+  // Enable WAL mode for better concurrent access
+  db.pragma('journal_mode = WAL')
+
+  // Initialize schema
+  initializeSchema(db)
+
+  // Run migrations
+  runMigrations(db)
+
+  console.log('[Database] Initialized successfully')
+
+  return db
+}
+
+/**
+ * Close the database connection
+ */
+export function closeDatabase(): void {
+  if (db) {
+    db.close()
+    db = null
+    console.log('[Database] Connection closed')
+  }
+}
+
+/**
+ * Generate a unique ID
+ */
+export async function generateId(): Promise<string> {
+  const { nanoid } = await import('nanoid')
+  return nanoid(12)
+}
+
+/**
+ * Get current timestamp in milliseconds
+ */
+export function timestamp(): number {
+  return Date.now()
+}
