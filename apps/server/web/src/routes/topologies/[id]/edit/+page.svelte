@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation'
   import { api } from '$lib/api'
   import type { Topology, DataSource } from '$lib/types'
+  import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
 
   // Get ID from route params (always defined for this route)
   $: id = $page.params.id!
@@ -68,9 +69,7 @@
 <div class="p-6 h-full flex flex-col">
   <!-- Back link -->
   <a href="/topologies/{$page.params.id}" class="inline-flex items-center gap-2 text-theme-text-muted hover:text-theme-text mb-4">
-    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M19 12H5M12 19l-7-7 7-7"/>
-    </svg>
+    <ArrowLeft size={16} />
     Back to Topology
   </a>
 

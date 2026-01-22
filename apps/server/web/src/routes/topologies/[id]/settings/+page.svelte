@@ -4,6 +4,7 @@
   import { api } from '$lib/api'
   import TopologySettings from '$lib/components/TopologySettings.svelte'
   import type { Topology } from '$lib/types'
+  import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
 
   let topology: Topology | null = null
   let renderData: { nodeCount: number; edgeCount: number } | null = null
@@ -50,9 +51,7 @@
         href="/topologies/{topologyId}"
         class="inline-flex items-center gap-2 text-sm text-theme-text-muted hover:text-theme-text transition-colors"
       >
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
+        <ArrowLeft size={16} />
         Back to Diagram
       </a>
     </div>

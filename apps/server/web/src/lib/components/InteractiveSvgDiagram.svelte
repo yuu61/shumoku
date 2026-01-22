@@ -9,6 +9,12 @@
     showTrafficFlow,
     showNodeStatus,
   } from '$lib/stores'
+  import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
+  import MagnifyingGlassPlus from 'phosphor-svelte/lib/MagnifyingGlassPlus'
+  import MagnifyingGlassMinus from 'phosphor-svelte/lib/MagnifyingGlassMinus'
+  import CornersOut from 'phosphor-svelte/lib/CornersOut'
+  import ArrowCounterClockwise from 'phosphor-svelte/lib/ArrowCounterClockwise'
+  import GearSix from 'phosphor-svelte/lib/GearSix'
 
   // Props
   export let topologyId: string
@@ -698,9 +704,7 @@
           on:click={() => navigateToBreadcrumb(navigationStack[navigationStack.length - 1] || 'root')}
           title="Go back"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+          <ArrowLeft size={14} />
         </button>
         <span class="breadcrumb-current">{currentSheet?.label}</span>
       </div>
@@ -725,40 +729,23 @@
   <div class="controls">
     <div class="control-group">
       <button on:click={zoomIn} title="Zoom In">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          <line x1="11" y1="8" x2="11" y2="14"/>
-          <line x1="8" y1="11" x2="14" y2="11"/>
-        </svg>
+        <MagnifyingGlassPlus size={18} />
       </button>
       <span class="zoom-level">{Math.round(scale * 100)}%</span>
       <button on:click={zoomOut} title="Zoom Out">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          <line x1="8" y1="11" x2="14" y2="11"/>
-        </svg>
+        <MagnifyingGlassMinus size={18} />
       </button>
     </div>
     <div class="control-group">
       <button on:click={fitToView} title="Fit to View">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-        </svg>
+        <CornersOut size={18} />
       </button>
       <button on:click={resetView} title="Reset View">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-          <path d="M3 3v5h5"/>
-        </svg>
+        <ArrowCounterClockwise size={18} />
       </button>
       {#if onToggleSettings}
         <button on:click={onToggleSettings} title="Settings" class:active={settingsOpen}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
+          <GearSix size={18} />
         </button>
       {/if}
     </div>
@@ -853,10 +840,6 @@
     color: var(--color-text);
   }
 
-  .breadcrumb-back svg {
-    width: 14px;
-    height: 14px;
-  }
 
   .breadcrumb-current {
     color: var(--color-text);
@@ -1013,10 +996,6 @@
     color: var(--color-primary);
   }
 
-  .control-group button svg {
-    width: 18px;
-    height: 18px;
-  }
 
   .zoom-level {
     min-width: 48px;

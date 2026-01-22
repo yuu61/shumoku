@@ -4,11 +4,17 @@
   import '../app.css'
   import { page } from '$app/stores'
   import Header from '$lib/components/header.svelte'
+  import House from 'phosphor-svelte/lib/House'
+  import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
+  import Database from 'phosphor-svelte/lib/Database'
+  import GearSix from 'phosphor-svelte/lib/GearSix'
+  import CaretDoubleLeft from 'phosphor-svelte/lib/CaretDoubleLeft'
+  import CaretDoubleRight from 'phosphor-svelte/lib/CaretDoubleRight'
 
   interface NavItem {
     href: string
     label: string
-    icon: string
+    icon: 'home' | 'topology' | 'database' | 'settings'
   }
 
   const navItems: NavItem[] = [
@@ -83,13 +89,11 @@
         class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-theme-bg-elevated transition-colors text-theme-text-muted hover:text-theme-text flex-shrink-0"
         aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          {#if sidebarCollapsed}
-            <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
-          {:else}
-            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
-          {/if}
-        </svg>
+        {#if sidebarCollapsed}
+          <CaretDoubleRight size={20} />
+        {:else}
+          <CaretDoubleLeft size={20} />
+        {/if}
       </button>
     </div>
 
@@ -106,57 +110,17 @@
               : 'text-theme-text-muted hover:bg-theme-bg-elevated hover:text-theme-text'}"
             title={sidebarCollapsed ? item.label : undefined}
           >
-            {#if item.icon === 'home'}
-              <svg
-                class="w-5 h-5 flex-shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-            {:else if item.icon === 'topology'}
-              <svg
-                class="w-5 h-5 flex-shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <circle cx="12" cy="5" r="3" />
-                <circle cx="5" cy="19" r="3" />
-                <circle cx="19" cy="19" r="3" />
-                <line x1="12" y1="8" x2="5" y2="16" />
-                <line x1="12" y1="8" x2="19" y2="16" />
-              </svg>
-            {:else if item.icon === 'database'}
-              <svg
-                class="w-5 h-5 flex-shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <ellipse cx="12" cy="5" rx="9" ry="3" />
-                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-              </svg>
-            {:else if item.icon === 'settings'}
-              <svg
-                class="w-5 h-5 flex-shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path
-                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
-                />
-              </svg>
-            {/if}
+            <span class="flex-shrink-0">
+              {#if item.icon === 'home'}
+                <House size={20} />
+              {:else if item.icon === 'topology'}
+                <TreeStructure size={20} />
+              {:else if item.icon === 'database'}
+                <Database size={20} />
+              {:else if item.icon === 'settings'}
+                <GearSix size={20} />
+              {/if}
+            </span>
             {#if !sidebarCollapsed}
               <span class="whitespace-nowrap">{item.label}</span>
             {/if}

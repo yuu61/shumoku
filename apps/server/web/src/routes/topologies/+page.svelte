@@ -4,6 +4,9 @@
   import type { Topology } from '$lib/types'
   import * as Dialog from '$lib/components/ui/dialog'
   import { Button } from '$lib/components/ui/button'
+  import Plus from 'phosphor-svelte/lib/Plus'
+  import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
+  import GearSix from 'phosphor-svelte/lib/GearSix'
 
   let showCreateModal = $state(false)
 
@@ -70,10 +73,7 @@ links:
   <!-- Actions -->
   <div class="flex items-center justify-end mb-6">
     <Button onclick={openCreateModal}>
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
+      <Plus size={20} class="mr-1" />
       Add Topology
     </Button>
   </div>
@@ -89,13 +89,7 @@ links:
     </div>
   {:else if $topologiesList.length === 0}
     <div class="card p-12 text-center">
-      <svg class="w-16 h-16 text-theme-text-muted mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="5" r="3"/>
-        <circle cx="5" cy="19" r="3"/>
-        <circle cx="19" cy="19" r="3"/>
-        <line x1="12" y1="8" x2="5" y2="16"/>
-        <line x1="12" y1="8" x2="19" y2="16"/>
-      </svg>
+      <TreeStructure size={64} class="text-theme-text-muted mx-auto mb-4" />
       <h3 class="text-lg font-medium text-theme-text-emphasis mb-2">No topologies</h3>
       <p class="text-theme-text-muted mb-4">Create your first network topology diagram</p>
       <Button onclick={openCreateModal}>Add Topology</Button>
@@ -108,23 +102,14 @@ links:
           <div class="card-body">
             <div class="flex items-start justify-between mb-4">
               <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <svg class="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="5" r="3"/>
-                  <circle cx="5" cy="19" r="3"/>
-                  <circle cx="19" cy="19" r="3"/>
-                  <line x1="12" y1="8" x2="5" y2="16"/>
-                  <line x1="12" y1="8" x2="19" y2="16"/>
-                </svg>
+                <TreeStructure size={24} class="text-primary" />
               </div>
               <a
                 href="/topologies/{topo.id}/settings"
                 class="text-theme-text-muted hover:text-theme-text"
                 title="Settings"
               >
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
+                <GearSix size={20} />
               </a>
             </div>
 

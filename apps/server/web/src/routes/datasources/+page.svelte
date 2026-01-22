@@ -4,6 +4,8 @@
   import type { DataSource, ConnectionTestResult } from '$lib/types'
   import * as Dialog from '$lib/components/ui/dialog'
   import { Button } from '$lib/components/ui/button'
+  import Plus from 'phosphor-svelte/lib/Plus'
+  import Database from 'phosphor-svelte/lib/Database'
 
   let showCreateModal = $state(false)
   let testingId = $state<string | null>(null)
@@ -88,10 +90,7 @@
   <!-- Actions -->
   <div class="flex items-center justify-end mb-6">
     <Button onclick={openCreateModal}>
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
+      <Plus size={20} class="mr-1" />
       Add Data Source
     </Button>
   </div>
@@ -107,11 +106,7 @@
     </div>
   {:else if $dataSourcesList.length === 0}
     <div class="card p-12 text-center">
-      <svg class="w-16 h-16 text-theme-text-muted mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <ellipse cx="12" cy="5" rx="9" ry="3"/>
-        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-      </svg>
+      <Database size={64} class="text-theme-text-muted mx-auto mb-4" />
       <h3 class="text-lg font-medium text-theme-text-emphasis mb-2">No data sources</h3>
       <p class="text-theme-text-muted mb-4">Add a Zabbix server to start collecting metrics</p>
       <Button onclick={openCreateModal}>Add Data Source</Button>

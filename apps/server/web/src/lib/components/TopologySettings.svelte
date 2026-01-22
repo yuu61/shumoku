@@ -10,6 +10,8 @@
     showNodeStatus,
   } from '$lib/stores'
   import type { Topology } from '$lib/types'
+  import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+  import Trash from 'phosphor-svelte/lib/Trash'
 
   export let topology: Topology
   export let renderData: { nodeCount: number; edgeCount: number } | null = null
@@ -158,10 +160,7 @@
     <h3 class="text-xs font-medium text-theme-text-muted uppercase tracking-wide">Actions</h3>
     <div class="space-y-2">
       <a href="/topologies/{topology.id}/edit" class="btn btn-secondary w-full justify-center">
-        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
+        <PencilSimple size={16} class="mr-2" />
         Edit YAML
       </a>
     </div>
@@ -178,10 +177,7 @@
         {#if deleting}
           <span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
         {:else}
-          <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
+          <Trash size={16} class="mr-2" />
         {/if}
         Delete Topology
       </Button>

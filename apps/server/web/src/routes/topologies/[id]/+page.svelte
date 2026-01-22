@@ -7,6 +7,7 @@
   import InteractiveSvgDiagram from '$lib/components/InteractiveSvgDiagram.svelte'
   import TopologySettings from '$lib/components/TopologySettings.svelte'
   import type { Topology } from '$lib/types'
+  import X from 'phosphor-svelte/lib/X'
 
   let topology: Topology | null = null
   let renderData: { nodeCount: number; edgeCount: number } | null = null
@@ -90,9 +91,7 @@
           class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-theme-bg transition-colors text-theme-text-muted hover:text-theme-text"
           aria-label="Close settings"
         >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
+          <X size={20} />
         </button>
       </div>
 
