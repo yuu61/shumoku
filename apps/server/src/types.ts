@@ -70,7 +70,7 @@ export interface DataSourceInput {
 export interface Topology {
   id: string
   name: string
-  yamlContent: string
+  contentJson: string // Multi-file JSON: {"files": [{name, content}, ...]}
   dataSourceId?: string
   mappingJson?: string
   createdAt: number
@@ -79,7 +79,7 @@ export interface Topology {
 
 export interface TopologyInput {
   name: string
-  yamlContent: string
+  contentJson: string // Multi-file JSON: {"files": [{name, content}, ...]}
   dataSourceId?: string
   mappingJson?: string
 }

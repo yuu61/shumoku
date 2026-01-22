@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { topologies, topologiesList, topologiesLoading, topologiesError } from '$lib/stores'
-  import type { Topology } from '$lib/types'
+  import { serializeMultiFileContent } from '$lib/types'
   import * as Dialog from '$lib/components/ui/dialog'
   import { Button } from '$lib/components/ui/button'
   import Plus from 'phosphor-svelte/lib/Plus'
@@ -51,9 +51,11 @@ links:
     formError = ''
 
     try {
+      // Convert single YAML to multi-file JSON format
+      const contentJson = serializeMultiFileContent([{ name: 'main.yaml', content: formYaml }])
       await topologies.create({
         name: formName.trim(),
-        yamlContent: formYaml,
+        contentJson,
       })
       showCreateModal = false
     } catch (e) {

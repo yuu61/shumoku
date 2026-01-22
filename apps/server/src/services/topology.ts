@@ -12,10 +12,47 @@ import { resolveIconDimensionsForGraph, collectIconUrls } from '@shumoku/rendere
 import { getDatabase, generateId, timestamp } from '../db/index.js'
 import type { Topology, TopologyInput, MetricsData, ZabbixMapping } from '../types.js'
 
+/**
+ * Single file in a multi-file topology
+ */
+export interface TopologyFile {
+  name: string
+  content: string
+}
+
+/**
+ * Multi-file content format stored in content_json
+ */
+export interface MultiFileContent {
+  files: TopologyFile[]
+}
+
+/**
+ * Parse multi-file JSON content
+ */
+export function parseMultiFileContent(contentJson: string): TopologyFile[] {
+  const parsed = JSON.parse(contentJson) as MultiFileContent
+  return parsed.files
+}
+
+/**
+ * Serialize files to multi-file JSON format
+ */
+export function serializeMultiFileContent(files: TopologyFile[]): string {
+  return JSON.stringify({ files }, null, 2)
+}
+
+/**
+ * Create multi-file content from a single YAML string (for simple topologies)
+ */
+export function createSingleFileContent(yamlContent: string): string {
+  return serializeMultiFileContent([{ name: 'main.yaml', content: yamlContent }])
+}
+
 interface TopologyRow {
   id: string
   name: string
-  yaml_content: string
+  content_json: string
   data_source_id: string | null
   mapping_json: string | null
   created_at: number
@@ -26,7 +63,7 @@ function rowToTopology(row: TopologyRow): Topology {
   return {
     id: row.id,
     name: row.name,
-    yamlContent: row.yaml_content,
+    contentJson: row.content_json,
     dataSourceId: row.data_source_id ?? undefined,
     mappingJson: row.mapping_json ?? undefined,
     createdAt: row.created_at,
@@ -94,8 +131,8 @@ export class TopologyService {
    * Create a new topology
    */
   async create(input: TopologyInput): Promise<Topology> {
-    // Validate YAML content by parsing it
-    await this.parseYaml(input.yamlContent)
+    // Validate content by parsing it
+    await this.parseContent(input.contentJson)
 
     const id = await generateId()
     const now = timestamp()
@@ -103,11 +140,11 @@ export class TopologyService {
     this.db
       .prepare(
         `
-      INSERT INTO topologies (id, name, yaml_content, data_source_id, mapping_json, created_at, updated_at)
+      INSERT INTO topologies (id, name, content_json, data_source_id, mapping_json, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `,
       )
-      .run(id, input.name, input.yamlContent, input.dataSourceId || null, input.mappingJson || null, now, now)
+      .run(id, input.name, input.contentJson, input.dataSourceId || null, input.mappingJson || null, now, now)
 
     // Clear cache to force re-parse
     this.cache.delete(id)
@@ -124,9 +161,9 @@ export class TopologyService {
       return null
     }
 
-    // If YAML content is being updated, validate it
-    if (input.yamlContent !== undefined) {
-      await this.parseYaml(input.yamlContent)
+    // If content is being updated, validate it
+    if (input.contentJson !== undefined) {
+      await this.parseContent(input.contentJson)
     }
 
     const updates: string[] = []
@@ -136,9 +173,9 @@ export class TopologyService {
       updates.push('name = ?')
       values.push(input.name)
     }
-    if (input.yamlContent !== undefined) {
-      updates.push('yaml_content = ?')
-      values.push(input.yamlContent)
+    if (input.contentJson !== undefined) {
+      updates.push('content_json = ?')
+      values.push(input.contentJson)
     }
     if (input.dataSourceId !== undefined) {
       updates.push('data_source_id = ?')
@@ -227,9 +264,7 @@ export class TopologyService {
    * Parse a topology and generate layout
    */
   private async parseTopology(topology: Topology): Promise<ParsedTopology> {
-    // Use hierarchical parsing for sample network
-    const allowFileRefs = this.isSampleNetwork(topology.yamlContent)
-    const graph = await this.parseYaml(topology.yamlContent, allowFileRefs)
+    const graph = await this.parseContent(topology.contentJson)
 
     // Resolve icon dimensions from CDN for proper sizing
     let iconDimensions: ResolvedIconDimensions = { byUrl: new Map(), byKey: new Map() }
@@ -270,38 +305,37 @@ export class TopologyService {
   }
 
   /**
-   * Parse YAML content to NetworkGraph
+   * Parse content JSON to NetworkGraph
+   * Supports multi-file hierarchical topologies
    */
-  private async parseYaml(yamlContent: string, allowFileRefs = false): Promise<NetworkGraph> {
-    // Check if the content has any file references (hierarchical)
-    const hasFileRefs = yamlContent.includes('file:')
+  private async parseContent(contentJson: string): Promise<NetworkGraph> {
+    const files = parseMultiFileContent(contentJson)
+
+    // Find main.yaml
+    const mainFile = files.find((f) => f.name === 'main.yaml')
+    if (!mainFile) {
+      throw new Error('main.yaml not found in topology files')
+    }
+
+    // Check if main file has file references
+    const hasFileRefs = mainFile.content.includes('file:')
 
     if (hasFileRefs) {
-      if (!allowFileRefs) {
-        throw new Error('File references (file:) are not supported in uploaded topologies. Please flatten your YAML.')
+      // Parse hierarchically using memory resolver
+      const fileMap = new Map<string, string>()
+      for (const file of files) {
+        fileMap.set(file.name, file.content)
       }
-
-      // Parse hierarchically using memory resolver with sampleNetwork files
-      const files = new Map<string, string>()
-      for (const file of sampleNetwork) {
-        files.set(file.name, file.content)
-      }
-      const resolver = createMemoryFileResolver(files, '')
+      const resolver = createMemoryFileResolver(fileMap, '')
       const parser = new HierarchicalParser(resolver)
-      const result = await parser.parse(yamlContent, 'main.yaml')
+      const result = await parser.parse(mainFile.content, 'main.yaml')
       return result.graph
     }
 
+    // Single file, parse directly
     const parser = new YamlParser()
-    const result = parser.parse(yamlContent)
+    const result = parser.parse(mainFile.content)
     return result.graph
-  }
-
-  /**
-   * Parse YAML for sample network (allows file references)
-   */
-  private async parseSampleYaml(yamlContent: string): Promise<NetworkGraph> {
-    return this.parseYaml(yamlContent, true)
   }
 
   /**
@@ -370,36 +404,30 @@ export class TopologyService {
 
     console.log('[TopologyService] No topologies found, creating sample network')
 
-    // Get the main file from sample network
-    const mainFile = sampleNetwork.find((f) => f.name === 'main.yaml')
-    if (!mainFile) {
-      console.error('[TopologyService] Sample network main.yaml not found')
-      return
-    }
+    // Convert sample network files to JSON format
+    const files: TopologyFile[] = sampleNetwork.map((f) => ({
+      name: f.name,
+      content: f.content,
+    }))
 
-    // Validate by parsing with hierarchical support
-    await this.parseSampleYaml(mainFile.content)
+    const contentJson = serializeMultiFileContent(files)
 
-    // Insert directly (bypassing create() which doesn't allow file refs)
+    // Validate by parsing
+    await this.parseContent(contentJson)
+
+    // Insert
     const id = await generateId()
     const now = timestamp()
 
     this.db
       .prepare(
         `
-      INSERT INTO topologies (id, name, yaml_content, data_source_id, mapping_json, created_at, updated_at)
+      INSERT INTO topologies (id, name, content_json, data_source_id, mapping_json, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `,
       )
-      .run(id, 'Sample Network', mainFile.content, null, null, now, now)
+      .run(id, 'Sample Network', contentJson, null, null, now, now)
 
-    console.log('[TopologyService] Sample network created (hierarchical)')
-  }
-
-  /**
-   * Check if content is the sample network's main.yaml (has file references)
-   */
-  private isSampleNetwork(yamlContent: string): boolean {
-    return yamlContent.includes('file:') && yamlContent.includes('./cloud.yaml')
+    console.log('[TopologyService] Sample network created with', files.length, 'files')
   }
 }

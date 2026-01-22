@@ -23,11 +23,11 @@ export function initializeSchema(db: Database): void {
       updated_at INTEGER NOT NULL
     );
 
-    -- Topologies
+    -- Topologies (content_json stores multi-file JSON: {"files": [{name, content}, ...]})
     CREATE TABLE IF NOT EXISTS topologies (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      yaml_content TEXT NOT NULL,
+      content_json TEXT NOT NULL,
       data_source_id TEXT REFERENCES data_sources(id) ON DELETE SET NULL,
       mapping_json TEXT,
       created_at INTEGER NOT NULL,

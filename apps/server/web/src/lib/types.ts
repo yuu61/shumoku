@@ -28,7 +28,7 @@ export interface DataSourceInput {
 export interface Topology {
   id: string
   name: string
-  yamlContent: string
+  contentJson: string // Multi-file JSON: {"files": [{name, content}, ...]}
   dataSourceId?: string
   mappingJson?: string
   createdAt: number
@@ -37,9 +37,39 @@ export interface Topology {
 
 export interface TopologyInput {
   name: string
-  yamlContent: string
+  contentJson: string // Multi-file JSON: {"files": [{name, content}, ...]}
   dataSourceId?: string
   mappingJson?: string
+}
+
+/**
+ * Single file in a multi-file topology
+ */
+export interface TopologyFile {
+  name: string
+  content: string
+}
+
+/**
+ * Multi-file content format
+ */
+export interface MultiFileContent {
+  files: TopologyFile[]
+}
+
+/**
+ * Parse multi-file JSON content
+ */
+export function parseMultiFileContent(contentJson: string): TopologyFile[] {
+  const parsed = JSON.parse(contentJson) as MultiFileContent
+  return parsed.files
+}
+
+/**
+ * Serialize files to multi-file JSON format
+ */
+export function serializeMultiFileContent(files: TopologyFile[]): string {
+  return JSON.stringify({ files }, null, 2)
 }
 
 export interface ZabbixMapping {

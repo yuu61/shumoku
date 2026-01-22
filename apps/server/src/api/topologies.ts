@@ -193,8 +193,8 @@ export function createTopologiesApi(): Hono {
   app.post('/', async (c) => {
     try {
       const body = (await c.req.json()) as TopologyInput
-      if (!body.name || !body.yamlContent) {
-        return c.json({ error: 'name and yamlContent are required' }, 400)
+      if (!body.name || !body.contentJson) {
+        return c.json({ error: 'name and contentJson are required' }, 400)
       }
 
       const topology = await service.create(body)
