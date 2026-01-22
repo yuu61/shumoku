@@ -58,7 +58,7 @@
   }
 
   // Fetch rendered content from API
-  async function loadContent() {
+  async function loadContent(skipFitToView = false) {
     loading = true
     error = ''
     try {
@@ -82,7 +82,7 @@
 
       if (svgElement) {
         // Initialize panzoom
-        initPanZoom()
+        initPanZoom(skipFitToView)
         // Setup interactivity
         setupInteractivity()
       }
@@ -93,7 +93,7 @@
   }
 
   // Initialize panzoom
-  function initPanZoom() {
+  function initPanZoom(skipFitToView = false) {
     if (!svgWrapper || panzoomInstance) return
 
     panzoomInstance = panzoom(svgWrapper, {
@@ -116,8 +116,10 @@
       scale = panzoomInstance?.getTransform().scale ?? 1
     })
 
-    // Initial fit to view
-    fitToView()
+    // Initial fit to view (skip when restoring transform)
+    if (!skipFitToView) {
+      fitToView()
+    }
   }
 
   // Fit SVG to container
@@ -394,37 +396,82 @@
     tooltipVisible = false
   }
 
-  // Apply metrics to SVG elements
+  // Store original link styles for restoration
+  const originalLinkStyles = new Map<string, Map<SVGPathElement, { stroke: string; strokeDasharray: string }>>()
+
+  // Save original styles for all link paths
+  function saveOriginalLinkStyles() {
+    if (!svgElement) return
+
+    const linkGroups = svgElement.querySelectorAll('g.link-group')
+    linkGroups.forEach((linkGroup) => {
+      const linkId = linkGroup.getAttribute('data-link-id') || ''
+      const paths = linkGroup.querySelectorAll('path.link') as NodeListOf<SVGPathElement>
+
+      const pathStyles = new Map<SVGPathElement, { stroke: string; strokeDasharray: string }>()
+      paths.forEach((path) => {
+        pathStyles.set(path, {
+          stroke: path.getAttribute('stroke') || '',
+          strokeDasharray: path.style.strokeDasharray || '',
+        })
+      })
+      originalLinkStyles.set(linkId, pathStyles)
+    })
+  }
+
+  // Apply metrics directly to original link paths
   function applyMetrics(metrics: typeof $metricsData) {
     if (!svgElement || !metrics) return
 
+    // Save original styles on first call
+    if (originalLinkStyles.size === 0) {
+      saveOriginalLinkStyles()
+    }
+
     // Update link colors based on utilization
+    // Split lines into two groups: half for in, half for out (bidirectional)
     if (metrics.links) {
       for (const [linkId, linkMetrics] of Object.entries(metrics.links)) {
         const linkGroup = svgElement.querySelector(`g.link-group[data-link-id="${linkId}"]`)
         if (!linkGroup) continue
 
-        const paths = linkGroup.querySelectorAll('path.link')
-        paths.forEach((path) => {
-          const pathEl = path as SVGPathElement
-          if (linkMetrics.status === 'down') {
-            pathEl.setAttribute('stroke', '#ef4444')
-            pathEl.style.strokeDasharray = '8 4'
-            pathEl.style.animation = ''
-          } else if (linkMetrics.utilization !== undefined) {
-            const color = getUtilizationColor(linkMetrics.utilization)
-            pathEl.setAttribute('stroke', color)
+        const paths = Array.from(linkGroup.querySelectorAll('path.link')) as SVGPathElement[]
+        if (paths.length === 0) continue
 
-            if (linkMetrics.utilization > 0) {
-              pathEl.style.strokeDasharray = '12 12'
-              const duration = Math.max(0.3, 2 - (linkMetrics.utilization / 100) * 1.7)
-              pathEl.style.animation = `shumoku-edge-flow ${duration.toFixed(2)}s linear infinite`
+        const inUtil = linkMetrics.inUtilization ?? linkMetrics.utilization ?? 0
+        const outUtil = linkMetrics.outUtilization ?? linkMetrics.utilization ?? 0
+
+        if (linkMetrics.status === 'down') {
+          // Down state - red with dashed pattern, no animation
+          paths.forEach((path) => {
+            path.setAttribute('stroke', '#ef4444')
+            path.style.strokeDasharray = '8 4'
+            path.style.animation = ''
+          })
+        } else {
+          // Split paths into two groups for bidirectional animation
+          // First half: in direction, Second half: out direction
+          const midPoint = Math.ceil(paths.length / 2)
+
+          paths.forEach((path, index) => {
+            const isInGroup = index < midPoint
+            // Each group uses its own utilization for color and speed
+            const util = isInGroup ? inUtil : outUtil
+            const color = getUtilizationColor(util)
+            const animName = isInGroup ? 'shumoku-edge-flow-in' : 'shumoku-edge-flow-out'
+
+            path.setAttribute('stroke', color)
+
+            if (util > 0) {
+              path.style.strokeDasharray = '16 8'  // Larger dash for better visibility
+              const duration = Math.max(0.5, 2.5 - (util / 100) * 2)
+              path.style.animation = `${animName} ${duration.toFixed(2)}s linear infinite`
             } else {
-              pathEl.style.strokeDasharray = ''
-              pathEl.style.animation = ''
+              path.style.strokeDasharray = ''
+              path.style.animation = ''
             }
-          }
-        })
+          })
+        }
       }
     }
 
@@ -434,11 +481,9 @@
         const nodeGroup = svgElement.querySelector(`g.node[data-id="${nodeId}"]`)
         if (!nodeGroup) continue
 
-        // Add status class
         nodeGroup.classList.remove('status-up', 'status-down', 'status-unknown')
         nodeGroup.classList.add(`status-${nodeMetrics.status}`)
 
-        // Update border color
         const rect = nodeGroup.querySelector('.node-bg rect, rect.node-bg') as SVGRectElement
         if (rect) {
           if (nodeMetrics.status === 'down') {
@@ -447,13 +492,39 @@
           } else if (nodeMetrics.status === 'up') {
             rect.setAttribute('stroke', '#22c55e')
             rect.setAttribute('stroke-width', '2')
-          } else {
-            rect.removeAttribute('stroke')
-            rect.removeAttribute('stroke-width')
           }
         }
       }
     }
+  }
+
+  // Reset link styles when metrics disabled
+  function resetLinkStyles() {
+    if (!svgElement) return
+
+    // Restore original styles
+    for (const [linkId, pathStyles] of originalLinkStyles) {
+      for (const [path, styles] of pathStyles) {
+        path.setAttribute('stroke', styles.stroke)
+        path.style.strokeDasharray = styles.strokeDasharray
+        path.style.animation = ''
+      }
+    }
+  }
+
+  // Reset node styles when metrics disabled
+  function resetNodeStyles() {
+    if (!svgElement) return
+
+    const nodeGroups = svgElement.querySelectorAll('g.node')
+    nodeGroups.forEach((node) => {
+      node.classList.remove('status-up', 'status-down', 'status-unknown')
+      const rect = node.querySelector('.node-bg rect, rect.node-bg') as SVGRectElement
+      if (rect) {
+        rect.removeAttribute('stroke')
+        rect.removeAttribute('stroke-width')
+      }
+    })
   }
 
   // Track previous enableMetrics state
@@ -467,12 +538,8 @@
       metricsStore.subscribeToTopology(topologyId)
     } else {
       metricsStore.disconnect()
-      // Dispose panzoom before reloading content
-      if (panzoomInstance) {
-        panzoomInstance.dispose()
-        panzoomInstance = null
-      }
-      loadContent() // Reload to reset styles
+      resetLinkStyles()
+      resetNodeStyles()
     }
   }
 
@@ -503,9 +570,13 @@
 
 <svelte:head>
   <style>
-    @keyframes shumoku-edge-flow {
+    @keyframes shumoku-edge-flow-in {
       from { stroke-dashoffset: 24; }
       to { stroke-dashoffset: 0; }
+    }
+    @keyframes shumoku-edge-flow-out {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 24; }
     }
   </style>
 </svelte:head>

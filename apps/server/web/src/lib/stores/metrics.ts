@@ -15,7 +15,9 @@ export interface NodeMetrics {
 
 export interface EdgeMetrics {
   status: EdgeStatus
-  utilization?: number
+  utilization?: number // Legacy: max of in/out
+  inUtilization?: number // Incoming direction (0-100)
+  outUtilization?: number // Outgoing direction (0-100)
 }
 
 export interface MetricsData {

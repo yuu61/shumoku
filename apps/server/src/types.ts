@@ -110,7 +110,9 @@ export interface NodeMetrics {
 
 export interface LinkMetrics {
   status: 'up' | 'down' | 'unknown'
-  utilization?: number
+  utilization?: number // Legacy: max of in/out for backward compatibility
+  inUtilization?: number // Incoming direction utilization (0-100)
+  outUtilization?: number // Outgoing direction utilization (0-100)
   inBps?: number
   outBps?: number
 }

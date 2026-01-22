@@ -48,18 +48,25 @@ export class MockMetricsProvider {
       // Link is down if either node is down
       const status = fromNode?.status === 'up' && toNode?.status === 'up' ? 'up' : 'down'
 
-      // Generate utilization between 0-100
-      const utilization =
-        status === 'up' ? this.generateSmoothValue(`link:${linkId}:util`, 0, 95, 10) : 0
+      // Generate separate utilization for each direction (0-100)
+      const inUtilization =
+        status === 'up' ? this.generateSmoothValue(`link:${linkId}:in`, 0, 95, 10) : 0
+      const outUtilization =
+        status === 'up' ? this.generateSmoothValue(`link:${linkId}:out`, 0, 95, 10) : 0
 
       // Calculate bandwidth in bps based on link bandwidth setting
       const capacity = this.getBandwidthCapacity(link.bandwidth)
-      const inBps = status === 'up' ? Math.round((utilization / 100) * capacity * 0.9) : 0
-      const outBps = status === 'up' ? Math.round((utilization / 100) * capacity * 1.1) : 0
+      const inBps = status === 'up' ? Math.round((inUtilization / 100) * capacity) : 0
+      const outBps = status === 'up' ? Math.round((outUtilization / 100) * capacity) : 0
+
+      // Legacy utilization is max of both directions
+      const utilization = Math.max(inUtilization, outUtilization)
 
       links[linkId] = {
         status,
         utilization: Math.round(utilization * 10) / 10,
+        inUtilization: Math.round(inUtilization * 10) / 10,
+        outUtilization: Math.round(outUtilization * 10) / 10,
         inBps,
         outBps,
       }
