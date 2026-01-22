@@ -58,16 +58,38 @@ function createMetricsStore() {
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let reconnectAttempts = 0
   const maxReconnectAttempts = 5
+  let intentionalDisconnect = false
 
   function getWebSocketUrl(): string {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     return `${protocol}//${window.location.host}/ws`
   }
 
-  function connect(): void {
-    if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) {
-      return
+  function cleanupWebSocket(): void {
+    if (ws) {
+      // Remove event handlers to prevent callbacks after cleanup
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onclose = null
+      ws.onerror = null
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close()
+      }
+      ws = null
     }
+  }
+
+  function connect(): void {
+    // Cancel any pending reconnect
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout)
+      reconnectTimeout = null
+    }
+
+    // Clean up existing connection (handles CONNECTING state too)
+    cleanupWebSocket()
+
+    intentionalDisconnect = false
 
     try {
       ws = new WebSocket(getWebSocketUrl())
@@ -96,7 +118,10 @@ function createMetricsStore() {
 
       ws.onclose = () => {
         update((s) => ({ ...s, connected: false }))
-        scheduleReconnect()
+        // Only reconnect if this wasn't an intentional disconnect
+        if (!intentionalDisconnect) {
+          scheduleReconnect()
+        }
       }
 
       ws.onerror = (event) => {
@@ -106,7 +131,9 @@ function createMetricsStore() {
     } catch (err) {
       console.error('[Metrics] Failed to create WebSocket:', err)
       update((s) => ({ ...s, error: 'Failed to connect' }))
-      scheduleReconnect()
+      if (!intentionalDisconnect) {
+        scheduleReconnect()
+      }
     }
   }
 
@@ -115,7 +142,7 @@ function createMetricsStore() {
       clearTimeout(reconnectTimeout)
     }
 
-    if (reconnectAttempts < maxReconnectAttempts) {
+    if (reconnectAttempts < maxReconnectAttempts && !intentionalDisconnect) {
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
       reconnectAttempts++
       reconnectTimeout = setTimeout(connect, delay)
@@ -123,16 +150,15 @@ function createMetricsStore() {
   }
 
   function disconnect(): void {
+    intentionalDisconnect = true
+
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout)
       reconnectTimeout = null
     }
 
-    if (ws) {
-      ws.close()
-      ws = null
-    }
-
+    cleanupWebSocket()
+    reconnectAttempts = 0
     set(initialState)
   }
 

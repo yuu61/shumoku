@@ -469,6 +469,11 @@
       metricsStore.subscribeToTopology(topologyId)
     } else {
       metricsStore.disconnect()
+      // Dispose panzoom before reloading content
+      if (panzoomInstance) {
+        panzoomInstance.dispose()
+        panzoomInstance = null
+      }
       loadContent() // Reload to reset styles
     }
   }

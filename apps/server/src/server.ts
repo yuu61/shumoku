@@ -89,18 +89,9 @@ export class Server {
         return c.text('Not found', 404)
       })
     } else {
-      console.log('[Server] Web UI not found, using legacy dashboard')
-
-      this.app.get('/', (c) => {
-        const topologies = this.topologyManager.listTopologies()
-        const html = this.renderDashboard(topologies)
-        return c.html(html)
-      })
-
-      this.app.get('/settings', (c) => {
-        const html = this.renderSettingsPage()
-        return c.html(html)
-      })
+      throw new Error(
+        '[Server] Web UI not found. Run "bun run build" in apps/server/web first.',
+      )
     }
   }
 
@@ -248,9 +239,22 @@ export class Server {
     this.broadcastMetrics()
 
     const interval = this.config.zabbix?.pollInterval || 5000
+    let isPolling = false
+
     this.pollInterval = setInterval(async () => {
-      await this.updateAllMetrics()
-      this.broadcastMetrics()
+      // Skip if previous poll is still running
+      if (isPolling) {
+        console.log('[Server] Skipping metrics poll - previous poll still running')
+        return
+      }
+
+      isPolling = true
+      try {
+        await this.updateAllMetrics()
+        this.broadcastMetrics()
+      } finally {
+        isPolling = false
+      }
     }, interval)
   }
 
@@ -361,107 +365,6 @@ export class Server {
     }
 
     closeDatabase()
-  }
-
-  private renderDashboard(topologies: string[]): string {
-    const items = topologies
-      .map(
-        (name) => `
-      <a href="/topology/${encodeURIComponent(name)}" class="topology-card">
-        <h2>${this.escapeHtml(name)}</h2>
-        <p>View real-time network topology</p>
-      </a>
-    `,
-      )
-      .join('')
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shumoku - Network Topologies</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f8fafc;
-      min-height: 100vh;
-      padding: 2rem;
-    }
-    .container { max-width: 1200px; margin: 0 auto; }
-    h1 { font-size: 2rem; color: #1e293b; margin-bottom: 2rem; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-    .topology-card {
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      text-decoration: none;
-      color: inherit;
-      border: 1px solid #e2e8f0;
-      transition: all 0.2s;
-    }
-    .topology-card:hover {
-      border-color: #7FE4C1;
-      box-shadow: 0 4px 12px rgba(127,228,193,0.2);
-    }
-    .topology-card h2 { font-size: 1.25rem; color: #1e293b; margin-bottom: 0.5rem; }
-    .topology-card p { font-size: 0.875rem; color: #64748b; }
-    .empty { text-align: center; color: #64748b; padding: 3rem; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Shumoku</h1>
-    ${
-      topologies.length > 0
-        ? `<div class="grid">${items}</div>`
-        : '<div class="empty"><p>No topologies found</p></div>'
-    }
-  </div>
-</body>
-</html>`
-  }
-
-  private renderSettingsPage(): string {
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings - Shumoku</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f8fafc;
-      min-height: 100vh;
-      padding: 2rem;
-    }
-    .container { max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 2rem; color: #1e293b; margin-bottom: 2rem; }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      border: 1px solid #e2e8f0;
-    }
-    a { color: #3b82f6; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Settings</h1>
-    <div class="card">
-      <p>Settings page placeholder. <a href="/">Back to dashboard</a></p>
-    </div>
-  </div>
-</body>
-</html>`
   }
 
   private escapeHtml(text: string): string {
