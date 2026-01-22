@@ -151,14 +151,12 @@
     scale = newScale
   }
 
-  // Reset view
+  // Reset view to 100% zoom at origin
   function resetView() {
     if (!panzoomInstance) return
-    panzoomInstance.moveTo(0, 0)
     panzoomInstance.zoomAbs(0, 0, 1)
+    panzoomInstance.moveTo(0, 0)
     scale = 1
-    // Then fit to view
-    setTimeout(fitToView, 10)
   }
 
   // Zoom controls
