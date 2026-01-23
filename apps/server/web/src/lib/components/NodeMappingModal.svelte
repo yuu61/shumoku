@@ -12,11 +12,14 @@ import Warning from 'phosphor-svelte/lib/Warning'
 import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
 import GearSix from 'phosphor-svelte/lib/GearSix'
 import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
+import ArrowSquareOut from 'phosphor-svelte/lib/ArrowSquareOut'
+import Cube from 'phosphor-svelte/lib/Cube'
 
 interface Props {
   open: boolean
   topologyId: string
   metricsSourceId: string | undefined
+  netboxBaseUrl: string | undefined
   nodeData: NodeSelectEvent | null
   currentMapping: ZabbixMapping | null
   onSaved?: (nodeId: string, mapping: { hostId?: string; hostName?: string }) => void
@@ -26,6 +29,7 @@ let {
   open = $bindable(false),
   topologyId,
   metricsSourceId,
+  netboxBaseUrl,
   nodeData = null,
   currentMapping = null,
   onSaved,
@@ -56,6 +60,13 @@ let filteredHosts = $derived(
 
 let currentNodeMapping = $derived(nodeData && currentMapping?.nodes?.[nodeData.node.id])
 let hasMetricsSource = $derived(!!metricsSourceId)
+
+// NetBox device URL (search by name since we don't have device ID)
+let netboxDeviceUrl = $derived(
+  netboxBaseUrl && nodeData?.node.id
+    ? `${netboxBaseUrl}/dcim/devices/?name=${encodeURIComponent(nodeData.node.id)}`
+    : undefined,
+)
 
 // Get current metrics for this node
 let nodeMetrics = $derived(nodeData ? $metricsData?.nodes?.[nodeData.node.id] : null)
@@ -237,6 +248,20 @@ function getStatusBgColor(status: string | undefined): string {
                 <span class="text-muted-foreground italic">No device info</span>
               {/if}
             </div>
+
+            <!-- NetBox Link -->
+            {#if netboxDeviceUrl}
+              <a
+                href={netboxDeviceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <Cube size={12} />
+                View in NetBox
+                <ArrowSquareOut size={10} />
+              </a>
+            {/if}
           </div>
 
           <!-- Connected Links with Traffic -->

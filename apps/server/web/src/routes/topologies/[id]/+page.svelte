@@ -24,6 +24,7 @@ let mappingModalOpen = false
 let selectedNodeData: NodeSelectEvent | null = null
 let currentMapping: ZabbixMapping | null = null
 let metricsSourceId: string | undefined = undefined
+let netboxBaseUrl: string | undefined = undefined
 
 // Get ID from route params
 $: topologyId = $page.params.id!
@@ -52,6 +53,19 @@ onMount(async () => {
     // Find metrics source
     const metricsSource = sources.find((s: TopologyDataSource) => s.purpose === 'metrics')
     metricsSourceId = metricsSource?.dataSourceId
+
+    // Find NetBox topology source for device links
+    const netboxSource = sources.find(
+      (s: TopologyDataSource) => s.purpose === 'topology' && s.dataSource?.type === 'netbox',
+    )
+    if (netboxSource?.dataSource?.configJson) {
+      try {
+        const config = JSON.parse(netboxSource.dataSource.configJson)
+        netboxBaseUrl = config.url?.replace(/\/$/, '') // Remove trailing slash
+      } catch {
+        // Ignore parse errors
+      }
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to load topology'
   } finally {
@@ -151,6 +165,7 @@ function handleMappingSaved(nodeId: string, mapping: { hostId?: string; hostName
     bind:open={mappingModalOpen}
     {topologyId}
     {metricsSourceId}
+    {netboxBaseUrl}
     nodeData={selectedNodeData}
     {currentMapping}
     onSaved={handleMappingSaved}
