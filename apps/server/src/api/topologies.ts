@@ -250,6 +250,51 @@ export function createTopologiesApi(): Hono {
     }
   })
 
+  // Sync topology from its topology source (e.g., NetBox)
+  app.post('/:id/sync-from-source', async (c) => {
+    const id = c.req.param('id')
+    try {
+      console.log('[sync-from-source] Starting sync for topology:', id)
+
+      const topology = service.get(id)
+      if (!topology) {
+        return c.json({ error: 'Topology not found' }, 404)
+      }
+
+      if (!topology.topologySourceId) {
+        return c.json({ error: 'No topology source configured' }, 400)
+      }
+
+      console.log('[sync-from-source] Fetching from source:', topology.topologySourceId)
+
+      // Get the topology from the source
+      const graph = await dataSourceService.fetchTopology(topology.topologySourceId)
+      if (!graph) {
+        return c.json({ error: 'Failed to fetch topology from source' }, 500)
+      }
+
+      console.log('[sync-from-source] Got graph:', graph.nodes.length, 'nodes,', graph.links.length, 'links')
+
+      // Update the topology content
+      const updated = await service.update(id, {
+        contentJson: JSON.stringify(graph),
+      })
+
+      console.log('[sync-from-source] Topology updated successfully')
+
+      return c.json({
+        success: true,
+        topology: updated,
+        nodeCount: graph.nodes.length,
+        linkCount: graph.links.length,
+      })
+    } catch (err) {
+      console.error('[sync-from-source] Error:', err)
+      const message = err instanceof Error ? err.message : String(err)
+      return c.json({ error: message }, 500)
+    }
+  })
+
   // Get auto-mapping hints for a topology
   app.get('/:id/mapping-hints', async (c) => {
     const id = c.req.param('id')

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte'
 import { topologies, topologiesList, topologiesLoading, topologiesError } from '$lib/stores'
-import { serializeMultiFileContent } from '$lib/types'
+import { YamlParser } from '@shumoku/parser-yaml'
 import * as Dialog from '$lib/components/ui/dialog'
 import { Button } from '$lib/components/ui/button'
 import Plus from 'phosphor-svelte/lib/Plus'
@@ -51,8 +51,12 @@ async function handleCreate() {
   formError = ''
 
   try {
-    // Convert single YAML to multi-file JSON format
-    const contentJson = serializeMultiFileContent([{ name: 'main.yaml', content: formYaml }])
+    // Parse YAML to NetworkGraph
+    const parser = new YamlParser()
+    const result = parser.parse(formYaml)
+
+    // Send NetworkGraph JSON
+    const contentJson = JSON.stringify(result.graph)
     await topologies.create({
       name: formName.trim(),
       contentJson,

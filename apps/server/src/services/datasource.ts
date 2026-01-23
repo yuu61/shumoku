@@ -6,7 +6,12 @@
 import type { Database } from 'bun:sqlite'
 import { getDatabase, generateId, timestamp } from '../db/index.js'
 import type { DataSource, DataSourceInput, DataSourceType } from '../types.js'
-import { pluginRegistry, hasHostsCapability, hasAutoMappingCapability } from '../plugins/index.js'
+import {
+  pluginRegistry,
+  hasTopologyCapability,
+  hasHostsCapability,
+  hasAutoMappingCapability,
+} from '../plugins/index.js'
 import type { ConnectionResult, Host, HostItem, MappingHint } from '../plugins/types.js'
 import type { NetworkGraph } from '@shumoku/core'
 
@@ -202,6 +207,18 @@ export class DataSourceService {
     }
 
     return plugin.getHostItems?.(hostId) || []
+  }
+
+  /**
+   * Fetch topology from a data source (if supported)
+   */
+  async fetchTopology(id: string): Promise<NetworkGraph | null> {
+    const plugin = this.getPlugin(id)
+    if (!plugin || !hasTopologyCapability(plugin)) {
+      return null
+    }
+
+    return plugin.fetchTopology()
   }
 
   /**

@@ -25,6 +25,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@shumoku/parser-yaml": "workspace:*",
     "@types/cytoscape": "^3.31.0",
     "bits-ui": "^2.15.4",
     "clsx": "^2.1.1",

@@ -66,8 +66,8 @@ class PluginRegistry {
       throw new Error(`Unknown plugin type: ${type}`)
     }
 
+    // Factory is responsible for calling initialize
     const plugin = registration.factory(config)
-    plugin.initialize(config)
     return plugin
   }
 

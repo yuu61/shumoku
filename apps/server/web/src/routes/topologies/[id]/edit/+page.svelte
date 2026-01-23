@@ -3,40 +3,33 @@ import { onMount } from 'svelte'
 import { page } from '$app/stores'
 import { goto } from '$app/navigation'
 import { api } from '$lib/api'
-import type { Topology, DataSource, TopologyFile } from '$lib/types'
-import { parseMultiFileContent, serializeMultiFileContent } from '$lib/types'
+import { YamlParser } from '@shumoku/parser-yaml'
+import type { Topology } from '$lib/types'
 import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
-import Plus from 'phosphor-svelte/lib/Plus'
-import X from 'phosphor-svelte/lib/X'
 
 // Get ID from route params (always defined for this route)
 $: id = $page.params.id!
 
 let topology: Topology | null = null
-let dataSources: DataSource[] = []
 let loading = true
 let error = ''
 let saving = false
 
-// Form state
-let formName = ''
-let formDataSourceId = ''
-
-// Multi-file state
-let files: TopologyFile[] = []
-let activeFileIndex = 0
+// Editor state
+let editorMode: 'yaml' | 'json' = 'yaml'
+let yamlContent = ''
+let jsonContent = ''
 
 onMount(async () => {
   try {
-    const [topoData, dsData] = await Promise.all([api.topologies.get(id), api.dataSources.list()])
-    topology = topoData
-    dataSources = dsData
-    formName = topology.name
-    formDataSourceId = topology.dataSourceId || ''
+    topology = await api.topologies.get(id)
 
-    // Parse multi-file content
-    files = parseMultiFileContent(topology.contentJson)
-    activeFileIndex = 0
+    // Parse stored JSON and display as YAML for editing
+    const graph = JSON.parse(topology.contentJson)
+    jsonContent = JSON.stringify(graph, null, 2)
+
+    // Convert to YAML for display (simple conversion)
+    yamlContent = graphToYaml(graph)
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to load topology'
   } finally {
@@ -44,86 +37,112 @@ onMount(async () => {
   }
 })
 
-function selectFile(index: number) {
-  activeFileIndex = index
-}
+// Simple NetworkGraph to YAML converter
+function graphToYaml(graph: Record<string, unknown>): string {
+  const lines: string[] = []
 
-function addFile() {
-  const baseName = 'new-file'
-  let name = `${baseName}.yaml`
-  let counter = 1
-  while (files.some((f) => f.name === name)) {
-    name = `${baseName}-${counter}.yaml`
-    counter++
-  }
-  files = [...files, { name, content: `# ${name}\n` }]
-  activeFileIndex = files.length - 1
-}
+  if (graph.name) lines.push(`name: ${graph.name}`)
+  if (graph.version) lines.push(`version: "${graph.version}"`)
+  if (graph.description) lines.push(`description: ${graph.description}`)
 
-function removeFile(index: number) {
-  if (files.length <= 1) {
-    alert('Cannot delete the last file')
-    return
+  lines.push('')
+  lines.push('nodes:')
+  const nodes = graph.nodes as Array<Record<string, unknown>> || []
+  for (const node of nodes) {
+    lines.push(`  - id: ${node.id}`)
+    if (node.label) lines.push(`    label: ${node.label}`)
+    if (node.type) lines.push(`    type: ${node.type}`)
+    if (node.vendor) lines.push(`    vendor: ${node.vendor}`)
+    if (node.model) lines.push(`    model: ${node.model}`)
+    if (node.parent) lines.push(`    parent: ${node.parent}`)
   }
-  if (files[index].name === 'main.yaml') {
-    alert('Cannot delete main.yaml')
-    return
-  }
-  if (!confirm(`Delete "${files[index].name}"?`)) {
-    return
-  }
-  files = files.filter((_, i) => i !== index)
-  if (activeFileIndex >= files.length) {
-    activeFileIndex = files.length - 1
-  }
-}
 
-function renameFile(index: number) {
-  const file = files[index]
-  if (file.name === 'main.yaml') {
-    alert('Cannot rename main.yaml')
-    return
-  }
-  const newName = prompt('New file name:', file.name)
-  if (newName && newName !== file.name) {
-    if (!newName.endsWith('.yaml') && !newName.endsWith('.yml')) {
-      alert('File name must end with .yaml or .yml')
-      return
+  lines.push('')
+  lines.push('links:')
+  const links = graph.links as Array<Record<string, unknown>> || []
+  for (const link of links) {
+    const from = link.from as string | { node: string; port?: string }
+    const to = link.to as string | { node: string; port?: string }
+
+    if (typeof from === 'string') {
+      lines.push(`  - from: ${from}`)
+    } else {
+      lines.push(`  - from:`)
+      lines.push(`      node: ${from.node}`)
+      if (from.port) lines.push(`      port: ${from.port}`)
     }
-    if (files.some((f) => f.name === newName)) {
-      alert('A file with this name already exists')
-      return
+
+    if (typeof to === 'string') {
+      lines.push(`    to: ${to}`)
+    } else {
+      lines.push(`    to:`)
+      lines.push(`      node: ${to.node}`)
+      if (to.port) lines.push(`      port: ${to.port}`)
     }
-    files = files.map((f, i) => (i === index ? { ...f, name: newName } : f))
+
+    if (link.bandwidth) lines.push(`    bandwidth: ${link.bandwidth}`)
   }
+
+  const subgraphs = graph.subgraphs as Array<Record<string, unknown>> | undefined
+  if (subgraphs && subgraphs.length > 0) {
+    lines.push('')
+    lines.push('subgraphs:')
+    for (const sg of subgraphs) {
+      lines.push(`  - id: ${sg.id}`)
+      if (sg.label) lines.push(`    label: ${sg.label}`)
+      if (sg.parent) lines.push(`    parent: ${sg.parent}`)
+    }
+  }
+
+  return lines.join('\n')
 }
 
-function updateFileContent(content: string) {
-  files = files.map((f, i) => (i === activeFileIndex ? { ...f, content } : f))
+function switchMode(mode: 'yaml' | 'json') {
+  if (mode === editorMode) return
+
+  if (mode === 'json') {
+    // YAML -> JSON
+    try {
+      const parser = new YamlParser()
+      const result = parser.parse(yamlContent)
+      jsonContent = JSON.stringify(result.graph, null, 2)
+      editorMode = 'json'
+      error = ''
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to parse YAML'
+    }
+  } else {
+    // JSON -> YAML
+    try {
+      const graph = JSON.parse(jsonContent)
+      yamlContent = graphToYaml(graph)
+      editorMode = 'yaml'
+      error = ''
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to parse JSON'
+    }
+  }
 }
 
 async function handleSave() {
-  if (!formName.trim()) {
-    error = 'Name is required'
-    return
-  }
-
-  // Validate main.yaml exists
-  if (!files.some((f) => f.name === 'main.yaml')) {
-    error = 'main.yaml is required'
-    return
-  }
-
   saving = true
   error = ''
 
   try {
-    const contentJson = serializeMultiFileContent(files)
-    await api.topologies.update(id, {
-      name: formName.trim(),
-      contentJson,
-      dataSourceId: formDataSourceId || undefined,
-    })
+    let contentJson: string
+
+    if (editorMode === 'yaml') {
+      // Parse YAML to NetworkGraph JSON
+      const parser = new YamlParser()
+      const result = parser.parse(yamlContent)
+      contentJson = JSON.stringify(result.graph)
+    } else {
+      // Validate JSON
+      JSON.parse(jsonContent)
+      contentJson = jsonContent
+    }
+
+    await api.topologies.update(id, { contentJson })
     goto(`/topologies/${id}`)
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to save'
@@ -159,95 +178,64 @@ async function handleSave() {
     </div>
 
     <div class="card flex-1 flex flex-col overflow-hidden">
-      <form class="flex flex-col h-full" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
-        <div class="p-4 border-b border-theme-border space-y-4">
-          {#if error}
-            <div class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">
-              {error}
-            </div>
-          {/if}
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="name" class="label">Name</label>
-              <input type="text" id="name" class="input" bind:value={formName} />
-            </div>
-            <div>
-              <label for="dataSource" class="label">Data Source</label>
-              <select id="dataSource" class="input" bind:value={formDataSourceId}>
-                <option value="">None</option>
-                {#each dataSources as ds}
-                  <option value={ds.id}>{ds.name}</option>
-                {/each}
-              </select>
-            </div>
+      <div class="p-4 border-b border-theme-border">
+        {#if error}
+          <div class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm mb-4">
+            {error}
           </div>
-        </div>
+        {/if}
 
-        <!-- File tabs -->
-        <div class="flex items-center gap-1 px-4 pt-2 border-b border-theme-border bg-theme-bg-canvas overflow-x-auto">
-          {#each files as file, index}
-            <div
-              class="flex items-center gap-1 px-3 py-1.5 text-sm rounded-t-lg border border-b-0 transition-colors cursor-pointer {activeFileIndex === index
-                ? 'bg-theme-bg-elevated border-theme-border text-theme-text-emphasis'
-                : 'bg-transparent border-transparent text-theme-text-muted hover:text-theme-text hover:bg-theme-bg'}"
-              onclick={() => selectFile(index)}
-              ondblclick={() => renameFile(index)}
-              role="tab"
-              tabindex="0"
-              aria-selected={activeFileIndex === index}
-              onkeydown={(e) => e.key === 'Enter' && selectFile(index)}
-            >
-              <span class="max-w-32 truncate">{file.name}</span>
-              {#if file.name !== 'main.yaml' && files.length > 1}
-                <button
-                  type="button"
-                  class="ml-1 p-0.5 rounded hover:bg-theme-bg-canvas text-theme-text-muted hover:text-danger"
-                  onclick={(e) => { e.stopPropagation(); removeFile(index); }}
-                  title="Delete file"
-                >
-                  <X size={12} />
-                </button>
-              {/if}
-            </div>
-          {/each}
+        <!-- Mode toggle -->
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-theme-text-muted">Format:</span>
           <button
             type="button"
-            class="flex items-center gap-1 px-2 py-1.5 text-sm text-theme-text-muted hover:text-theme-text rounded-lg hover:bg-theme-bg transition-colors"
-            onclick={addFile}
-            title="Add file"
+            class="px-3 py-1 text-sm rounded-lg transition-colors {editorMode === 'yaml' ? 'bg-primary text-primary-foreground' : 'bg-theme-bg hover:bg-theme-bg-canvas text-theme-text'}"
+            onclick={() => switchMode('yaml')}
           >
-            <Plus size={16} />
+            YAML
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1 text-sm rounded-lg transition-colors {editorMode === 'json' ? 'bg-primary text-primary-foreground' : 'bg-theme-bg hover:bg-theme-bg-canvas text-theme-text'}"
+            onclick={() => switchMode('json')}
+          >
+            JSON
           </button>
         </div>
+      </div>
 
-        <!-- Editor -->
-        <div class="flex-1 overflow-hidden">
-          {#if files[activeFileIndex]}
-            <textarea
-              class="w-full h-full p-4 font-mono text-sm bg-theme-bg-elevated border-0 resize-none focus:outline-none"
-              value={files[activeFileIndex].content}
-              oninput={(e) => updateFileContent(e.currentTarget.value)}
-              placeholder="Enter YAML content..."
-            ></textarea>
-          {/if}
-        </div>
+      <!-- Editor -->
+      <div class="flex-1 overflow-hidden">
+        {#if editorMode === 'yaml'}
+          <textarea
+            class="w-full h-full p-4 font-mono text-sm bg-theme-bg-elevated border-0 resize-none focus:outline-none"
+            bind:value={yamlContent}
+            placeholder="Enter YAML content..."
+          ></textarea>
+        {:else}
+          <textarea
+            class="w-full h-full p-4 font-mono text-sm bg-theme-bg-elevated border-0 resize-none focus:outline-none"
+            bind:value={jsonContent}
+            placeholder="Enter JSON content..."
+          ></textarea>
+        {/if}
+      </div>
 
-        <div class="flex justify-between items-center gap-2 p-4 border-t border-theme-border">
-          <p class="text-xs text-theme-text-muted">
-            {files.length} file{files.length !== 1 ? 's' : ''} • Double-click tab to rename
-          </p>
-          <div class="flex gap-2">
-            <a href="/topologies/{$page.params.id}" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary" disabled={saving}>
-              {#if saving}
-                <span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
-              {/if}
-              Save Changes
-            </button>
-          </div>
+      <div class="flex justify-between items-center gap-2 p-4 border-t border-theme-border">
+        <p class="text-xs text-theme-text-muted">
+          Editing as {editorMode.toUpperCase()}
+        </p>
+        <div class="flex gap-2">
+          <a href="/topologies/{$page.params.id}" class="btn btn-secondary">Cancel</a>
+          <button type="button" class="btn btn-primary" disabled={saving} onclick={handleSave}>
+            {#if saving}
+              <span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
+            {/if}
+            Save Changes
+          </button>
         </div>
-      </form>
+      </div>
     </div>
   {/if}
 </div>

@@ -1,6 +1,9 @@
 /**
  * Topology Service
  * Manages network topologies with database persistence
+ *
+ * Storage format: contentJson stores NetworkGraph JSON directly
+ * YAML parsing happens only at import time
  */
 
 import type { Database } from 'bun:sqlite'
@@ -11,43 +14,6 @@ import { YamlParser, HierarchicalParser, createMemoryFileResolver } from '@shumo
 import { resolveIconDimensionsForGraph, collectIconUrls } from '@shumoku/renderer'
 import { getDatabase, generateId, timestamp } from '../db/index.js'
 import type { Topology, TopologyInput, MetricsData, ZabbixMapping } from '../types.js'
-
-/**
- * Single file in a multi-file topology
- */
-export interface TopologyFile {
-  name: string
-  content: string
-}
-
-/**
- * Multi-file content format stored in content_json
- */
-export interface MultiFileContent {
-  files: TopologyFile[]
-}
-
-/**
- * Parse multi-file JSON content
- */
-export function parseMultiFileContent(contentJson: string): TopologyFile[] {
-  const parsed = JSON.parse(contentJson) as MultiFileContent
-  return parsed.files
-}
-
-/**
- * Serialize files to multi-file JSON format
- */
-export function serializeMultiFileContent(files: TopologyFile[]): string {
-  return JSON.stringify({ files }, null, 2)
-}
-
-/**
- * Create multi-file content from a single YAML string (for simple topologies)
- */
-export function createSingleFileContent(yamlContent: string): string {
-  return serializeMultiFileContent([{ name: 'main.yaml', content: yamlContent }])
-}
 
 interface TopologyRow {
   id: string
@@ -96,6 +62,32 @@ export interface ParsedTopology {
   mapping?: ZabbixMapping
 }
 
+/**
+ * Parse YAML content to NetworkGraph
+ * Supports single file or multi-file hierarchical topologies
+ */
+export async function parseYamlToNetworkGraph(
+  yamlContent: string,
+  additionalFiles?: Map<string, string>,
+): Promise<NetworkGraph> {
+  // Check if content has file references (hierarchical)
+  const hasFileRefs = yamlContent.includes('file:')
+
+  if (hasFileRefs && additionalFiles) {
+    // Parse hierarchically using memory resolver
+    const fileMap = new Map<string, string>([['main.yaml', yamlContent], ...additionalFiles])
+    const resolver = createMemoryFileResolver(fileMap, '')
+    const parser = new HierarchicalParser(resolver)
+    const result = await parser.parse(yamlContent, 'main.yaml')
+    return result.graph
+  }
+
+  // Single file, parse directly
+  const parser = new YamlParser()
+  const result = parser.parse(yamlContent)
+  return result.graph
+}
+
 export class TopologyService {
   private db: Database
   private layout: BunHierarchicalLayout
@@ -136,10 +128,11 @@ export class TopologyService {
 
   /**
    * Create a new topology
+   * contentJson should be NetworkGraph JSON
    */
   async create(input: TopologyInput): Promise<Topology> {
     // Validate content by parsing it
-    await this.parseContent(input.contentJson)
+    this.parseContent(input.contentJson)
 
     const id = await generateId()
     const now = timestamp()
@@ -177,7 +170,7 @@ export class TopologyService {
 
     // If content is being updated, validate it
     if (input.contentJson !== undefined) {
-      await this.parseContent(input.contentJson)
+      this.parseContent(input.contentJson)
     }
 
     const updates: string[] = []
@@ -284,7 +277,7 @@ export class TopologyService {
    * Parse a topology and generate layout
    */
   private async parseTopology(topology: Topology): Promise<ParsedTopology> {
-    const graph = await this.parseContent(topology.contentJson)
+    const graph = this.parseContent(topology.contentJson)
 
     // Resolve icon dimensions from CDN for proper sizing
     let iconDimensions: ResolvedIconDimensions = { byUrl: new Map(), byKey: new Map() }
@@ -327,36 +320,20 @@ export class TopologyService {
 
   /**
    * Parse content JSON to NetworkGraph
-   * Supports multi-file hierarchical topologies
+   * contentJson is NetworkGraph JSON directly
    */
-  private async parseContent(contentJson: string): Promise<NetworkGraph> {
-    const files = parseMultiFileContent(contentJson)
+  private parseContent(contentJson: string): NetworkGraph {
+    const graph = JSON.parse(contentJson) as NetworkGraph
 
-    // Find main.yaml
-    const mainFile = files.find((f) => f.name === 'main.yaml')
-    if (!mainFile) {
-      throw new Error('main.yaml not found in topology files')
+    // Basic validation
+    if (!graph.nodes || !Array.isArray(graph.nodes)) {
+      throw new Error('Invalid NetworkGraph: nodes array is required')
+    }
+    if (!graph.links || !Array.isArray(graph.links)) {
+      throw new Error('Invalid NetworkGraph: links array is required')
     }
 
-    // Check if main file has file references
-    const hasFileRefs = mainFile.content.includes('file:')
-
-    if (hasFileRefs) {
-      // Parse hierarchically using memory resolver
-      const fileMap = new Map<string, string>()
-      for (const file of files) {
-        fileMap.set(file.name, file.content)
-      }
-      const resolver = createMemoryFileResolver(fileMap, '')
-      const parser = new HierarchicalParser(resolver)
-      const result = await parser.parse(mainFile.content, 'main.yaml')
-      return result.graph
-    }
-
-    // Single file, parse directly
-    const parser = new YamlParser()
-    const result = parser.parse(mainFile.content)
-    return result.graph
+    return graph
   }
 
   /**
@@ -415,7 +392,7 @@ export class TopologyService {
 
   /**
    * Initialize with sample topology if database is empty
-   * Uses the comprehensive hierarchical sample network from @shumoku/core/fixtures
+   * Parses YAML sample network and stores as NetworkGraph JSON
    */
   async initializeSample(): Promise<void> {
     const existing = this.list()
@@ -425,16 +402,26 @@ export class TopologyService {
 
     console.log('[TopologyService] No topologies found, creating sample network')
 
-    // Convert sample network files to JSON format
-    const files: TopologyFile[] = sampleNetwork.map((f) => ({
-      name: f.name,
-      content: f.content,
-    }))
+    // Build file map from sample network
+    const fileMap = new Map<string, string>()
+    let mainContent = ''
+    for (const file of sampleNetwork) {
+      fileMap.set(file.name, file.content)
+      if (file.name === 'main.yaml') {
+        mainContent = file.content
+      }
+    }
 
-    const contentJson = serializeMultiFileContent(files)
+    if (!mainContent) {
+      console.error('[TopologyService] No main.yaml in sample network')
+      return
+    }
 
-    // Validate by parsing
-    await this.parseContent(contentJson)
+    // Parse YAML to NetworkGraph
+    const graph = await parseYamlToNetworkGraph(mainContent, fileMap)
+
+    // Store as JSON
+    const contentJson = JSON.stringify(graph)
 
     // Insert
     const id = await generateId()
@@ -447,6 +434,6 @@ export class TopologyService {
       )
       .run(id, 'Sample Network', contentJson, null, null, null, now, now)
 
-    console.log('[TopologyService] Sample network created with', files.length, 'files')
+    console.log('[TopologyService] Sample network created:', graph.nodes.length, 'nodes,', graph.links.length, 'links')
   }
 }

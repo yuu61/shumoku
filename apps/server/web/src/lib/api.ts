@@ -122,6 +122,12 @@ export const topologies = {
       body: JSON.stringify(mapping),
     }),
 
+  syncFromSource: (id: string) =>
+    request<{ success: boolean; topology: Topology; nodeCount: number; linkCount: number }>(
+      `/topologies/${id}/sync-from-source`,
+      { method: 'POST' },
+    ),
+
   renderSvg: async (id: string): Promise<string> => {
     const response = await fetch(`${BASE_URL}/topologies/${id}/render`)
     if (!response.ok) {

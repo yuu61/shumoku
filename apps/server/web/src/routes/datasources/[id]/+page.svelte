@@ -23,9 +23,19 @@ let formName = $state('')
 let formUrl = $state('')
 let formToken = $state('')
 let formPollInterval = $state(30000)
+let formSiteFilter = $state('')
+let formTagFilter = $state('')
 let hasExistingToken = $state(false)
 
-function parseConfig(configJson: string): { url?: string; token?: string; pollInterval?: number } {
+interface ParsedConfig {
+  url?: string
+  token?: string
+  pollInterval?: number
+  siteFilter?: string
+  tagFilter?: string
+}
+
+function parseConfig(configJson: string): ParsedConfig {
   try {
     return JSON.parse(configJson)
   } catch {
@@ -33,22 +43,32 @@ function parseConfig(configJson: string): { url?: string; token?: string; pollIn
   }
 }
 
-function getConfigFromForm(type: DataSourceType, existingConfig?: { token?: string }): string {
-  if (type === 'zabbix') {
-    const config: Record<string, unknown> = {
-      url: formUrl.trim(),
-      pollInterval: formPollInterval,
-    }
-    // Only update token if a new one was entered, otherwise keep existing
-    if (formToken.trim()) {
-      config.token = formToken.trim()
-    } else if (existingConfig?.token) {
-      config.token = existingConfig.token
-    }
-    return JSON.stringify(config)
+function getConfigFromForm(type: DataSourceType, existingConfig?: ParsedConfig): string {
+  const config: Record<string, unknown> = {
+    url: formUrl.trim(),
   }
-  // Add other types as needed
-  return '{}'
+
+  // Only update token if a new one was entered, otherwise keep existing
+  if (formToken.trim()) {
+    config.token = formToken.trim()
+  } else if (existingConfig?.token) {
+    config.token = existingConfig.token
+  }
+
+  if (type === 'zabbix') {
+    config.pollInterval = formPollInterval
+  }
+
+  if (type === 'netbox') {
+    if (formSiteFilter.trim()) {
+      config.siteFilter = formSiteFilter.trim()
+    }
+    if (formTagFilter.trim()) {
+      config.tagFilter = formTagFilter.trim()
+    }
+  }
+
+  return JSON.stringify(config)
 }
 
 onMount(async () => {
@@ -59,6 +79,8 @@ onMount(async () => {
     formUrl = config.url || ''
     formToken = '' // Don't show existing token
     formPollInterval = config.pollInterval || 30000
+    formSiteFilter = config.siteFilter || ''
+    formTagFilter = config.tagFilter || ''
     hasExistingToken = !!config.token
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to load data source'
@@ -187,16 +209,44 @@ async function handleDelete() {
               </p>
             </div>
 
-            <div>
-              <label for="pollInterval" class="label">Poll Interval</label>
-              <select id="pollInterval" class="input" bind:value={formPollInterval}>
-                <option value={5000}>5 seconds</option>
-                <option value={10000}>10 seconds</option>
-                <option value={30000}>30 seconds</option>
-                <option value={60000}>1 minute</option>
-                <option value={300000}>5 minutes</option>
-              </select>
-            </div>
+            {#if dataSource.type === 'zabbix'}
+              <div>
+                <label for="pollInterval" class="label">Poll Interval</label>
+                <select id="pollInterval" class="input" bind:value={formPollInterval}>
+                  <option value={5000}>5 seconds</option>
+                  <option value={10000}>10 seconds</option>
+                  <option value={30000}>30 seconds</option>
+                  <option value={60000}>1 minute</option>
+                  <option value={300000}>5 minutes</option>
+                </select>
+              </div>
+            {/if}
+
+            {#if dataSource.type === 'netbox'}
+              <div>
+                <label for="siteFilter" class="label">Site Filter (optional)</label>
+                <input
+                  type="text"
+                  id="siteFilter"
+                  class="input"
+                  placeholder="e.g., tokyo-dc1"
+                  bind:value={formSiteFilter}
+                />
+                <p class="text-xs text-theme-text-muted mt-1">Filter devices by site slug</p>
+              </div>
+
+              <div>
+                <label for="tagFilter" class="label">Tag Filter (optional)</label>
+                <input
+                  type="text"
+                  id="tagFilter"
+                  class="input"
+                  placeholder="e.g., production"
+                  bind:value={formTagFilter}
+                />
+                <p class="text-xs text-theme-text-muted mt-1">Filter devices by tag slug</p>
+              </div>
+            {/if}
 
             <div class="flex justify-end pt-4 border-t border-theme-border">
               <button type="submit" class="btn btn-primary" disabled={saving}>
