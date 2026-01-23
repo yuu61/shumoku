@@ -17,6 +17,10 @@ export function initializeSchema(db: Database): void {
       name TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'zabbix',
       config_json TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'unknown',
+      status_message TEXT,
+      last_checked_at INTEGER,
+      fail_count INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -48,12 +52,29 @@ export function initializeSchema(db: Database): void {
       value TEXT NOT NULL
     );
 
+    -- Topology-DataSource junction table (many-to-many with config)
+    CREATE TABLE IF NOT EXISTS topology_data_sources (
+      id TEXT PRIMARY KEY,
+      topology_id TEXT NOT NULL REFERENCES topologies(id) ON DELETE CASCADE,
+      data_source_id TEXT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL, -- 'topology' or 'metrics'
+      sync_mode TEXT NOT NULL DEFAULT 'manual', -- 'manual', 'on_view', 'webhook'
+      webhook_secret TEXT,
+      last_synced_at INTEGER,
+      priority INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(topology_id, data_source_id, purpose)
+    );
+
     -- Create indexes for common queries
     CREATE INDEX IF NOT EXISTS idx_topologies_topology_source ON topologies(topology_source_id);
     CREATE INDEX IF NOT EXISTS idx_topologies_metrics_source ON topologies(metrics_source_id);
     CREATE INDEX IF NOT EXISTS idx_topologies_name ON topologies(name);
     CREATE INDEX IF NOT EXISTS idx_data_sources_name ON data_sources(name);
     CREATE INDEX IF NOT EXISTS idx_data_sources_type ON data_sources(type);
+    CREATE INDEX IF NOT EXISTS idx_topology_data_sources_topology ON topology_data_sources(topology_id);
+    CREATE INDEX IF NOT EXISTS idx_topology_data_sources_source ON topology_data_sources(data_source_id);
   `)
 }
 
@@ -123,5 +144,23 @@ export function runMigrations(db: Database): void {
 
     db.query("UPDATE settings SET value = '2' WHERE key = 'schema_version'").run()
     console.log('[Database] Migration 2: Plugin architecture support applied')
+  }
+
+  // Migration 3: Health check status fields
+  if (currentVersion < 3) {
+    const tableInfo = db.query('PRAGMA table_info(data_sources)').all() as { name: string }[]
+    const hasStatus = tableInfo.some((col) => col.name === 'status')
+
+    if (!hasStatus) {
+      db.exec(`
+        ALTER TABLE data_sources ADD COLUMN status TEXT NOT NULL DEFAULT 'unknown';
+        ALTER TABLE data_sources ADD COLUMN status_message TEXT;
+        ALTER TABLE data_sources ADD COLUMN last_checked_at INTEGER;
+        ALTER TABLE data_sources ADD COLUMN fail_count INTEGER NOT NULL DEFAULT 0;
+      `)
+    }
+
+    db.query("UPDATE settings SET value = '3' WHERE key = 'schema_version'").run()
+    console.log('[Database] Migration 3: Health check status fields applied')
   }
 }

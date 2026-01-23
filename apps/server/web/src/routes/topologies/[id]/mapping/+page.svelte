@@ -251,7 +251,7 @@ let filteredNodes = $derived(
                 <select
                   class="input w-64"
                   value={nodeMapping[node.id]?.hostId || ''}
-                  on:change={(e) => updateNodeMapping(node.id, e.currentTarget.value)}
+                  onchange={(e) => updateNodeMapping(node.id, e.currentTarget.value)}
                 >
                   <option value="">Not mapped</option>
                   {#each hosts as host}
@@ -292,7 +292,7 @@ let filteredNodes = $derived(
                     class="input w-24"
                     placeholder="Mbps"
                     value={linkMapping[link.id || '']?.capacity || ''}
-                    on:input={(e) => {
+                    oninput={(e) => {
                       const value = e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined
                       updateLinkCapacity(link.id || '', value)
                     }}

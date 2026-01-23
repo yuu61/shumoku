@@ -142,6 +142,8 @@ async function handleTest(id: string) {
   try {
     const result = await dataSources.test(id)
     testResults = { ...testResults, [id]: result }
+    // Refresh data source list to get updated status
+    await dataSources.load()
   } catch (e) {
     testResults = {
       ...testResults,
@@ -178,6 +180,15 @@ function getCapabilityIcon(capability: string) {
     default:
       return Database
   }
+}
+
+function formatLastChecked(timestamp?: number): string {
+  if (!timestamp) return ''
+  const diff = Date.now() - timestamp
+  if (diff < 60_000) return 'just now'
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`
+  return new Date(timestamp).toLocaleDateString()
 }
 </script>
 
@@ -255,13 +266,18 @@ function getCapabilityIcon(capability: string) {
               </td>
               <td class="text-theme-text-muted text-sm font-mono">{config.url || '-'}</td>
               <td>
-                {#if testResult}
-                  <span class="badge {testResult.success ? 'badge-success' : 'badge-danger'}">
-                    {testResult.success ? (testResult.version ? `v${testResult.version}` : 'Connected') : 'Failed'}
-                  </span>
-                {:else}
-                  <span class="badge badge-secondary">Unknown</span>
-                {/if}
+                <div class="flex flex-col gap-0.5">
+                  {#if ds.status === 'connected'}
+                    <span class="badge badge-success">Connected</span>
+                  {:else if ds.status === 'disconnected'}
+                    <span class="badge badge-danger" title={ds.statusMessage}>Disconnected</span>
+                  {:else}
+                    <span class="badge badge-secondary">Unknown</span>
+                  {/if}
+                  {#if ds.lastCheckedAt}
+                    <span class="text-xs text-theme-text-muted">{formatLastChecked(ds.lastCheckedAt)}</span>
+                  {/if}
+                </div>
               </td>
               <td class="text-right">
                 <div class="flex items-center justify-end gap-2">

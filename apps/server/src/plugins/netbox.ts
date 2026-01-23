@@ -146,7 +146,7 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
     return deviceResp.results.map((device) => ({
       id: String(device.id),
       name: device.name ?? `device-${device.id}`,
-      displayName: device.display ?? device.name ?? `device-${device.id}`,
+      displayName: device.name ?? `device-${device.id}`,
       status: this.mapDeviceStatus(device.status?.value),
       ip: device.primary_ip4?.address?.split('/')[0] || device.primary_ip6?.address?.split('/')[0],
     }))
@@ -157,7 +157,8 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
       return []
     }
 
-    const interfaceResp = await this.client.fetchInterfaces({ device_id: parseInt(hostId) } as Record<string, unknown>)
+    // Note: device_id is a valid NetBox API parameter but not in QueryParams type
+    const interfaceResp = await this.client.fetchInterfaces({ device_id: parseInt(hostId) } as unknown as Parameters<typeof this.client.fetchInterfaces>[0])
 
     return interfaceResp.results.map((iface) => ({
       id: String(iface.id),

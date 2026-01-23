@@ -11,6 +11,9 @@ import type {
   TopologyContext,
   ZabbixMapping,
   ConnectionTestResult,
+  TopologyDataSource,
+  TopologyDataSourceInput,
+  SyncMode,
 } from './types'
 
 const BASE_URL = '/api'
@@ -139,6 +142,41 @@ export const topologies = {
   getContext: (id: string, theme?: 'light' | 'dark') => {
     const params = theme ? `?theme=${theme}` : ''
     return request<TopologyContext>(`/topologies/${id}/context${params}`)
+  },
+
+  // Topology Data Sources (many-to-many)
+  sources: {
+    list: (topologyId: string) =>
+      request<TopologyDataSource[]>(`/topologies/${topologyId}/sources`),
+
+    add: (topologyId: string, input: TopologyDataSourceInput) =>
+      request<TopologyDataSource>(`/topologies/${topologyId}/sources`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+
+    update: (topologyId: string, sourceId: string, updates: { syncMode?: SyncMode; priority?: number }) =>
+      request<TopologyDataSource>(`/topologies/${topologyId}/sources/${sourceId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }),
+
+    remove: (topologyId: string, sourceId: string) =>
+      request<{ success: boolean }>(`/topologies/${topologyId}/sources/${sourceId}`, {
+        method: 'DELETE',
+      }),
+
+    replaceAll: (topologyId: string, sources: TopologyDataSourceInput[]) =>
+      request<TopologyDataSource[]>(`/topologies/${topologyId}/sources`, {
+        method: 'PUT',
+        body: JSON.stringify({ sources }),
+      }),
+
+    sync: (topologyId: string, sourceId: string) =>
+      request<{ topology: Topology; nodeCount: number; linkCount: number }>(
+        `/topologies/${topologyId}/sources/${sourceId}/sync`,
+        { method: 'POST' },
+      ),
   },
 }
 

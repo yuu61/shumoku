@@ -5,7 +5,7 @@
 
 import type { Database } from 'bun:sqlite'
 import { getDatabase, generateId, timestamp } from '../db/index.js'
-import type { DataSource, DataSourceInput, DataSourceType } from '../types.js'
+import type { DataSource, DataSourceInput, DataSourceType, DataSourceStatus } from '../types.js'
 import {
   pluginRegistry,
   hasTopologyCapability,
@@ -20,6 +20,10 @@ interface DataSourceRow {
   name: string
   type: string
   config_json: string
+  status: string
+  status_message: string | null
+  last_checked_at: number | null
+  fail_count: number
   created_at: number
   updated_at: number
 }
@@ -30,6 +34,10 @@ function rowToDataSource(row: DataSourceRow): DataSource {
     name: row.name,
     type: row.type as DataSourceType,
     configJson: row.config_json,
+    status: row.status as DataSourceStatus,
+    statusMessage: row.status_message ?? undefined,
+    lastCheckedAt: row.last_checked_at ?? undefined,
+    failCount: row.fail_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -245,5 +253,42 @@ export class DataSourceService {
    */
   getRegisteredTypes() {
     return pluginRegistry.getRegisteredTypes()
+  }
+
+  /**
+   * Update health status for a data source
+   */
+  updateHealthStatus(
+    id: string,
+    status: DataSourceStatus,
+    message?: string,
+    failCount?: number,
+  ): void {
+    const now = timestamp()
+    this.db
+      .query(
+        `UPDATE data_sources
+         SET status = ?, status_message = ?, last_checked_at = ?, fail_count = ?
+         WHERE id = ?`,
+      )
+      .run(status, message ?? null, now, failCount ?? 0, id)
+  }
+
+  /**
+   * Increment fail count for a data source
+   */
+  incrementFailCount(id: string): number {
+    const ds = this.get(id)
+    if (!ds) return 0
+    const newCount = ds.failCount + 1
+    this.updateHealthStatus(id, 'disconnected', ds.statusMessage, newCount)
+    return newCount
+  }
+
+  /**
+   * Reset fail count on successful connection
+   */
+  resetFailCount(id: string): void {
+    this.updateHealthStatus(id, 'connected', undefined, 0)
   }
 }

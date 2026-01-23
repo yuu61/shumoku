@@ -7,6 +7,8 @@ import { Hono } from 'hono'
 import { createDataSourcesApi } from './datasources.js'
 import { createTopologiesApi } from './topologies.js'
 import { createSettingsApi } from './settings.js'
+import { topologySourcesApi } from './topology-sources.js'
+import { webhooksApi } from './webhooks.js'
 import { INTERACTIVE_IIFE } from '@shumoku/renderer/iife-string'
 
 export function createApiRouter(): Hono {
@@ -15,7 +17,9 @@ export function createApiRouter(): Hono {
   // Mount API routes
   api.route('/datasources', createDataSourcesApi())
   api.route('/topologies', createTopologiesApi())
+  api.route('/topologies', topologySourcesApi) // Nested: /topologies/:id/sources
   api.route('/settings', createSettingsApi())
+  api.route('/webhooks', webhooksApi)
 
   // API health check
   api.get('/health', (c) => {

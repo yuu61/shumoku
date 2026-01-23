@@ -1,0 +1,401 @@
+<script lang="ts">
+import { onMount } from 'svelte'
+import { page } from '$app/stores'
+import { api } from '$lib/api'
+import { Button } from '$lib/components/ui/button'
+import type {
+  Topology,
+  DataSource,
+  TopologyDataSource,
+  TopologyDataSourceInput,
+  SyncMode,
+} from '$lib/types'
+import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
+import Plus from 'phosphor-svelte/lib/Plus'
+import Trash from 'phosphor-svelte/lib/Trash'
+import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwise'
+import Copy from 'phosphor-svelte/lib/Copy'
+import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+
+let topologyId = $derived($page.params.id!)
+
+let topology = $state<Topology | null>(null)
+let loading = $state(true)
+let error = $state('')
+let saving = $state(false)
+let hasChanges = $state(false)
+
+// Current sources (from API)
+let currentSources = $state<TopologyDataSource[]>([])
+
+// Editable sources (local state until save)
+let editableSources = $state<TopologyDataSourceInput[]>([])
+
+// Available data sources
+let topologyDataSources = $state<DataSource[]>([])
+let metricsDataSources = $state<DataSource[]>([])
+
+// Sync state
+let syncingSourceId = $state<string | null>(null)
+let syncResults = $state<Record<string, { nodeCount: number; linkCount: number }>>({})
+
+// Webhook URL state
+let copiedSecret = $state<string | null>(null)
+
+onMount(async () => {
+  try {
+    const [topoData, sources, topologySources, metricsSources] = await Promise.all([
+      api.topologies.get(topologyId),
+      api.topologies.sources.list(topologyId),
+      api.dataSources.listByCapability('topology'),
+      api.dataSources.listByCapability('metrics'),
+    ])
+    topology = topoData
+    currentSources = sources
+    topologyDataSources = topologySources
+    metricsDataSources = metricsSources
+
+    // Initialize editable sources from current
+    editableSources = sources.map((s) => ({
+      dataSourceId: s.dataSourceId,
+      purpose: s.purpose,
+      syncMode: s.syncMode,
+      priority: s.priority,
+    }))
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Failed to load data'
+  } finally {
+    loading = false
+  }
+})
+
+function getDataSource(id: string): DataSource | undefined {
+  return [...topologyDataSources, ...metricsDataSources].find((ds) => ds.id === id)
+}
+
+function getCurrentSource(dataSourceId: string, purpose: string): TopologyDataSource | undefined {
+  return currentSources.find((s) => s.dataSourceId === dataSourceId && s.purpose === purpose)
+}
+
+function addSource(purpose: 'topology' | 'metrics') {
+  const availableSources = purpose === 'topology' ? topologyDataSources : metricsDataSources
+  const existing = editableSources.filter((s) => s.purpose === purpose).map((s) => s.dataSourceId)
+  const available = availableSources.filter((ds) => !existing.includes(ds.id))
+
+  if (available.length === 0) {
+    alert('No more data sources available to add')
+    return
+  }
+
+  editableSources = [
+    ...editableSources,
+    {
+      dataSourceId: available[0].id,
+      purpose,
+      syncMode: 'manual',
+      priority: existing.length,
+    },
+  ]
+  hasChanges = true
+}
+
+function removeSource(index: number) {
+  editableSources = editableSources.filter((_, i) => i !== index)
+  hasChanges = true
+}
+
+function updateSource(index: number, updates: Partial<TopologyDataSourceInput>) {
+  editableSources = editableSources.map((s, i) => (i === index ? { ...s, ...updates } : s))
+  hasChanges = true
+}
+
+async function handleSave() {
+  saving = true
+  error = ''
+  try {
+    const updated = await api.topologies.sources.replaceAll(topologyId, editableSources)
+    currentSources = updated
+    hasChanges = false
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Failed to save'
+  } finally {
+    saving = false
+  }
+}
+
+async function handleSync(source: TopologyDataSource) {
+  syncingSourceId = source.id
+  try {
+    const result = await api.topologies.sources.sync(topologyId, source.id)
+    syncResults = { ...syncResults, [source.id]: result }
+    topology = result.topology
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Sync failed')
+  } finally {
+    syncingSourceId = null
+  }
+}
+
+function getWebhookUrl(source: TopologyDataSource): string {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/api/webhooks/topology/${source.webhookSecret}`
+}
+
+async function copyWebhookUrl(source: TopologyDataSource) {
+  const url = getWebhookUrl(source)
+  await navigator.clipboard.writeText(url)
+  copiedSecret = source.id
+  setTimeout(() => {
+    copiedSecret = null
+  }, 2000)
+}
+
+function getSourcesByPurpose(purpose: 'topology' | 'metrics') {
+  return editableSources
+    .map((s, index) => ({ ...s, index }))
+    .filter((s) => s.purpose === purpose)
+}
+</script>
+
+<svelte:head>
+  <title>Data Sources - {topology?.name || 'Topology'} - Shumoku</title>
+</svelte:head>
+
+<div class="p-6 max-w-3xl mx-auto">
+  {#if loading}
+    <div class="flex items-center justify-center py-12">
+      <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  {:else if error && !topology}
+    <div class="card p-6 text-center">
+      <p class="text-danger mb-4">{error}</p>
+      <a href="/topologies" class="btn btn-secondary">Back to Topologies</a>
+    </div>
+  {:else if topology}
+    <!-- Back link -->
+    <div class="mb-6">
+      <a
+        href="/topologies/{topologyId}/settings"
+        class="inline-flex items-center gap-2 text-sm text-theme-text-muted hover:text-theme-text transition-colors"
+      >
+        <ArrowLeft size={16} />
+        Back to Settings
+      </a>
+    </div>
+
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-theme-text-emphasis">Data Sources</h1>
+        <p class="text-sm text-theme-text-muted mt-1">{topology.name}</p>
+      </div>
+      <Button onclick={handleSave} disabled={saving || !hasChanges}>
+        {#if saving}
+          <span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
+        {/if}
+        Save Changes
+      </Button>
+    </div>
+
+    {#if error}
+      <div class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm mb-6">
+        {error}
+      </div>
+    {/if}
+
+    <!-- Topology Sources -->
+    <div class="card mb-6">
+      <div class="card-header flex items-center justify-between">
+        <h2 class="font-medium text-theme-text-emphasis">Topology Sources</h2>
+        <Button variant="outline" size="sm" onclick={() => addSource('topology')}>
+          <Plus size={16} class="mr-1" />
+          Add
+        </Button>
+      </div>
+      <div class="card-body">
+        {#if getSourcesByPurpose('topology').length === 0}
+          <p class="text-sm text-theme-text-muted text-center py-4">
+            No topology sources configured. Topology is defined manually.
+          </p>
+        {:else}
+          <div class="space-y-4">
+            {#each getSourcesByPurpose('topology') as source (source.index)}
+              {@const currentSource = getCurrentSource(source.dataSourceId, 'topology')}
+              {@const dataSource = getDataSource(source.dataSourceId)}
+              <div class="border border-theme-border rounded-lg p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <!-- Source selector -->
+                    <div>
+                      <label for="topo-source-{source.index}" class="text-xs text-theme-text-muted">Source</label>
+                      <select
+                        id="topo-source-{source.index}"
+                        class="input mt-1"
+                        value={source.dataSourceId}
+                        onchange={(e) => updateSource(source.index, { dataSourceId: e.currentTarget.value })}
+                      >
+                        {#each topologyDataSources as ds}
+                          <option value={ds.id}>{ds.name} ({ds.type})</option>
+                        {/each}
+                      </select>
+                    </div>
+
+                    <!-- Sync mode -->
+                    <div>
+                      <label for="topo-sync-{source.index}" class="text-xs text-theme-text-muted">Sync Mode</label>
+                      <select
+                        id="topo-sync-{source.index}"
+                        class="input mt-1"
+                        value={source.syncMode}
+                        onchange={(e) => updateSource(source.index, { syncMode: e.currentTarget.value as SyncMode })}
+                      >
+                        <option value="manual">Manual (button only)</option>
+                        <option value="on_view">On View (sync when page opens)</option>
+                        <option value="webhook">Webhook (real-time from {dataSource?.type || 'source'})</option>
+                      </select>
+                    </div>
+
+                    <!-- Webhook URL (if webhook mode and saved) -->
+                    {#if source.syncMode === 'webhook' && currentSource?.webhookSecret}
+                      <div>
+                        <label for="webhook-url-{source.index}" class="text-xs text-theme-text-muted">Webhook URL</label>
+                        <div class="flex items-center gap-2 mt-1">
+                          <input
+                            id="webhook-url-{source.index}"
+                            type="text"
+                            class="input font-mono text-xs flex-1"
+                            value={getWebhookUrl(currentSource)}
+                            readonly
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onclick={() => copyWebhookUrl(currentSource)}
+                          >
+                            {#if copiedSecret === currentSource.id}
+                              <CheckCircle size={16} class="text-success" />
+                            {:else}
+                              <Copy size={16} />
+                            {/if}
+                          </Button>
+                        </div>
+                        <p class="text-xs text-theme-text-muted mt-1">
+                          Configure this URL in {dataSource?.type || 'your source'} webhooks
+                        </p>
+                      </div>
+                    {:else if source.syncMode === 'webhook' && !currentSource?.webhookSecret}
+                      <p class="text-xs text-warning">Save changes to generate webhook URL</p>
+                    {/if}
+
+                    <!-- Last synced & sync button -->
+                    {#if currentSource}
+                      <div class="flex items-center gap-4">
+                        {#if currentSource.lastSyncedAt}
+                          <span class="text-xs text-theme-text-muted">
+                            Last synced: {new Date(currentSource.lastSyncedAt).toLocaleString()}
+                          </span>
+                        {/if}
+                        {#if syncResults[currentSource.id]}
+                          <span class="text-xs text-success">
+                            {syncResults[currentSource.id].nodeCount} nodes, {syncResults[currentSource.id].linkCount} links
+                          </span>
+                        {/if}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onclick={() => handleSync(currentSource)}
+                          disabled={syncingSourceId === currentSource.id}
+                        >
+                          {#if syncingSourceId === currentSource.id}
+                            <span class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1"></span>
+                          {:else}
+                            <ArrowsClockwise size={14} class="mr-1" />
+                          {/if}
+                          Sync Now
+                        </Button>
+                      </div>
+                    {/if}
+                  </div>
+
+                  <!-- Remove button -->
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="text-danger hover:bg-danger/10"
+                    onclick={() => removeSource(source.index)}
+                  >
+                    <Trash size={16} />
+                  </Button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Metrics Sources -->
+    <div class="card">
+      <div class="card-header flex items-center justify-between">
+        <h2 class="font-medium text-theme-text-emphasis">Metrics Sources</h2>
+        <Button variant="outline" size="sm" onclick={() => addSource('metrics')}>
+          <Plus size={16} class="mr-1" />
+          Add
+        </Button>
+      </div>
+      <div class="card-body">
+        {#if getSourcesByPurpose('metrics').length === 0}
+          <p class="text-sm text-theme-text-muted text-center py-4">
+            No metrics sources configured. Live metrics disabled.
+          </p>
+        {:else}
+          <div class="space-y-4">
+            {#each getSourcesByPurpose('metrics') as source (source.index)}
+              {@const currentSource = getCurrentSource(source.dataSourceId, 'metrics')}
+              {@const dataSource = getDataSource(source.dataSourceId)}
+              <div class="border border-theme-border rounded-lg p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <!-- Source selector -->
+                    <div>
+                      <label for="metrics-source-{source.index}" class="text-xs text-theme-text-muted">Source</label>
+                      <select
+                        id="metrics-source-{source.index}"
+                        class="input mt-1"
+                        value={source.dataSourceId}
+                        onchange={(e) => updateSource(source.index, { dataSourceId: e.currentTarget.value })}
+                      >
+                        {#each metricsDataSources as ds}
+                          <option value={ds.id}>{ds.name} ({ds.type})</option>
+                        {/each}
+                      </select>
+                    </div>
+
+                    <!-- Mapping link -->
+                    {#if currentSource}
+                      <a
+                        href="/topologies/{topologyId}/mapping"
+                        class="text-sm text-primary hover:underline"
+                      >
+                        Configure Mapping →
+                      </a>
+                    {/if}
+                  </div>
+
+                  <!-- Remove button -->
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="text-danger hover:bg-danger/10"
+                    onclick={() => removeSource(source.index)}
+                  >
+                    <Trash size={16} />
+                  </Button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+</div>

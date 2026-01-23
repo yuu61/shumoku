@@ -151,6 +151,13 @@ export function createDataSourcesApi(): Hono {
   app.post('/:id/test', async (c) => {
     const id = c.req.param('id')
     const result = await service.testConnection(id)
+    // Update health status in database
+    if (result.success) {
+      service.updateHealthStatus(id, 'connected', result.message, 0)
+    } else {
+      const ds = service.get(id)
+      service.updateHealthStatus(id, 'disconnected', result.message, (ds?.failCount ?? 0) + 1)
+    }
     return c.json(result)
   })
 

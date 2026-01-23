@@ -10,25 +10,23 @@ import {
   showTrafficFlow,
   showNodeStatus,
 } from '$lib/stores'
-import type { Topology, DataSource, ZabbixMapping } from '$lib/types'
+import type { Topology, ZabbixMapping, TopologyDataSource } from '$lib/types'
 import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 import Trash from 'phosphor-svelte/lib/Trash'
-import MapPin from 'phosphor-svelte/lib/MapPin'
-import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwise'
+import Database from 'phosphor-svelte/lib/Database'
 
-export let topology: Topology
-export let renderData: { nodeCount: number; edgeCount: number } | null = null
-export let onDeleted: (() => void) | null = null
-export let onUpdated: ((topology: Topology) => void) | null = null
+interface Props {
+  topology: Topology
+  renderData?: { nodeCount: number; edgeCount: number } | null
+  onDeleted?: (() => void) | null
+  onUpdated?: ((topology: Topology) => void) | null
+}
 
-let deleting = false
-let topologyDataSources: DataSource[] = []
-let metricsDataSources: DataSource[] = []
-let selectedTopologySourceId = topology.topologySourceId || ''
-let selectedMetricsSourceId = topology.metricsSourceId || ''
-let savingDataSource = false
-let syncing = false
-let syncResult: { nodeCount: number; linkCount: number } | null = null
+let { topology, renderData = null, onDeleted = null, onUpdated = null }: Props = $props()
+
+let deleting = $state(false)
+let topologySources = $state<TopologyDataSource[]>([])
+let metricsSources = $state<TopologyDataSource[]>([])
 
 // Mapping stats
 function getMappingStats(mappingJson?: string): { mappedNodes: number; mappedLinks: number } {
@@ -47,71 +45,17 @@ function getMappingStats(mappingJson?: string): { mappedNodes: number; mappedLin
   }
 }
 
-$: mappingStats = getMappingStats(topology.mappingJson)
+let mappingStats = $derived(getMappingStats(topology.mappingJson))
 
 onMount(async () => {
   try {
-    // Load data sources by capability in parallel
-    const [topologySources, metricsSources] = await Promise.all([
-      api.dataSources.listByCapability('topology'),
-      api.dataSources.listByCapability('metrics'),
-    ])
-    topologyDataSources = topologySources
-    metricsDataSources = metricsSources
+    const sources = await api.topologies.sources.list(topology.id)
+    topologySources = sources.filter((s) => s.purpose === 'topology')
+    metricsSources = sources.filter((s) => s.purpose === 'metrics')
   } catch (e) {
     console.error('Failed to load data sources:', e)
   }
 })
-
-async function handleTopologySourceChange() {
-  savingDataSource = true
-  syncResult = null
-  try {
-    const updated = await api.topologies.update(topology.id, {
-      topologySourceId: selectedTopologySourceId || undefined,
-    })
-    topology = updated
-    onUpdated?.(updated)
-  } catch (e) {
-    alert(e instanceof Error ? e.message : 'Failed to save')
-    selectedTopologySourceId = topology.topologySourceId || ''
-  } finally {
-    savingDataSource = false
-  }
-}
-
-async function handleMetricsSourceChange() {
-  savingDataSource = true
-  try {
-    const updated = await api.topologies.update(topology.id, {
-      metricsSourceId: selectedMetricsSourceId || undefined,
-    })
-    topology = updated
-    onUpdated?.(updated)
-  } catch (e) {
-    alert(e instanceof Error ? e.message : 'Failed to save')
-    selectedMetricsSourceId = topology.metricsSourceId || ''
-  } finally {
-    savingDataSource = false
-  }
-}
-
-async function handleSyncFromSource() {
-  if (!selectedTopologySourceId) return
-
-  syncing = true
-  syncResult = null
-  try {
-    const result = await api.topologies.syncFromSource(topology.id)
-    topology = result.topology
-    syncResult = { nodeCount: result.nodeCount, linkCount: result.linkCount }
-    onUpdated?.(result.topology)
-  } catch (e) {
-    alert(e instanceof Error ? e.message : 'Failed to sync from source')
-  } finally {
-    syncing = false
-  }
-}
 
 async function handleDelete() {
   if (!confirm(`Delete topology "${topology.name}"? This action cannot be undone.`)) {
@@ -177,83 +121,55 @@ async function handleDelete() {
   <div class="space-y-3">
     <h3 class="text-xs font-medium text-theme-text-muted uppercase tracking-wide">Data Sources</h3>
     <div class="space-y-3">
-      <!-- Topology Source -->
-      <div>
-        <label for="topologySource" class="text-xs text-theme-text-muted">Topology Source</label>
-        <div class="flex items-center gap-2 mt-1">
-          <select
-            id="topologySource"
-            class="input flex-1"
-            bind:value={selectedTopologySourceId}
-            on:change={handleTopologySourceChange}
-            disabled={savingDataSource}
-          >
-            <option value="">Manual (YAML)</option>
-            {#each topologyDataSources as ds}
-              <option value={ds.id}>{ds.name} ({ds.type})</option>
-            {/each}
-          </select>
-          {#if savingDataSource}
-            <span class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
-          {/if}
-        </div>
-        <p class="text-xs text-theme-text-muted mt-1">Import topology from external source</p>
-      </div>
-
-      <!-- Sync from Source -->
-      {#if selectedTopologySourceId}
-        <div class="bg-theme-bg rounded-lg p-3">
-          <Button
-            variant="secondary"
-            class="w-full justify-center"
-            onclick={handleSyncFromSource}
-            disabled={syncing}
-          >
-            {#if syncing}
-              <span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></span>
-              Syncing...
-            {:else}
-              <ArrowsClockwise size={16} class="mr-2" />
-              Sync from Source
-            {/if}
-          </Button>
-          {#if syncResult}
-            <p class="text-xs text-success mt-2 text-center">
-              Synced: {syncResult.nodeCount} nodes, {syncResult.linkCount} links
+      <!-- Topology Sources Summary -->
+      <div class="bg-theme-bg rounded-lg p-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-theme-text">Topology Sources</p>
+            <p class="text-xs text-theme-text-muted">
+              {#if topologySources.length === 0}
+                Manual (YAML)
+              {:else}
+                {topologySources.length} source{topologySources.length > 1 ? 's' : ''} configured
+              {/if}
             </p>
-          {/if}
+          </div>
+          <Database size={20} class="text-theme-text-muted" />
         </div>
-      {/if}
-
-      <!-- Metrics Source -->
-      <div>
-        <label for="metricsSource" class="text-xs text-theme-text-muted">Metrics Source</label>
-        <div class="flex items-center gap-2 mt-1">
-          <select
-            id="metricsSource"
-            class="input flex-1"
-            bind:value={selectedMetricsSourceId}
-            on:change={handleMetricsSourceChange}
-            disabled={savingDataSource}
-          >
-            <option value="">None</option>
-            {#each metricsDataSources as ds}
-              <option value={ds.id}>{ds.name} ({ds.type})</option>
-            {/each}
-          </select>
-          {#if savingDataSource}
-            <span class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
-          {/if}
-        </div>
-        <p class="text-xs text-theme-text-muted mt-1">Select a data source for live metrics</p>
       </div>
+
+      <!-- Metrics Sources Summary -->
+      <div class="bg-theme-bg rounded-lg p-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-theme-text">Metrics Sources</p>
+            <p class="text-xs text-theme-text-muted">
+              {#if metricsSources.length === 0}
+                Not configured
+              {:else}
+                {metricsSources.length} source{metricsSources.length > 1 ? 's' : ''} configured
+              {/if}
+            </p>
+          </div>
+          <Database size={20} class="text-theme-text-muted" />
+        </div>
+      </div>
+
+      <!-- Configure button -->
+      <a
+        href="/topologies/{topology.id}/sources"
+        class="btn btn-secondary w-full justify-center"
+      >
+        <Database size={16} class="mr-2" />
+        Configure Data Sources
+      </a>
     </div>
   </div>
 
   <hr class="border-theme-border" />
 
   <!-- Mapping Configuration -->
-  {#if selectedMetricsSourceId}
+  {#if metricsSources.length > 0}
     <div class="space-y-3">
       <h3 class="text-xs font-medium text-theme-text-muted uppercase tracking-wide">Metrics Mapping</h3>
       <div class="space-y-3">
@@ -281,7 +197,6 @@ async function handleDelete() {
           href="/topologies/{topology.id}/mapping"
           class="btn btn-secondary w-full justify-center"
         >
-          <MapPin size={16} class="mr-2" />
           Configure Mapping
         </a>
         <p class="text-xs text-theme-text-muted">
@@ -326,7 +241,7 @@ async function handleDelete() {
         type="checkbox"
         class="toggle"
         checked={$liveUpdatesEnabled}
-        on:change={(e) => displaySettings.setLiveUpdates(e.currentTarget.checked)}
+        onchange={(e) => displaySettings.setLiveUpdates(e.currentTarget.checked)}
       />
     </label>
 
@@ -341,7 +256,7 @@ async function handleDelete() {
         class="toggle"
         checked={$showTrafficFlow}
         disabled={!$liveUpdatesEnabled}
-        on:change={(e) => displaySettings.setShowTrafficFlow(e.currentTarget.checked)}
+        onchange={(e) => displaySettings.setShowTrafficFlow(e.currentTarget.checked)}
       />
     </label>
 
@@ -356,7 +271,7 @@ async function handleDelete() {
         class="toggle"
         checked={$showNodeStatus}
         disabled={!$liveUpdatesEnabled}
-        on:change={(e) => displaySettings.setShowNodeStatus(e.currentTarget.checked)}
+        onchange={(e) => displaySettings.setShowNodeStatus(e.currentTarget.checked)}
       />
     </label>
   </div>

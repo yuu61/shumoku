@@ -47,12 +47,17 @@ export interface Config {
 // ============================================
 
 export type DataSourceType = 'zabbix' | 'netbox' | 'prometheus'
+export type DataSourceStatus = 'connected' | 'disconnected' | 'unknown'
 
 export interface DataSource {
   id: string
   name: string
   type: DataSourceType
   configJson: string // Plugin-specific configuration as JSON
+  status: DataSourceStatus
+  statusMessage?: string
+  lastCheckedAt?: number
+  failCount: number
   createdAt: number
   updatedAt: number
 }
@@ -88,6 +93,35 @@ export interface TopologyInput {
   topologySourceId?: string
   metricsSourceId?: string
   mappingJson?: string
+}
+
+// ============================================
+// Topology Data Source (Junction Table)
+// ============================================
+
+export type SyncMode = 'manual' | 'on_view' | 'webhook'
+export type DataSourcePurpose = 'topology' | 'metrics'
+
+export interface TopologyDataSource {
+  id: string
+  topologyId: string
+  dataSourceId: string
+  purpose: DataSourcePurpose
+  syncMode: SyncMode
+  webhookSecret?: string
+  lastSyncedAt?: number
+  priority: number
+  createdAt: number
+  updatedAt: number
+  // Joined data
+  dataSource?: DataSource
+}
+
+export interface TopologyDataSourceInput {
+  dataSourceId: string
+  purpose: DataSourcePurpose
+  syncMode?: SyncMode
+  priority?: number
 }
 
 export interface Dashboard {

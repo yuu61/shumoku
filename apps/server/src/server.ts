@@ -17,6 +17,7 @@ import { initDatabase, closeDatabase } from './db/index.js'
 import { createApiRouter } from './api/index.js'
 import { TopologyService } from './services/topology.js'
 import { registerBuiltinPlugins } from './plugins/index.js'
+import { startHealthChecker, stopHealthChecker } from './services/health-checker.js'
 
 export class Server {
   private app: Hono
@@ -308,6 +309,9 @@ export class Server {
       `[Server] Loaded ${this.topologyManager.listTopologies().length} file-based topologies`,
     )
     console.log(`[Server] Database has ${this.topologyService.list().length} topologies`)
+
+    // Start background health checker for data sources
+    startHealthChecker()
   }
 
   async start(): Promise<void> {
@@ -351,6 +355,9 @@ export class Server {
   }
 
   stop(): void {
+    // Stop health checker
+    stopHealthChecker()
+
     if (this.pollInterval) {
       clearInterval(this.pollInterval)
       this.pollInterval = null

@@ -5,6 +5,7 @@
 import type { MetricsData } from './stores/metrics'
 
 export type DataSourceType = 'zabbix' | 'netbox' | 'prometheus'
+export type DataSourceStatus = 'connected' | 'disconnected' | 'unknown'
 
 export type DataSourceCapability = 'topology' | 'metrics' | 'hosts' | 'auto-mapping'
 
@@ -19,6 +20,10 @@ export interface DataSource {
   name: string
   type: DataSourceType
   configJson: string // Plugin-specific configuration as JSON
+  status: DataSourceStatus
+  statusMessage?: string
+  lastCheckedAt?: number
+  failCount: number
   createdAt: number
   updatedAt: number
 }
@@ -126,6 +131,34 @@ export interface ConnectionTestResult {
   success: boolean
   message: string
   version?: string
+}
+
+// ============================================
+// Topology Data Sources (Many-to-Many)
+// ============================================
+
+export type SyncMode = 'manual' | 'on_view' | 'webhook'
+export type DataSourcePurpose = 'topology' | 'metrics'
+
+export interface TopologyDataSource {
+  id: string
+  topologyId: string
+  dataSourceId: string
+  purpose: DataSourcePurpose
+  syncMode: SyncMode
+  webhookSecret?: string
+  lastSyncedAt?: number
+  priority: number
+  createdAt: number
+  updatedAt: number
+  dataSource?: DataSource
+}
+
+export interface TopologyDataSourceInput {
+  dataSourceId: string
+  purpose: DataSourcePurpose
+  syncMode?: SyncMode
+  priority?: number
 }
 
 export interface ApiError {
