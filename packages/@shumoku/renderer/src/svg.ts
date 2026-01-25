@@ -630,7 +630,18 @@ export class SVGRenderer {
 
     // Hierarchical navigation attributes
     const hasSheet = subgraph.file || (subgraph.pins && subgraph.pins.length > 0)
-    const sheetAttrs = hasSheet ? ` data-has-sheet="true" data-sheet-id="${sg.id}"` : ''
+    // Include bounds data for zoom-based navigation
+    const boundsJson = hasSheet
+      ? JSON.stringify({
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        }).replace(/"/g, '&quot;')
+      : ''
+    const sheetAttrs = hasSheet
+      ? ` data-has-sheet="true" data-sheet-id="${sg.id}" data-bounds="${boundsJson}"`
+      : ''
 
     // Check for embedded content
     const embeddedContent = this.options.embeddedContent?.get(sg.id)

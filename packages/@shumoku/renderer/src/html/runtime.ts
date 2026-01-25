@@ -243,18 +243,32 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   }
 
   // ============================================
-  // Hierarchical Navigation
+  // Hierarchical Navigation (double-click)
   // ============================================
+
+  let lastSubgraphClickTime = 0
+  let lastSubgraphClickTarget: Element | null = null
 
   const handleSubgraphClick = (e: MouseEvent) => {
     const target = e.target as Element
     const subgraph = target.closest('.subgraph[data-has-sheet]')
+
     if (subgraph) {
-      const sheetId = subgraph.getAttribute('data-sheet-id')
-      if (sheetId) {
-        e.preventDefault()
-        e.stopPropagation()
-        dispatchNavigateEvent(sheetId)
+      const now = Date.now()
+
+      // Check for double-click (within 300ms on same target)
+      if (subgraph === lastSubgraphClickTarget && now - lastSubgraphClickTime < 300) {
+        const sheetId = subgraph.getAttribute('data-sheet-id')
+        if (sheetId) {
+          e.preventDefault()
+          e.stopPropagation()
+          dispatchNavigateEvent(sheetId)
+        }
+        lastSubgraphClickTarget = null
+      } else {
+        // First click - record for potential double-click
+        lastSubgraphClickTarget = subgraph
+        lastSubgraphClickTime = now
       }
     }
   }
@@ -268,10 +282,12 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   }
 
   // ============================================
-  // Tap for tooltip (touch devices)
+  // Tap for tooltip (touch devices) - double-tap for navigation
   // ============================================
 
   let tapStart: { x: number; y: number; time: number } | null = null
+  let lastTapTime = 0
+  let lastTapTarget: Element | null = null
 
   const handleTouchStartForTap = (e: TouchEvent) => {
     if (e.touches.length === 1) {
@@ -299,18 +315,28 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
     if (Math.hypot(dx, dy) < 10 && dt < 300) {
       const targetEl = document.elementFromPoint(touch.clientX, touch.clientY)
       if (targetEl) {
-        // Check for hierarchical navigation first
+        // Check for hierarchical navigation (double-tap)
         const subgraph = targetEl.closest('.subgraph[data-has-sheet]')
         if (subgraph) {
-          const sheetId = subgraph.getAttribute('data-sheet-id')
-          if (sheetId) {
-            dispatchNavigateEvent(sheetId)
-            tapStart = null
-            return
+          const now = Date.now()
+
+          // Check for double-tap (within 300ms on same target)
+          if (subgraph === lastTapTarget && now - lastTapTime < 300) {
+            const sheetId = subgraph.getAttribute('data-sheet-id')
+            if (sheetId) {
+              dispatchNavigateEvent(sheetId)
+              lastTapTarget = null
+              tapStart = null
+              return
+            }
+          } else {
+            // First tap - record for potential double-tap
+            lastTapTarget = subgraph
+            lastTapTime = now
           }
         }
 
-        // Otherwise show tooltip
+        // Show tooltip on single tap
         const info = getTooltipInfo(targetEl)
         if (info) {
           showTooltip(info.text, touch.clientX, touch.clientY)
