@@ -16,7 +16,8 @@
   "packageManager": "bun@1.3.4",
   "workspaces": [
     "packages/**",
-    "apps/*"
+    "apps/*",
+    "apps/server/web"
   ],
   "scripts": {
     "dev": "turbo run dev --filter='!@shumoku/server'",
