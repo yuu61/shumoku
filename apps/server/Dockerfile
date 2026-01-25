@@ -22,6 +22,10 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 # Build all packages (turborepo handles dependency order)
 RUN bun run build
 
+# Build server (tsc)
+WORKDIR /app/apps/server
+RUN bun run build
+
 # Build web UI
 WORKDIR /app/apps/server/web
 RUN bun install && bun run build
