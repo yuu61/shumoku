@@ -25,14 +25,19 @@ export interface LayoutEngine {
   layoutAsync(graph: NetworkGraph): Promise<LayoutResult>
 }
 
-interface ExportPoint {
-  subgraphId: string
+interface ExportConnection {
   device: string
   port?: string
-  destSubgraphLabel: string
   destDevice: string
   destPort?: string
+}
+
+interface ExportPoint {
+  subgraphId: string
+  destSubgraphId: string
+  destSubgraphLabel: string
   isSource: boolean
+  connections: ExportConnection[]
 }
 
 // ============================================
@@ -91,9 +96,11 @@ export async function buildHierarchicalSheets(
     (sg) => !sg.parent || !allSubgraphIds.has(sg.parent),
   )
 
-  // Mark top-level subgraphs as clickable
+  // Mark top-level subgraphs as clickable (only if not already set)
   for (const sg of topLevelSubgraphs) {
-    sg.file = sg.id
+    if (!sg.file) {
+      sg.file = sg.id
+    }
   }
 
   // Build child sheets for top-level subgraphs only
@@ -190,7 +197,7 @@ function generateExportConnectors(
   const exportLinks: Link[] = []
   const exportPoints = new Map<string, ExportPoint>()
 
-  // Find boundary links
+  // Find boundary links and group by destination subgraph
   for (const link of rootGraph.links) {
     const fromNode = typeof link.from === 'string' ? link.from : link.from.node
     const toNode = typeof link.to === 'string' ? link.to : link.to.node
@@ -201,81 +208,101 @@ function generateExportConnectors(
     const toInside = childNodeIds.has(toNode)
 
     if (fromInside && !toInside) {
-      // Outgoing connection
-      const key = `${subgraphId}:${fromNode}:${fromPort || ''}`
+      // Outgoing connection - group by destination subgraph
+      const destSubgraph = findNodeSubgraph(rootGraph, toNode)
+      const destSubgraphId = destSubgraph?.id || '__external__'
+      const key = `${subgraphId}:to:${destSubgraphId}`
+
       if (!exportPoints.has(key)) {
-        const destSubgraph = findNodeSubgraph(rootGraph, toNode)
         exportPoints.set(key, {
           subgraphId,
-          device: fromNode,
-          port: fromPort,
+          destSubgraphId,
           destSubgraphLabel: destSubgraph?.label || toNode,
-          destDevice: toNode,
-          destPort: toPort,
           isSource: true,
+          connections: [],
         })
       }
+      exportPoints.get(key)!.connections.push({
+        device: fromNode,
+        port: fromPort,
+        destDevice: toNode,
+        destPort: toPort,
+      })
     } else if (!fromInside && toInside) {
-      // Incoming connection
-      const key = `${subgraphId}:${toNode}:${toPort || ''}`
+      // Incoming connection - group by source subgraph
+      const srcSubgraph = findNodeSubgraph(rootGraph, fromNode)
+      const srcSubgraphId = srcSubgraph?.id || '__external__'
+      const key = `${subgraphId}:from:${srcSubgraphId}`
+
       if (!exportPoints.has(key)) {
-        const destSubgraph = findNodeSubgraph(rootGraph, fromNode)
         exportPoints.set(key, {
           subgraphId,
-          device: toNode,
-          port: toPort,
-          destSubgraphLabel: destSubgraph?.label || fromNode,
-          destDevice: fromNode,
-          destPort: fromPort,
+          destSubgraphId: srcSubgraphId,
+          destSubgraphLabel: srcSubgraph?.label || fromNode,
           isSource: false,
+          connections: [],
         })
       }
+      exportPoints.get(key)!.connections.push({
+        device: toNode,
+        port: toPort,
+        destDevice: fromNode,
+        destPort: fromPort,
+      })
     }
   }
 
   // Create export nodes and links
   for (const [key, exportPoint] of exportPoints) {
     const exportId = key.replace(/:/g, '_')
+    const exportNodeId = `${EXPORT_NODE_PREFIX}${exportId}`
 
-    // Export node
+    // Export node (one per destination subgraph)
     exportNodes.push({
-      id: `${EXPORT_NODE_PREFIX}${exportId}`,
+      id: exportNodeId,
       label: exportPoint.destSubgraphLabel,
       shape: 'stadium',
       metadata: {
         _isExport: true,
         _destSubgraph: exportPoint.destSubgraphLabel,
-        _destDevice: exportPoint.destDevice,
-        _destPort: exportPoint.destPort,
+        _destSubgraphId: exportPoint.destSubgraphId,
         _isSource: exportPoint.isSource,
+        _connectionCount: exportPoint.connections.length,
       },
     })
 
-    // Export link
-    const exportNodeId = `${EXPORT_NODE_PREFIX}${exportId}`
-    const deviceEndpoint = exportPoint.port
-      ? { node: exportPoint.device, port: exportPoint.port }
-      : exportPoint.device
+    // Export links (one per connection)
+    for (let i = 0; i < exportPoint.connections.length; i++) {
+      const conn = exportPoint.connections[i]
+      const deviceEndpoint = conn.port ? { node: conn.device, port: conn.port } : conn.device
 
-    exportLinks.push({
-      id: `${EXPORT_LINK_PREFIX}${exportId}`,
-      from: exportPoint.isSource ? deviceEndpoint : exportNodeId,
-      to: exportPoint.isSource ? exportNodeId : deviceEndpoint,
-      type: 'dashed',
-      arrow: 'forward',
-      metadata: {
-        _destSubgraphLabel: exportPoint.destSubgraphLabel,
-        _destDevice: exportPoint.destDevice,
-        _destPort: exportPoint.destPort,
-      },
-    })
+      exportLinks.push({
+        id: `${EXPORT_LINK_PREFIX}${exportId}_${i}`,
+        from: exportPoint.isSource ? deviceEndpoint : exportNodeId,
+        to: exportPoint.isSource ? exportNodeId : deviceEndpoint,
+        type: 'dashed',
+        arrow: 'forward',
+        metadata: {
+          _destSubgraphLabel: exportPoint.destSubgraphLabel,
+          _destDevice: conn.destDevice,
+          _destPort: conn.destPort,
+        },
+      })
+    }
   }
 
   return { exportNodes, exportLinks }
 }
 
+/**
+ * Find the top-level subgraph that a node belongs to
+ * For nested subgraphs like 'cloud/aws', returns the 'cloud' subgraph
+ */
 function findNodeSubgraph(graph: NetworkGraph, nodeId: string): Subgraph | undefined {
   const node = graph.nodes.find((n) => n.id === nodeId)
   if (!node?.parent) return undefined
-  return graph.subgraphs?.find((s) => s.id === node.parent)
+
+  // Extract top-level subgraph ID (e.g., 'cloud/aws' → 'cloud')
+  const topLevelId = node.parent.split('/')[0]
+  return graph.subgraphs?.find((s) => s.id === topLevelId)
 }
