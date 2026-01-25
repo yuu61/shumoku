@@ -3,7 +3,12 @@ import { onMount, onDestroy, createEventDispatcher } from 'svelte'
 import cytoscape from 'cytoscape'
 import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape'
 import { metricsStore, metricsData } from '$lib/stores'
-import { createDarkStylesheet, getUtilizationColor, formatTraffic, statusColors } from '$lib/cytoscape/theme'
+import {
+  createDarkStylesheet,
+  getUtilizationColor,
+  formatTraffic,
+  statusColors,
+} from '$lib/cytoscape/theme'
 import { convertToCytoscapeElements } from '$lib/cytoscape/converter'
 import type { ParsedTopologyResponse } from '$lib/types'
 

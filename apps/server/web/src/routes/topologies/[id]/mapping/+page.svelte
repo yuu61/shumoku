@@ -180,7 +180,10 @@ function handleAutoMapLinks() {
 }
 
 // Find matching interface by port name (handles variations like "ge-0/0/1" vs "ge-0/0/1.0")
-function findMatchingInterface(portName: string, interfaces: Array<{ name: string }>): string | null {
+function findMatchingInterface(
+  portName: string,
+  interfaces: Array<{ name: string }>,
+): string | null {
   const normalized = portName.toLowerCase().replace(/[:\s]/g, '')
 
   // Exact match first
@@ -259,7 +262,11 @@ function handleMonitoredNodeChange(linkId: string, nodeId: string) {
       mappingStore.loadHostInterfaces(hostId)
     }
   } else {
-    mappingStore.updateLink(linkId, { ...existing, monitoredNodeId: undefined, interface: undefined })
+    mappingStore.updateLink(linkId, {
+      ...existing,
+      monitoredNodeId: undefined,
+      interface: undefined,
+    })
   }
 }
 
