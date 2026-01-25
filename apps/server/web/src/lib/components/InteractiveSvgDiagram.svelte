@@ -431,7 +431,7 @@ function initPanZoom() {
     smoothScroll: false,
     zoomDoubleClickSpeed: 1,
     bounds: false,
-    transformOrigin: { x: 0.5, y: 0.5 },
+    // Default: zoom toward mouse position
   })
 
   panzoomInstance.on('zoom', () => {
