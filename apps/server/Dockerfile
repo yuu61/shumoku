@@ -19,8 +19,7 @@ COPY apps/server/ ./apps/server/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install
 
-# Build server
-WORKDIR /app/apps/server
+# Build all packages (turborepo handles dependency order)
 RUN bun run build
 
 # Build web UI
