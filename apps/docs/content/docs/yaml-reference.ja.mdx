@@ -36,6 +36,8 @@ links:
 settings:
   direction: TB          # レイアウト方向
   theme: light           # テーマ
+  edgeStyle: orthogonal  # エッジルーティングスタイル
+  splineMode: sloppy     # スプラインモード（splines使用時）
   legend: true           # 凡例を表示
   nodeSpacing: 50        # ノード間隔
   rankSpacing: 100       # 階層間隔
@@ -63,6 +65,25 @@ settings:
 |----|------|
 | `light` | ライトテーマ |
 | `dark` | ダークテーマ |
+
+### edgeStyle (エッジルーティング)
+ノード間の接続線のルーティングスタイルを指定します。
+
+| 値 | 説明 |
+|----|------|
+| `orthogonal` | 水平・垂直のセグメントのみ（デフォルト） |
+| `polyline` | 角度をつけた直線セグメント |
+| `splines` | 滑らかな曲線（スプライン） |
+| `straight` | 始点から終点への直線 |
+
+### splineMode (スプラインモード)
+`edgeStyle: splines` 使用時の曲線の挙動を指定します。
+
+| 値 | 説明 |
+|----|------|
+| `sloppy` | より滑らかな曲線、ノードと重なる可能性あり（デフォルト） |
+| `conservative` | ノードを回避するが、やや直交的 |
+| `conservative_soft` | conservative の緩和版 |
 
 ### legend (凡例)
 凡例を表示します。帯域幅、デバイスタイプ、ケーブルタイプなどの視覚要素を説明します。

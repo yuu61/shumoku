@@ -7,7 +7,6 @@ import FileText from 'phosphor-svelte/lib/FileText'
 let settings: Record<string, string> = {}
 let loading = true
 let error = ''
-let saving = false
 
 // Local settings (stored in localStorage)
 // Default to light mode since SVG renderer doesn't fully support dark mode yet

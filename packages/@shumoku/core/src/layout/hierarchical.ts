@@ -23,6 +23,7 @@ import {
 import { getDeviceIcon } from '../icons/index.js'
 import {
   type Bounds,
+  type EdgeStyle,
   getNodeId,
   type IconDimensions,
   type LayoutDirection,
@@ -34,6 +35,7 @@ import {
   type NetworkGraph,
   type Node,
   type Position,
+  type SplineMode,
   type Subgraph,
 } from '../models/index.js'
 
@@ -155,6 +157,10 @@ export interface HierarchicalLayoutOptions {
   rankSpacing?: number
   subgraphPadding?: number
   subgraphLabelHeight?: number
+  /** Edge routing style */
+  edgeStyle?: EdgeStyle
+  /** Spline routing mode (only used when edgeStyle is 'splines') */
+  splineMode?: SplineMode
   /** Pre-resolved icon dimensions for CDN icons (URL -> dimensions) */
   iconDimensions?: Map<string, IconDimensions>
   /** Custom ELK instance (for Bun compatibility) */
@@ -169,6 +175,8 @@ const DEFAULT_OPTIONS: Omit<Omit<Required<HierarchicalLayoutOptions>, 'elk'>, 'e
   rankSpacing: 60,
   subgraphPadding: 24,
   subgraphLabelHeight: 24,
+  edgeStyle: 'orthogonal',
+  splineMode: 'sloppy',
   iconDimensions: new Map(),
 }
 
@@ -238,6 +246,8 @@ export class HierarchicalLayout {
     return {
       ...this.options,
       direction: settings?.direction || this.options.direction,
+      edgeStyle: settings?.edgeStyle || this.options.edgeStyle,
+      splineMode: settings?.splineMode || this.options.splineMode,
       nodeSpacing: settings?.nodeSpacing || dynamicSpacing.nodeSpacing,
       rankSpacing: settings?.rankSpacing || dynamicSpacing.rankSpacing,
       subgraphPadding: settings?.subgraphPadding || dynamicSpacing.subgraphPadding,
@@ -502,23 +512,33 @@ export class HierarchicalLayout {
         ? this.toElkDirection(subgraph.direction)
         : elkDirection
 
+      const elkEdgeRouting = this.toElkEdgeRouting(options.edgeStyle)
+      const elkLayoutOptions: LayoutOptions = {
+        'elk.algorithm': 'layered',
+        'elk.direction': sgDirection,
+        'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+        'elk.padding': `[top=${sgPadding + options.subgraphLabelHeight},left=${sgPadding},bottom=${sgPadding},right=${sgPadding}]`,
+        'elk.spacing.nodeNode': String(options.nodeSpacing),
+        'elk.layered.spacing.nodeNodeBetweenLayers': String(options.rankSpacing),
+        'elk.edgeRouting': elkEdgeRouting,
+        // Use ROOT coordinate system for consistent edge/shape positioning
+        'org.eclipse.elk.json.edgeCoords': 'ROOT',
+        'org.eclipse.elk.json.shapeCoords': 'ROOT',
+      }
+
+      // Add spline mode if using splines
+      if (options.edgeStyle === 'splines') {
+        elkLayoutOptions['elk.layered.edgeRouting.splines.mode'] = this.toElkSplineMode(
+          options.splineMode,
+        )
+      }
+
       const elkNode: ElkNode = {
         id: subgraph.id,
         labels: [{ text: subgraph.label }],
         children: childNodes,
         edges: sgEdges,
-        layoutOptions: {
-          'elk.algorithm': 'layered',
-          'elk.direction': sgDirection,
-          'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-          'elk.padding': `[top=${sgPadding + options.subgraphLabelHeight},left=${sgPadding},bottom=${sgPadding},right=${sgPadding}]`,
-          'elk.spacing.nodeNode': String(options.nodeSpacing),
-          'elk.layered.spacing.nodeNodeBetweenLayers': String(options.rankSpacing),
-          'elk.edgeRouting': 'ORTHOGONAL',
-          // Use ROOT coordinate system for consistent edge/shape positioning
-          'org.eclipse.elk.json.edgeCoords': 'ROOT',
-          'org.eclipse.elk.json.shapeCoords': 'ROOT',
-        },
+        layoutOptions: elkLayoutOptions,
       }
 
       // Note: Subgraph pins are resolved to device:port in parser
@@ -667,6 +687,9 @@ export class HierarchicalLayout {
     const edgeEdgeSpacing = Math.max(8, Math.round(options.nodeSpacing * 0.25))
 
     // Root layout options
+    // Convert edge style to ELK routing option
+    const elkEdgeRouting = this.toElkEdgeRouting(options.edgeStyle)
+
     const rootLayoutOptions: LayoutOptions = {
       'elk.algorithm': 'layered',
       'elk.direction': elkDirection,
@@ -678,11 +701,18 @@ export class HierarchicalLayout {
       'elk.layered.compaction.connectedComponents': 'true',
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.edgeRouting': elkEdgeRouting,
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
       // Use ROOT coordinate system
       'org.eclipse.elk.json.edgeCoords': 'ROOT',
       'org.eclipse.elk.json.shapeCoords': 'ROOT',
+    }
+
+    // Add spline mode if using splines
+    if (options.edgeStyle === 'splines') {
+      rootLayoutOptions['elk.layered.edgeRouting.splines.mode'] = this.toElkSplineMode(
+        options.splineMode,
+      )
     }
 
     // Build the graph with edges in correct containers
@@ -1075,6 +1105,43 @@ export class HierarchicalLayout {
         return 'LEFT'
       default:
         return 'DOWN'
+    }
+  }
+
+  /**
+   * Convert EdgeStyle to ELK edgeRouting option
+   * Note: 'straight' is handled by the renderer, not ELK
+   */
+  private toElkEdgeRouting(edgeStyle: EdgeStyle): string {
+    switch (edgeStyle) {
+      case 'polyline':
+        return 'POLYLINE'
+      case 'orthogonal':
+        return 'ORTHOGONAL'
+      case 'splines':
+        return 'SPLINES'
+      case 'straight':
+        // For straight lines, we still need ELK to compute routes
+        // The renderer will ignore bend points and draw direct lines
+        return 'POLYLINE'
+      default:
+        return 'ORTHOGONAL'
+    }
+  }
+
+  /**
+   * Convert SplineMode to ELK spline mode option
+   */
+  private toElkSplineMode(splineMode: SplineMode): string {
+    switch (splineMode) {
+      case 'sloppy':
+        return 'SLOPPY'
+      case 'conservative':
+        return 'CONSERVATIVE'
+      case 'conservative_soft':
+        return 'CONSERVATIVE_SOFT'
+      default:
+        return 'SLOPPY'
     }
   }
 

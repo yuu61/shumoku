@@ -25,8 +25,49 @@ interface Props {
 let { topology, renderData = null, onDeleted = null, onUpdated = null }: Props = $props()
 
 let deleting = $state(false)
+let savingEdgeStyle = $state(false)
 let topologySources = $state<TopologyDataSource[]>([])
 let metricsSources = $state<TopologyDataSource[]>([])
+
+// Edge style settings (from topology's graph.settings)
+let edgeStyle = $state('orthogonal')
+let splineMode = $state('sloppy')
+
+// Parse graph settings from contentJson
+function parseGraphSettings() {
+  try {
+    const graph = JSON.parse(topology.contentJson)
+    edgeStyle = graph.settings?.edgeStyle || 'orthogonal'
+    splineMode = graph.settings?.splineMode || 'sloppy'
+  } catch {
+    // Use defaults
+  }
+}
+
+// Update edge style in topology
+async function updateEdgeStyle() {
+  savingEdgeStyle = true
+  try {
+    const graph = JSON.parse(topology.contentJson)
+    graph.settings = graph.settings || {}
+    graph.settings.edgeStyle = edgeStyle
+    if (edgeStyle === 'splines') {
+      graph.settings.splineMode = splineMode
+    } else {
+      delete graph.settings.splineMode
+    }
+    const updatedTopology = await api.topologies.update(topology.id, {
+      contentJson: JSON.stringify(graph)
+    })
+    if (updatedTopology && onUpdated) {
+      onUpdated(updatedTopology)
+    }
+  } catch (e) {
+    console.error('Failed to update edge style:', e)
+  } finally {
+    savingEdgeStyle = false
+  }
+}
 
 // Mapping stats
 function getMappingStats(mappingJson?: string): { mappedNodes: number; mappedLinks: number } {
@@ -48,6 +89,9 @@ function getMappingStats(mappingJson?: string): { mappedNodes: number; mappedLin
 let mappingStats = $derived(getMappingStats(topology.mappingJson))
 
 onMount(async () => {
+  // Parse graph settings
+  parseGraphSettings()
+
   try {
     const sources = await api.topologies.sources.list(topology.id)
     topologySources = sources.filter((s) => s.purpose === 'topology')
@@ -211,6 +255,44 @@ async function handleDelete() {
   <!-- Display Settings -->
   <div class="space-y-3">
     <h3 class="text-xs font-medium text-theme-text-muted uppercase tracking-wide">Display</h3>
+
+    <!-- Edge Style -->
+    <div class="py-2">
+      <label for="edgeStyle" class="text-sm text-theme-text block mb-1">Edge Style</label>
+      <select
+        id="edgeStyle"
+        class="input w-full"
+        bind:value={edgeStyle}
+        onchange={updateEdgeStyle}
+        disabled={savingEdgeStyle}
+      >
+        <option value="orthogonal">Orthogonal (default)</option>
+        <option value="polyline">Polyline</option>
+        <option value="splines">Splines (curved)</option>
+        <option value="straight">Straight</option>
+      </select>
+      <p class="text-xs text-theme-text-muted mt-1">How edges are routed between nodes</p>
+    </div>
+
+    {#if edgeStyle === 'splines'}
+    <div class="py-2">
+      <label for="splineMode" class="text-sm text-theme-text block mb-1">Spline Mode</label>
+      <select
+        id="splineMode"
+        class="input w-full"
+        bind:value={splineMode}
+        onchange={updateEdgeStyle}
+        disabled={savingEdgeStyle}
+      >
+        <option value="sloppy">Sloppy (smoother curves)</option>
+        <option value="conservative">Conservative (avoids nodes)</option>
+        <option value="conservative_soft">Conservative Soft</option>
+      </select>
+      <p class="text-xs text-theme-text-muted mt-1">Trade-off between smoothness and node avoidance</p>
+    </div>
+    {/if}
+
+    <hr class="border-theme-border/50" />
 
     <!-- Connection Status (read-only indicator) -->
     <div class="flex items-center justify-between py-2">

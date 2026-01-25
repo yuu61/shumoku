@@ -36,6 +36,8 @@ links:
 settings:
   direction: TB          # Layout direction
   theme: light           # Theme
+  edgeStyle: orthogonal  # Edge routing style
+  splineMode: sloppy     # Spline mode (when using splines)
   legend: true           # Show legend
   nodeSpacing: 50        # Node spacing
   rankSpacing: 100       # Rank spacing
@@ -63,6 +65,25 @@ settings:
 |-------|-------------|
 | `light` | Light theme |
 | `dark` | Dark theme |
+
+### edgeStyle
+Specifies the routing style for connection lines between nodes.
+
+| Value | Description |
+|-------|-------------|
+| `orthogonal` | Only horizontal and vertical segments (default) |
+| `polyline` | Straight line segments connected at angles |
+| `splines` | Smooth curved lines using cubic splines |
+| `straight` | Direct line from source to target |
+
+### splineMode
+Specifies the curve behavior when using `edgeStyle: splines`.
+
+| Value | Description |
+|-------|-------------|
+| `sloppy` | Smoother curves, may overlap nodes (default) |
+| `conservative` | Properly routes around nodes but feels more orthogonal |
+| `conservative_soft` | Relaxed version of conservative |
 
 ### legend
 Display a legend explaining visual elements like bandwidth, device types, and cable types.

@@ -4,6 +4,7 @@
  */
 
 import type {
+  EdgeStyle,
   LayoutLink,
   LayoutNode,
   LayoutPort,
@@ -208,6 +209,7 @@ const DEFAULT_OPTIONS: Required<SVGRendererOptions> = {
 export class SVGRenderer {
   private options: Required<SVGRendererOptions>
   private themeColors: ThemeColors = LIGHT_THEME
+  private edgeStyle: EdgeStyle = 'orthogonal'
 
   constructor(options?: SVGRendererOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options }
@@ -255,6 +257,9 @@ export class SVGRenderer {
     // Set theme colors based on graph settings
     const theme = graph.settings?.theme
     this.themeColors = this.getThemeColors(theme)
+
+    // Set edge style for link rendering
+    this.edgeStyle = graph.settings?.edgeStyle || 'orthogonal'
 
     // Calculate legend dimensions if enabled
     const legendSettings = this.getLegendSettings(graph.settings?.legend)
@@ -1419,9 +1424,23 @@ ${fg}
     const { lineCount } = config
     const lineSpacing = 3 // Space between parallel lines
 
+    // Apply edge style transformations
+    let effectivePoints = points
+    let cornerRadius = 8
+
+    if (this.edgeStyle === 'straight') {
+      // Straight lines: only use start and end points
+      effectivePoints = [points[0], points[points.length - 1]]
+      cornerRadius = 0
+    } else if (this.edgeStyle === 'polyline') {
+      // Polyline: use all points but no corner rounding
+      cornerRadius = 0
+    }
+    // For 'orthogonal' and 'splines', use default corner radius
+
     // Generate line paths
     const lines: string[] = []
-    const basePath = this.generatePath(points)
+    const basePath = this.generatePath(effectivePoints, cornerRadius)
 
     if (lineCount === 1) {
       // Single line
@@ -1441,9 +1460,9 @@ ${linePath}`
       // Multiple parallel lines
       const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
       for (const offset of offsets) {
-        const offsetPoints = this.offsetPoints(points, offset)
+        const offsetPoints = this.offsetPoints(effectivePoints, offset)
         // Pass offset to generatePath for radius adjustment at bends
-        const path = this.generatePath(offsetPoints, 8, points, offset)
+        const path = this.generatePath(offsetPoints, cornerRadius, effectivePoints, offset)
         lines.push(`<path class="link" data-id="${id}" d="${path}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
   ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} pointer-events="none" />`)
