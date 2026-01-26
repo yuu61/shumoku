@@ -29,6 +29,14 @@ Shumoku Server uses SQLite (via `bun:sqlite`) for persistent storage. The databa
                                                         │ key (PK)        │
                                                         │ value           │
                                                         └─────────────────┘
+
+                                                        ┌─────────────────┐
+                                                        │   migrations    │
+                                                        │─────────────────│
+                                                        │ id (PK)         │
+                                                        │ name (UNIQUE)   │
+                                                        │ applied_at      │
+                                                        └─────────────────┘
 ```
 
 ## Tables
@@ -160,8 +168,15 @@ Key-value store for application settings.
 | `key` | TEXT (PK) | Setting key |
 | `value` | TEXT | Setting value |
 
-**Reserved keys:**
-- `schema_version`: Current database schema version (for migrations)
+### migrations
+
+Tracks applied database migrations.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER (PK) | Auto-increment ID |
+| `name` | TEXT (UNIQUE) | Migration filename (e.g., `001_initial.sql`) |
+| `applied_at` | INTEGER | Timestamp when applied (ms) |
 
 ## Indexes
 
@@ -177,13 +192,21 @@ Key-value store for application settings.
 
 ## Migrations
 
-Schema migrations are tracked via `settings.schema_version`.
+Schema migrations use numbered SQL files in `src/db/migrations/`. On startup, the server automatically applies any pending migrations.
 
-| Version | Description |
-|---------|-------------|
-| 1 | Initial schema |
-| 2 | Plugin architecture support (config_json, topology_source_id, metrics_source_id) |
-| 3 | Health check status fields (status, status_message, last_checked_at, fail_count) |
+| File | Description |
+|------|-------------|
+| `001_initial.sql` | Initial schema (tables, indexes) |
+| `002_health_check.sql` | Health check status fields for data_sources |
+| `003_topology_data_sources.sql` | Junction table for many-to-many relationships |
+
+**Adding a new migration:**
+
+1. Create `src/db/migrations/NNN_description.sql` (increment number)
+2. Write SQL statements (CREATE TABLE, ALTER TABLE, etc.)
+3. Restart server - migration applies automatically
+
+**Note:** Migrations are tracked in the `migrations` table, not `settings`.
 
 ## TypeScript Interfaces
 
@@ -197,6 +220,7 @@ See `apps/server/src/types.ts` for corresponding TypeScript interfaces:
 
 ## Database Configuration
 
-- **Location:** `{dataDir}/shumoku.db` (default: `/data/shumoku.db`)
+- **Location:** `{dataDir}/shumoku.db` (default: `./data/shumoku.db`)
 - **Journal mode:** WAL (Write-Ahead Logging) for better concurrency
+- **Foreign keys:** Enabled (`PRAGMA foreign_keys = ON`)
 - **ID generation:** nanoid (12 characters)
