@@ -80,6 +80,12 @@ export class Server {
   }
 
   private setupStaticFileServing(): void {
+    // Skip static file serving in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Server] Development mode - skipping static file serving (use apps/web dev server)')
+      return
+    }
+
     const webBuildPath = this.getWebBuildPath()
     if (webBuildPath && fs.existsSync(webBuildPath)) {
       console.log(`[Server] Serving static files from: ${webBuildPath}`)
@@ -97,14 +103,17 @@ export class Server {
         return c.text('Not found', 404)
       })
     } else {
-      throw new Error('[Server] Web UI not found. Run "bun run build" in apps/server/web first.')
+      throw new Error('[Server] Web UI not found. Run "bun run build" in apps/web first.')
     }
   }
 
   private getWebBuildPath(): string | null {
     const possiblePaths = [
-      path.join(process.cwd(), 'web', 'build'),
-      path.join(process.cwd(), 'apps', 'server', 'web', 'build'),
+      // Relative to apps/server (when running from apps/server)
+      path.join(process.cwd(), '..', 'web', 'build'),
+      // Relative to monorepo root (when running from root)
+      path.join(process.cwd(), 'apps', 'web', 'build'),
+      // Docker/production path
       '/app/web/build',
     ]
 

@@ -18,7 +18,7 @@ const DEFAULT_WEATHERMAP_CONFIG: WeathermapConfig = {
 
 const DEFAULT_CONFIG: Config = {
   server: {
-    port: 3000,
+    port: 8080,
     host: '0.0.0.0',
     dataDir: './data',
   },
