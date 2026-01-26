@@ -45,6 +45,9 @@ export function initDatabase(dataDir: string = '/data'): Database {
   // Enable WAL mode for better concurrent access
   db.exec('PRAGMA journal_mode = WAL')
 
+  // Enable foreign key enforcement (SQLite disables by default)
+  db.exec('PRAGMA foreign_keys = ON')
+
   // Run migrations (creates tables and applies updates)
   runMigrations(db)
 
