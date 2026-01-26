@@ -68,7 +68,9 @@ interface PrometheusBuildInfo {
   goVersion: string
 }
 
-export class PrometheusPlugin implements DataSourcePlugin, MetricsCapable, HostsCapable, AlertsCapable {
+export class PrometheusPlugin
+  implements DataSourcePlugin, MetricsCapable, HostsCapable, AlertsCapable
+{
   readonly type = 'prometheus'
   readonly displayName = 'Prometheus'
   readonly capabilities: readonly DataSourceCapability[] = ['metrics', 'hosts', 'alerts']

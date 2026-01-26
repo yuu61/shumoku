@@ -58,13 +58,15 @@ onMount(() => {
 
 function cleanupAllWidgets() {
   for (const [, component] of mountedComponents) {
-    try { unmount(component) } catch {}
+    try {
+      unmount(component)
+    } catch {}
   }
   mountedComponents.clear()
 }
 
 function layoutToGridWidgets(widgets: typeof $currentLayout.widgets): GridStackWidget[] {
-  return widgets.map(w => ({
+  return widgets.map((w) => ({
     id: w.id,
     x: w.position.x,
     y: w.position.y,
@@ -98,7 +100,7 @@ async function initGrid() {
         const widgetId = widget.id as string
         if (!widgetId) return
 
-        const widgetData = $currentLayout?.widgets.find(w => w.id === widgetId)
+        const widgetData = $currentLayout?.widgets.find((w) => w.id === widgetId)
         if (!widgetData) return
 
         const widgetDef = getWidget(widgetData.type)
@@ -145,10 +147,15 @@ async function initGrid() {
     grid.on('change', (_event: Event, items: GridStackNode[]) => {
       if (!items?.length) return
       const positions = items
-        .filter(item => item.id)
-        .map(item => ({
+        .filter((item) => item.id)
+        .map((item) => ({
           id: item.id as string,
-          position: { x: item.x ?? 0, y: item.y ?? 0, w: item.w ?? 4, h: item.h ?? 3 } as WidgetPosition,
+          position: {
+            x: item.x ?? 0,
+            y: item.y ?? 0,
+            w: item.w ?? 4,
+            h: item.h ?? 3,
+          } as WidgetPosition,
         }))
       dashboardStore.updateWidgetPositions(positions)
     })
@@ -158,7 +165,9 @@ async function initGrid() {
         const widgetId = item.id as string
         const component = mountedComponents.get(widgetId)
         if (component) {
-          try { unmount(component) } catch {}
+          try {
+            unmount(component)
+          } catch {}
           mountedComponents.delete(widgetId)
         }
       }
@@ -256,7 +265,7 @@ function removeWidget(widgetId: string) {
 
 function getWidgetIcon(type: string) {
   const icons: Record<string, typeof SquaresFour> = {
-    'topology': TreeStructure,
+    topology: TreeStructure,
     'metrics-gauge': ChartLine,
     'health-status': Heart,
     'datasource-status': Database,

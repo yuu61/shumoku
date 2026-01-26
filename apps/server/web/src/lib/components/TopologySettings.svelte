@@ -57,7 +57,7 @@ async function updateEdgeStyle() {
       delete graph.settings.splineMode
     }
     const updatedTopology = await api.topologies.update(topology.id, {
-      contentJson: JSON.stringify(graph)
+      contentJson: JSON.stringify(graph),
     })
     if (updatedTopology && onUpdated) {
       onUpdated(updatedTopology)

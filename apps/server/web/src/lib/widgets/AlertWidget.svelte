@@ -132,8 +132,7 @@ async function loadAlerts() {
 
     // Sort by severity then by time
     alerts = fetchedAlerts.sort((a, b) => {
-      const severityDiff =
-        SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity)
+      const severityDiff = SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity)
       if (severityDiff !== 0) return severityDiff
       return b.startTime - a.startTime
     })

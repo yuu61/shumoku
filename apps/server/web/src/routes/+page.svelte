@@ -33,7 +33,7 @@ onMount(async () => {
 })
 
 // Count connected data sources
-let connectedSources = $derived(dataSources.filter(ds => ds.status === 'connected').length)
+let connectedSources = $derived(dataSources.filter((ds) => ds.status === 'connected').length)
 </script>
 
 <svelte:head>

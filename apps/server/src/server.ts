@@ -429,5 +429,4 @@ export class Server {
 
     closeDatabase()
   }
-
 }

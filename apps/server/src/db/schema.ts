@@ -98,7 +98,10 @@ function migrateFromSchemaVersion(db: Database): void {
   // Mark these migrations as already applied
   const now = Date.now()
   for (const migration of appliedMigrations) {
-    db.query('INSERT OR IGNORE INTO migrations (name, applied_at) VALUES (?, ?)').run(migration, now)
+    db.query('INSERT OR IGNORE INTO migrations (name, applied_at) VALUES (?, ?)').run(
+      migration,
+      now,
+    )
   }
 
   // Remove old schema_version

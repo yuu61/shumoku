@@ -8,11 +8,7 @@ import { writable, get } from 'svelte/store'
 /**
  * Event types for widget communication
  */
-export type WidgetEventType =
-  | 'zoom-to-node'
-  | 'highlight-node'
-  | 'select-node'
-  | 'clear-highlight'
+export type WidgetEventType = 'zoom-to-node' | 'highlight-node' | 'select-node' | 'clear-highlight'
 
 /**
  * Widget event payload
@@ -105,11 +101,7 @@ export const widgetEvents = createWidgetEventBus()
 /**
  * Helper to emit a zoom-to-node event
  */
-export function emitZoomToNode(
-  topologyId: string,
-  nodeId: string,
-  sourceWidgetId?: string,
-): void {
+export function emitZoomToNode(topologyId: string, nodeId: string, sourceWidgetId?: string): void {
   widgetEvents.emit({
     type: 'zoom-to-node',
     payload: { topologyId, nodeId, sourceWidgetId },
@@ -134,11 +126,7 @@ export function emitHighlightNode(
 /**
  * Helper to emit a select-node event
  */
-export function emitSelectNode(
-  topologyId: string,
-  nodeId: string,
-  sourceWidgetId?: string,
-): void {
+export function emitSelectNode(topologyId: string, nodeId: string, sourceWidgetId?: string): void {
   widgetEvents.emit({
     type: 'select-node',
     payload: { topologyId, nodeId, sourceWidgetId },

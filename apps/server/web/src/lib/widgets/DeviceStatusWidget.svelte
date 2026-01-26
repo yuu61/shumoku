@@ -41,7 +41,10 @@ let typeStatuses = $derived.by(() => {
   if (nodes.length === 0) return []
 
   // Group nodes by type
-  const groups = new Map<string, { nodes: NetworkNode[]; up: number; down: number; unknown: number }>()
+  const groups = new Map<
+    string,
+    { nodes: NetworkNode[]; up: number; down: number; unknown: number }
+  >()
 
   for (const node of nodes) {
     const type = node.type || 'unknown'
@@ -79,14 +82,17 @@ let typeStatuses = $derived.by(() => {
 
 // Status colors (Lighthouse style)
 const STATUS_COLORS = {
-  up: '#22c55e',      // green
-  down: '#ef4444',    // red
+  up: '#22c55e', // green
+  down: '#ef4444', // red
   unknown: '#6b7280', // gray
 }
 
 // Overall stats
 let overallStats = $derived.by(() => {
-  let total = 0, up = 0, down = 0, unknown = 0
+  let total = 0,
+    up = 0,
+    down = 0,
+    unknown = 0
   for (const s of typeStatuses) {
     total += s.total
     up += s.up
@@ -111,13 +117,19 @@ let statusSegments = $derived.by(() => {
     { status: 'up', count: up, color: STATUS_COLORS.up },
     { status: 'down', count: down, color: STATUS_COLORS.down },
     { status: 'unknown', count: unknown, color: STATUS_COLORS.unknown },
-  ].filter(s => s.count > 0)
+  ].filter((s) => s.count > 0)
 
   const numSegments = statuses.length
   const totalPadding = numSegments > 1 ? padLength * numSegments : 0
   const availableLength = circumference - totalPadding
 
-  const segments: { status: string; count: number; color: string; dashArray: string; dashOffset: number }[] = []
+  const segments: {
+    status: string
+    count: number
+    color: string
+    dashArray: string
+    dashOffset: number
+  }[] = []
   let currentOffset = 0
 
   for (const s of statuses) {
@@ -151,16 +163,25 @@ let typeSegments = $derived.by(() => {
   let totalStatusSegments = 0
   let totalTypeGaps = 0
   for (const status of typeStatuses) {
-    const statusCount = (status.up > 0 ? 1 : 0) + (status.down > 0 ? 1 : 0) + (status.unknown > 0 ? 1 : 0)
+    const statusCount =
+      (status.up > 0 ? 1 : 0) + (status.down > 0 ? 1 : 0) + (status.unknown > 0 ? 1 : 0)
     totalStatusSegments += statusCount
     if (statusCount > 0) totalTypeGaps++
   }
   const totalStatusGaps = Math.max(0, totalStatusSegments - totalTypeGaps)
 
-  const totalPadding = (totalTypeGaps > 1 ? typePadLength * totalTypeGaps : 0) + statusPadLength * totalStatusGaps
+  const totalPadding =
+    (totalTypeGaps > 1 ? typePadLength * totalTypeGaps : 0) + statusPadLength * totalStatusGaps
   const availableLength = circumference - totalPadding
 
-  const segments: { type: string; status: string; count: number; color: string; dashArray: string; dashOffset: number }[] = []
+  const segments: {
+    type: string
+    status: string
+    count: number
+    color: string
+    dashArray: string
+    dashOffset: number
+  }[] = []
   let currentOffset = 0
   let isFirstType = true
 
@@ -169,7 +190,7 @@ let typeSegments = $derived.by(() => {
       { status: 'up', count: typeStatus.up, color: STATUS_COLORS.up },
       { status: 'down', count: typeStatus.down, color: STATUS_COLORS.down },
       { status: 'unknown', count: typeStatus.unknown, color: STATUS_COLORS.unknown },
-    ].filter(s => s.count > 0)
+    ].filter((s) => s.count > 0)
 
     if (statuses.length === 0) continue
 
@@ -223,12 +244,14 @@ let typeLabels = $derived.by(() => {
   let totalStatusSegments = 0
   let totalTypeGaps = 0
   for (const status of typeStatuses) {
-    const statusCount = (status.up > 0 ? 1 : 0) + (status.down > 0 ? 1 : 0) + (status.unknown > 0 ? 1 : 0)
+    const statusCount =
+      (status.up > 0 ? 1 : 0) + (status.down > 0 ? 1 : 0) + (status.unknown > 0 ? 1 : 0)
     totalStatusSegments += statusCount
     if (statusCount > 0) totalTypeGaps++
   }
   const totalStatusGaps = Math.max(0, totalStatusSegments - totalTypeGaps)
-  const totalPadding = (totalTypeGaps > 1 ? typePadLength * totalTypeGaps : 0) + statusPadLength * totalStatusGaps
+  const totalPadding =
+    (totalTypeGaps > 1 ? typePadLength * totalTypeGaps : 0) + statusPadLength * totalStatusGaps
   const availableLength = circumference - totalPadding
 
   const labels: { type: string; displayName: string; x: number; y: number; anchor: string }[] = []
@@ -240,7 +263,7 @@ let typeLabels = $derived.by(() => {
       { count: typeStatus.up },
       { count: typeStatus.down },
       { count: typeStatus.unknown },
-    ].filter(s => s.count > 0)
+    ].filter((s) => s.count > 0)
 
     if (statuses.length === 0) continue
 
@@ -293,7 +316,7 @@ function formatTypeName(type: string): string {
   // Convert kebab-case to Title Case
   return type
     .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
 

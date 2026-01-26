@@ -1,7 +1,12 @@
 <script lang="ts">
 import { onMount } from 'svelte'
 import { goto } from '$app/navigation'
-import { dashboardStore, dashboards, dashboardLoading, dashboardError } from '$lib/stores/dashboards'
+import {
+  dashboardStore,
+  dashboards,
+  dashboardLoading,
+  dashboardError,
+} from '$lib/stores/dashboards'
 import Plus from 'phosphor-svelte/lib/Plus'
 import SquaresFour from 'phosphor-svelte/lib/SquaresFour'
 import Trash from 'phosphor-svelte/lib/Trash'

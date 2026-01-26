@@ -145,7 +145,9 @@ function highlightNode(nodeId: string, duration?: number) {
 
   // Apply highlight style to the node element
   if (containerElement) {
-    const nodeElement = containerElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement | null
+    const nodeElement = containerElement.querySelector(
+      `[data-node-id="${nodeId}"]`,
+    ) as HTMLElement | null
     if (nodeElement) {
       nodeElement.classList.add('node-highlighted')
     }
@@ -166,7 +168,9 @@ function clearHighlight() {
   }
 
   if (highlightedNodeId && containerElement) {
-    const nodeElement = containerElement.querySelector(`[data-node-id="${highlightedNodeId}"]`) as HTMLElement | null
+    const nodeElement = containerElement.querySelector(
+      `[data-node-id="${highlightedNodeId}"]`,
+    ) as HTMLElement | null
     if (nodeElement) {
       nodeElement.classList.remove('node-highlighted')
     }
@@ -179,7 +183,9 @@ function scrollToNode(nodeId: string) {
   if (!containerElement) return
 
   // Find the node element in the SVG
-  const nodeElement = containerElement.querySelector(`[data-node-id="${nodeId}"]`) as SVGGElement | null
+  const nodeElement = containerElement.querySelector(
+    `[data-node-id="${nodeId}"]`,
+  ) as SVGGElement | null
   if (!nodeElement) return
 
   // Get the bounding box of the node
@@ -256,7 +262,7 @@ function handleSettings() {
 
 // Get display name for current sheet
 let currentSheetName = $derived(
-  sheets.find(s => s.id === (config.sheetId || 'root'))?.name || 'root'
+  sheets.find((s) => s.id === (config.sheetId || 'root'))?.name || 'root',
 )
 
 let editMode = $derived($dashboardEditMode)

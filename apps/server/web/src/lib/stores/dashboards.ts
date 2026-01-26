@@ -13,7 +13,7 @@ interface DashboardState {
   items: Dashboard[]
   current: Dashboard | null
   currentLayout: DashboardLayout | null
-  savedLayout: DashboardLayout | null  // Snapshot before editing
+  savedLayout: DashboardLayout | null // Snapshot before editing
   loading: boolean
   error: string | null
   editMode: boolean
@@ -127,7 +127,7 @@ function createDashboardStore() {
           ...s,
           current: updated,
           items: s.items.map((d) => (d.id === updated.id ? updated : d)),
-          savedLayout: null,  // Clear snapshot after successful save
+          savedLayout: null, // Clear snapshot after successful save
           loading: false,
         }))
         return true
@@ -197,7 +197,11 @@ function createDashboardStore() {
     /**
      * Add a new widget to the current dashboard
      */
-    addWidget: (type: string, config: Record<string, unknown> = {}, size?: { w: number; h: number }) => {
+    addWidget: (
+      type: string,
+      config: Record<string, unknown> = {},
+      size?: { w: number; h: number },
+    ) => {
       update((s) => {
         if (!s.currentLayout) return s
 

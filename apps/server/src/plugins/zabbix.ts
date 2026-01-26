@@ -321,13 +321,7 @@ export class ZabbixPlugin
   private getSeverityFilter(minSeverity?: AlertSeverity): number[] {
     if (!minSeverity) return []
 
-    const severityOrder: AlertSeverity[] = [
-      'information',
-      'warning',
-      'average',
-      'high',
-      'disaster',
-    ]
+    const severityOrder: AlertSeverity[] = ['information', 'warning', 'average', 'high', 'disaster']
 
     // Map our severity to Zabbix numeric values
     const severityToZabbix: Record<AlertSeverity, number[]> = {
