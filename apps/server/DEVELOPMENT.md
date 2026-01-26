@@ -20,13 +20,35 @@ Shumoku Server は Bun ランタイムで動作するリアルタイムネット
 # リポジトリルートから
 bun install
 bun run build
+```
 
-# サーバー開発
+### 開発サーバーの起動
+
+**推奨: Web UI 開発時（HMR有効）**
+
+```bash
+# ターミナル1: APIサーバー（ファイル変更で自動再起動）
+cd apps/server
+bun run dev
+
+# ターミナル2: Web開発サーバー（HMRで即時反映）
+cd apps/server/web
+bun run dev
+```
+
+- **http://localhost:5173** にアクセス（Web開発サーバー）
+- APIリクエストは自動的に localhost:3000 にプロキシされる
+- Web UIの変更はビルド不要で即時反映
+
+**APIのみ開発時**
+
+```bash
 cd apps/server
 bun run dev
 ```
 
-http://localhost:3000 でアクセス
+- **http://localhost:3000** にアクセス
+- Web UIは事前にビルドが必要（`cd web && bun run build`）
 
 ## ディレクトリ構成
 
