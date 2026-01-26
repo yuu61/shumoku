@@ -6,7 +6,9 @@
 import { Database } from 'bun:sqlite'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { initializeSchema, runMigrations } from './schema.js'
+import { runMigrations, getMigrationStatus } from './schema.js'
+
+export { getMigrationStatus }
 
 let db: Database | null = null
 
@@ -43,10 +45,7 @@ export function initDatabase(dataDir: string = '/data'): Database {
   // Enable WAL mode for better concurrent access
   db.exec('PRAGMA journal_mode = WAL')
 
-  // Initialize schema
-  initializeSchema(db)
-
-  // Run migrations
+  // Run migrations (creates tables and applies updates)
   runMigrations(db)
 
   console.log('[Database] Initialized successfully')

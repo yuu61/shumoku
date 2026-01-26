@@ -1,166 +1,194 @@
 /**
- * Database Schema
- * Table definitions and initialization for SQLite
+ * Database Migration System
+ * File-based SQL migrations for SQLite
  */
 
 import type { Database } from 'bun:sqlite'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const MIGRATIONS_DIR = path.join(__dirname, 'migrations')
+
+interface MigrationRecord {
+  id: number
+  name: string
+  applied_at: number
+}
 
 /**
- * Initialize database schema
- * Creates all required tables if they don't exist
+ * Initialize migration tracking table
  */
-export function initializeSchema(db: Database): void {
+function initMigrationTable(db: Database): void {
   db.exec(`
-    -- Data sources (plugin-based, stores connection info for various providers)
-    CREATE TABLE IF NOT EXISTS data_sources (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL DEFAULT 'zabbix',
-      config_json TEXT NOT NULL DEFAULT '{}',
-      status TEXT NOT NULL DEFAULT 'unknown',
-      status_message TEXT,
-      last_checked_at INTEGER,
-      fail_count INTEGER NOT NULL DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
-    -- Topologies (content_json stores multi-file JSON: {"files": [{name, content}, ...]})
-    CREATE TABLE IF NOT EXISTS topologies (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      content_json TEXT NOT NULL,
-      topology_source_id TEXT REFERENCES data_sources(id) ON DELETE SET NULL,
-      metrics_source_id TEXT REFERENCES data_sources(id) ON DELETE SET NULL,
-      mapping_json TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
-    -- Dashboards
-    CREATE TABLE IF NOT EXISTS dashboards (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      layout_json TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
-    -- Settings (key-value store)
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-
-    -- Topology-DataSource junction table (many-to-many with config)
-    CREATE TABLE IF NOT EXISTS topology_data_sources (
-      id TEXT PRIMARY KEY,
-      topology_id TEXT NOT NULL REFERENCES topologies(id) ON DELETE CASCADE,
-      data_source_id TEXT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
-      purpose TEXT NOT NULL, -- 'topology' or 'metrics'
-      sync_mode TEXT NOT NULL DEFAULT 'manual', -- 'manual', 'on_view', 'webhook'
-      webhook_secret TEXT,
-      last_synced_at INTEGER,
-      priority INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      UNIQUE(topology_id, data_source_id, purpose)
-    );
-
-    -- Create indexes for common queries
-    CREATE INDEX IF NOT EXISTS idx_topologies_topology_source ON topologies(topology_source_id);
-    CREATE INDEX IF NOT EXISTS idx_topologies_metrics_source ON topologies(metrics_source_id);
-    CREATE INDEX IF NOT EXISTS idx_topologies_name ON topologies(name);
-    CREATE INDEX IF NOT EXISTS idx_data_sources_name ON data_sources(name);
-    CREATE INDEX IF NOT EXISTS idx_data_sources_type ON data_sources(type);
-    CREATE INDEX IF NOT EXISTS idx_topology_data_sources_topology ON topology_data_sources(topology_id);
-    CREATE INDEX IF NOT EXISTS idx_topology_data_sources_source ON topology_data_sources(data_source_id);
+    CREATE TABLE IF NOT EXISTS migrations (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      applied_at INTEGER NOT NULL
+    )
   `)
 }
 
 /**
- * Run database migrations
- * Handles schema updates for existing databases
+ * Get list of applied migrations
  */
-export function runMigrations(db: Database): void {
-  // Get current schema version
+function getAppliedMigrations(db: Database): Set<string> {
+  const rows = db.query('SELECT name FROM migrations').all() as { name: string }[]
+  return new Set(rows.map((r) => r.name))
+}
+
+/**
+ * Get migration files from directory, sorted by number
+ */
+function getMigrationFiles(): string[] {
+  if (!fs.existsSync(MIGRATIONS_DIR)) {
+    return []
+  }
+
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort((a, b) => {
+      // Sort by leading number (001, 002, etc.)
+      const numA = Number.parseInt(a.split('_')[0], 10)
+      const numB = Number.parseInt(b.split('_')[0], 10)
+      return numA - numB
+    })
+}
+
+/**
+ * Migrate from old schema_version system to new migrations table
+ * Maps old version numbers to migration files
+ */
+function migrateFromSchemaVersion(db: Database): void {
+  // Check if settings table exists (old system)
+  const tableExists = db
+    .query("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'")
+    .get()
+
+  if (!tableExists) {
+    return // Fresh database, no old system
+  }
+
+  // Check if old schema_version exists
   const versionResult = db.query("SELECT value FROM settings WHERE key = 'schema_version'").get() as
     | { value: string }
     | undefined
-  const currentVersion = versionResult ? Number.parseInt(versionResult.value, 10) : 0
 
-  // Apply migrations
-  if (currentVersion < 1) {
-    // Initial schema - already created in initializeSchema
-    db.query("INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', '1')").run()
+  if (!versionResult) {
+    return // No old system or already migrated
   }
 
-  // Migration 2: Plugin architecture support
-  if (currentVersion < 2) {
-    // Check if old columns exist and migrate
-    const tableInfo = db.query('PRAGMA table_info(data_sources)').all() as { name: string }[]
-    const hasOldColumns = tableInfo.some((col) => col.name === 'url')
+  const oldVersion = Number.parseInt(versionResult.value, 10)
+  console.log(`[Migration] Migrating from schema_version ${oldVersion} to file-based system`)
 
-    if (hasOldColumns) {
-      // Migrate old data_sources to new format
-      db.exec(`
-        -- Add config_json column if not exists
-        ALTER TABLE data_sources ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}';
-      `)
+  // Map old versions to migration files
+  // Version 1 = initial schema (001)
+  // Version 2 = plugin architecture (rolled into 001 for new DBs)
+  // Version 3 = health check (002)
+  const versionToMigration: Record<number, string[]> = {
+    1: ['001_initial.sql'],
+    2: ['001_initial.sql'],
+    3: ['001_initial.sql', '002_health_check.sql'],
+  }
 
-      // Migrate existing data
-      const oldSources = db
-        .query('SELECT id, url, token, poll_interval FROM data_sources')
-        .all() as {
-        id: string
-        url: string
-        token: string
-        poll_interval: number
-      }[]
+  const appliedMigrations = versionToMigration[oldVersion] || ['001_initial.sql']
 
-      for (const source of oldSources) {
-        const config = JSON.stringify({
-          url: source.url,
-          token: source.token,
-          pollInterval: source.poll_interval,
-        })
-        db.query('UPDATE data_sources SET config_json = ? WHERE id = ?').run(config, source.id)
+  // Mark these migrations as already applied
+  const now = Date.now()
+  for (const migration of appliedMigrations) {
+    db.query('INSERT OR IGNORE INTO migrations (name, applied_at) VALUES (?, ?)').run(migration, now)
+  }
+
+  // Remove old schema_version
+  db.query("DELETE FROM settings WHERE key = 'schema_version'").run()
+
+  console.log(`[Migration] Marked ${appliedMigrations.length} migrations as applied`)
+}
+
+/**
+ * Apply a single migration file
+ */
+function applyMigration(db: Database, fileName: string): void {
+  const filePath = path.join(MIGRATIONS_DIR, fileName)
+  const sql = fs.readFileSync(filePath, 'utf-8')
+
+  // Remove comment lines and split by semicolons
+  const cleanedSql = sql
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('--'))
+    .join('\n')
+
+  const statements = cleanedSql
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+
+  for (const statement of statements) {
+    try {
+      db.exec(statement)
+    } catch (error) {
+      // Ignore "column already exists" errors for idempotency
+      const msg = error instanceof Error ? error.message : String(error)
+      if (msg.includes('duplicate column name') || msg.includes('already exists')) {
+        console.log(`[Migration] Skipping (already exists): ${statement.slice(0, 50)}...`)
+      } else {
+        throw error
       }
     }
-
-    // Check if topologies needs migration
-    const topoInfo = db.query('PRAGMA table_info(topologies)').all() as { name: string }[]
-    const hasOldDataSourceId = topoInfo.some((col) => col.name === 'data_source_id')
-    const hasNewMetricsSourceId = topoInfo.some((col) => col.name === 'metrics_source_id')
-
-    if (hasOldDataSourceId && !hasNewMetricsSourceId) {
-      db.exec(`
-        ALTER TABLE topologies ADD COLUMN topology_source_id TEXT REFERENCES data_sources(id) ON DELETE SET NULL;
-        ALTER TABLE topologies ADD COLUMN metrics_source_id TEXT REFERENCES data_sources(id) ON DELETE SET NULL;
-      `)
-      // Copy data_source_id to metrics_source_id
-      db.exec('UPDATE topologies SET metrics_source_id = data_source_id')
-    }
-
-    db.query("UPDATE settings SET value = '2' WHERE key = 'schema_version'").run()
-    console.log('[Database] Migration 2: Plugin architecture support applied')
   }
 
-  // Migration 3: Health check status fields
-  if (currentVersion < 3) {
-    const tableInfo = db.query('PRAGMA table_info(data_sources)').all() as { name: string }[]
-    const hasStatus = tableInfo.some((col) => col.name === 'status')
+  // Record migration as applied
+  db.query('INSERT INTO migrations (name, applied_at) VALUES (?, ?)').run(fileName, Date.now())
+}
 
-    if (!hasStatus) {
-      db.exec(`
-        ALTER TABLE data_sources ADD COLUMN status TEXT NOT NULL DEFAULT 'unknown';
-        ALTER TABLE data_sources ADD COLUMN status_message TEXT;
-        ALTER TABLE data_sources ADD COLUMN last_checked_at INTEGER;
-        ALTER TABLE data_sources ADD COLUMN fail_count INTEGER NOT NULL DEFAULT 0;
-      `)
-    }
+/**
+ * Run all pending migrations
+ */
+export function runMigrations(db: Database): void {
+  // Initialize migration tracking table
+  initMigrationTable(db)
 
-    db.query("UPDATE settings SET value = '3' WHERE key = 'schema_version'").run()
-    console.log('[Database] Migration 3: Health check status fields applied')
+  // Migrate from old schema_version if needed
+  migrateFromSchemaVersion(db)
+
+  // Get applied and available migrations
+  const applied = getAppliedMigrations(db)
+  const available = getMigrationFiles()
+
+  // Find pending migrations
+  const pending = available.filter((f) => !applied.has(f))
+
+  if (pending.length === 0) {
+    console.log('[Migration] Database is up to date')
+    return
   }
+
+  console.log(`[Migration] Applying ${pending.length} migration(s)...`)
+
+  // Apply each pending migration
+  for (const migration of pending) {
+    console.log(`[Migration] Applying: ${migration}`)
+    applyMigration(db, migration)
+  }
+
+  console.log('[Migration] All migrations applied successfully')
+}
+
+/**
+ * Get migration status for debugging
+ */
+export function getMigrationStatus(db: Database): {
+  applied: MigrationRecord[]
+  pending: string[]
+} {
+  initMigrationTable(db)
+
+  const applied = db.query('SELECT * FROM migrations ORDER BY id').all() as MigrationRecord[]
+  const appliedNames = new Set(applied.map((m) => m.name))
+  const available = getMigrationFiles()
+  const pending = available.filter((f) => !appliedNames.has(f))
+
+  return { applied, pending }
 }
