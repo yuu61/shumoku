@@ -22,12 +22,15 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 # Build all packages (turborepo handles dependency order)
 RUN bun run build
 
+# Copy web package
+COPY apps/web/ ./apps/web/
+
 # Build server (tsc)
 WORKDIR /app/apps/server
 RUN bun run build
 
 # Build web UI
-WORKDIR /app/apps/server/web
+WORKDIR /app/apps/web
 RUN bun install && bun run build
 
 # Bundle server into single file
@@ -58,22 +61,22 @@ RUN getent group 1000 || groupadd --gid 1000 shumoku \
 COPY --from=builder /app/apps/server/dist/bundle.js ./server.js
 
 # Copy web UI build
-COPY --from=builder /app/apps/server/web/build ./web/build
+COPY --from=builder /app/apps/web/build ./web/build
 
 # Create data directory with correct ownership
 RUN mkdir -p /data && chown -R 1000:1000 /data /app
 
 # Environment
 ENV DATA_DIR=/data
-ENV PORT=3000
+ENV PORT=8080
 ENV HOST=0.0.0.0
 
 # Switch to non-root user
 USER 1000
 
-EXPOSE 3000
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:8080/api/health || exit 1
 
 CMD ["bun", "run", "server.js"]

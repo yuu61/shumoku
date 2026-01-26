@@ -28,7 +28,7 @@ bun run build
 
 echo ""
 echo "[3/4] Installing web UI dependencies..."
-cd "$SERVER_DIR/web"
+cd "$ROOT_DIR/apps/web"
 bun install
 
 echo ""
@@ -39,8 +39,8 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "To start the server:"
-echo "  cd apps/server"
-echo "  bun run dev      # Development mode"
-echo "  bun run start    # Production mode"
+echo "  bun run dev:server    # Development mode (API + Web UI)"
+echo "  cd apps/server && bun run start    # Production mode"
 echo ""
-echo "Server will be available at: http://localhost:3000"
+echo "Development: http://localhost:5173"
+echo "Production:  http://localhost:8080"

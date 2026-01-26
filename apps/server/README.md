@@ -41,7 +41,7 @@ make dev
 DEMO_MODE=true make dev
 ```
 
-Open http://localhost:3000 to access the Web UI.
+Open http://localhost:8080 to access the Web UI.
 
 ## Available Commands
 
@@ -58,9 +58,15 @@ make help       # Show all commands
 For development with hot reload:
 
 ```bash
-make dev        # Start server (watches for changes)
-make dev-web    # Start web UI dev server (separate terminal)
+# From monorepo root (recommended)
+bun run dev:server    # Start API server + Web UI dev server
+
+# Or separately
+cd apps/server && bun run dev    # API server (port 8080)
+cd apps/web && bun run dev       # Web UI dev server (port 5173)
 ```
+
+Access http://localhost:5173 for development (HMR enabled).
 
 ## Data Persistence
 
@@ -178,10 +184,10 @@ links:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Server port | 3000 |
+| `PORT` | Server port | 8080 |
 | `HOST` | Bind address | 0.0.0.0 |
 | `DATA_DIR` | Data directory for SQLite | /data |
-| `SHUMOKU_PORT` | External port (Docker Compose) | 3000 |
+| `SHUMOKU_PORT` | External port (Docker Compose) | 8080 |
 | `DEMO_MODE` | Load sample network on empty DB (`true`/`false`) | `false` |
 
 ## Architecture
@@ -302,7 +308,7 @@ server {
     server_name shumoku.example.com;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -339,7 +345,7 @@ services:
       context: ../..
       dockerfile: apps/server/Dockerfile
     ports:
-      - "${SHUMOKU_PORT:-3000}:3000"
+      - "${SHUMOKU_PORT:-8080}:8080"
     volumes:
       - shumoku-data:/data
     restart: unless-stopped

@@ -27,7 +27,7 @@ bun run build
 
 Write-Host ""
 Write-Host "[3/4] Installing web UI dependencies..." -ForegroundColor Yellow
-Set-Location "$ServerDir\web"
+Set-Location "$RootDir\apps\web"
 bun install
 
 Write-Host ""
@@ -38,8 +38,8 @@ Write-Host ""
 Write-Host "=== Setup Complete ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "To start the server:"
-Write-Host "  cd apps/server"
-Write-Host "  bun run dev      # Development mode"
-Write-Host "  bun run start    # Production mode"
+Write-Host "  bun run dev:server    # Development mode (API + Web UI)"
+Write-Host "  cd apps/server && bun run start    # Production mode"
 Write-Host ""
-Write-Host "Server will be available at: http://localhost:3000"
+Write-Host "Development: http://localhost:5173"
+Write-Host "Production:  http://localhost:8080"

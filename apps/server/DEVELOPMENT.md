@@ -24,7 +24,17 @@ bun run build
 
 ### 開発サーバーの起動
 
-**推奨: Web UI 開発時（HMR有効）**
+**推奨: monorepo ルートから（1コマンド）**
+
+```bash
+# API + Web UIを同時起動
+bun run dev:server
+```
+
+- **http://localhost:5173** にアクセス（Web開発サーバー、HMR有効）
+- APIリクエストは自動的に localhost:8080 にプロキシされる
+
+**個別に起動する場合**
 
 ```bash
 # ターミナル1: APIサーバー（ファイル変更で自動再起動）
@@ -32,13 +42,9 @@ cd apps/server
 bun run dev
 
 # ターミナル2: Web開発サーバー（HMRで即時反映）
-cd apps/server/web
+cd apps/web
 bun run dev
 ```
-
-- **http://localhost:5173** にアクセス（Web開発サーバー）
-- APIリクエストは自動的に localhost:3000 にプロキシされる
-- Web UIの変更はビルド不要で即時反映
 
 **APIのみ開発時**
 
@@ -47,33 +53,37 @@ cd apps/server
 bun run dev
 ```
 
-- **http://localhost:3000** にアクセス
-- Web UIは事前にビルドが必要（`cd web && bun run build`）
+- **http://localhost:8080** でAPIのみ起動
+- 開発モードでは静的ファイル配信はスキップされる
 
 ## ディレクトリ構成
 
 ```
-apps/server/
-├── src/
-│   ├── index.ts          # エントリーポイント
-│   ├── server.ts         # Bun.serve() + Hono
-│   ├── layout.ts         # Bun互換レイアウトラッパー ⚠️
-│   ├── config.ts         # 設定読み込み
-│   ├── topology.ts       # ファイルベーストポロジー管理
-│   ├── db/
-│   │   ├── index.ts      # bun:sqlite 初期化
-│   │   └── schema.ts     # マイグレーション
-│   ├── services/
-│   │   ├── datasource.ts # データソースCRUD
-│   │   └── topology.ts   # トポロジーCRUD + レイアウト
-│   ├── api/
-│   │   └── index.ts      # REST APIルート
-│   └── zabbix/
-│       └── ...           # Zabbix連携
-├── web/                  # SvelteKit フロントエンド
-├── Dockerfile
-├── compose.yaml
-└── esbuild.config.js     # バンドル設定
+apps/
+├── server/               # API サーバー
+│   ├── src/
+│   │   ├── index.ts      # エントリーポイント
+│   │   ├── server.ts     # Bun.serve() + Hono
+│   │   ├── layout.ts     # Bun互換レイアウトラッパー ⚠️
+│   │   ├── config.ts     # 設定読み込み
+│   │   ├── topology.ts   # ファイルベーストポロジー管理
+│   │   ├── db/
+│   │   │   ├── index.ts  # bun:sqlite 初期化
+│   │   │   └── schema.ts # マイグレーション
+│   │   ├── services/
+│   │   │   ├── datasource.ts # データソースCRUD
+│   │   │   └── topology.ts   # トポロジーCRUD + レイアウト
+│   │   ├── api/
+│   │   │   └── index.ts  # REST APIルート
+│   │   └── zabbix/
+│   │       └── ...       # Zabbix連携
+│   ├── Dockerfile
+│   └── compose.yaml
+└── web/                  # SvelteKit フロントエンド（独立パッケージ）
+    ├── src/
+    │   ├── routes/       # ページコンポーネント
+    │   └── lib/          # 共通コンポーネント・ストア
+    └── vite.config.ts    # API プロキシ設定
 ```
 
 ## Bun + elkjs 互換性
@@ -197,7 +207,7 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 ### 接続
 
 ```javascript
-const ws = new WebSocket('ws://localhost:3000/ws')
+const ws = new WebSocket('ws://localhost:8080/ws')
 ```
 
 ### メッセージ
@@ -228,22 +238,20 @@ const ws = new WebSocket('ws://localhost:3000/ws')
 
 ## root スクリプトとの関係
 
-root の `bun run dev` / `bun run build` は server を**除外**しています:
-
 ```json
 {
   "scripts": {
-    "dev": "turbo run dev --filter='!@shumoku/server'",
-    "build": "turbo run build --filter='!@shumoku/server'"
+    "dev": "turbo run dev",                    // 全パッケージ起動
+    "dev:server": "turbo run dev --filter=@shumoku/server --filter=@shumoku/web",
+    "build": "turbo run build --filter='!@shumoku/server'",
+    "build:all": "turbo run build"
   }
 }
 ```
 
-server を含めてビルドする場合:
-
-```bash
-bun run build:all
-```
+- `bun run dev` - docs を含む全パッケージを起動
+- `bun run dev:server` - API + Web UI のみ起動（推奨）
+- `bun run build:all` - server を含めてビルド
 
 ## トラブルシューティング
 
@@ -260,15 +268,15 @@ TypeError: undefined is not a constructor (evaluating 'new _Worker(url)')
 ### ポート競合
 
 ```
-error: Failed to start server. Is port 3000 in use?
+error: Failed to start server. Is port 8080 in use?
 ```
 
 **解決**:
 ```bash
 # プロセス確認
-lsof -i :3000
+lsof -i :8080
 # または環境変数でポート変更
-PORT=3001 bun run dev
+PORT=9000 bun run dev
 ```
 
 ### データベースロック

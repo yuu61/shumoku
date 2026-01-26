@@ -8,11 +8,11 @@ services:
       context: ../..
       dockerfile: apps/server/Dockerfile
     ports:
-      - "${SHUMOKU_PORT:-3000}:3000"
+      - "${SHUMOKU_PORT:-8080}:8080"
     volumes:
       - shumoku-data:/data
     environment:
-      - PORT=3000
+      - PORT=8080
       - HOST=0.0.0.0
       - DATA_DIR=/data
     restart: unless-stopped
@@ -23,7 +23,7 @@ services:
 
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
       timeout: 3s
       retries: 3
