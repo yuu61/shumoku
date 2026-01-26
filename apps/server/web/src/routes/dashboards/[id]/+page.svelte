@@ -85,86 +85,90 @@ function setGridEditMode(editMode: boolean) {
 // --- Grid Initialization ---
 
 async function initGrid() {
-  if (!browser || !gridContainer || !$currentLayout) return
+  if (!browser || !gridContainer || !$currentLayout || grid) return
 
-  const GridStackModule = await import('gridstack')
-  const { GridStack } = GridStackModule
-  await import('gridstack/dist/gridstack.min.css')
+  try {
+    const GridStackModule = await import('gridstack')
+    const { GridStack } = GridStackModule
+    await import('gridstack/dist/gridstack.min.css')
 
-  // Set renderCB once (it's a static property)
-  if (!gridStackReady) {
-    GridStack.renderCB = (el: HTMLElement, widget: GridStackNode) => {
-      const widgetId = widget.id as string
-      if (!widgetId) return
+    // Set renderCB once (it's a static property)
+    if (!gridStackReady) {
+      GridStack.renderCB = (el: HTMLElement, widget: GridStackNode) => {
+        const widgetId = widget.id as string
+        if (!widgetId) return
 
-      const widgetData = $currentLayout?.widgets.find(w => w.id === widgetId)
-      if (!widgetData) return
+        const widgetData = $currentLayout?.widgets.find(w => w.id === widgetId)
+        if (!widgetData) return
 
-      const widgetDef = getWidget(widgetData.type)
-      if (!widgetDef) {
-        el.innerHTML = `<div class="h-full flex items-center justify-center bg-theme-bg-elevated rounded-lg border border-theme-border text-theme-text-muted">Unknown widget: ${widgetData.type}</div>`
-        return
+        const widgetDef = getWidget(widgetData.type)
+        if (!widgetDef) {
+          el.innerHTML = `<div class="h-full flex items-center justify-center bg-theme-bg-elevated rounded-lg border border-theme-border text-theme-text-muted">Unknown widget: ${widgetData.type}</div>`
+          return
+        }
+
+        try {
+          const component = mount(widgetDef.component, {
+            target: el,
+            props: {
+              id: widgetId,
+              config: widgetData.config,
+              onRemove: () => removeWidget(widgetId),
+            },
+          })
+          mountedComponents.set(widgetId, component)
+        } catch (e) {
+          console.error(`Failed to mount widget ${widgetId}:`, e)
+          el.innerHTML = `<div class="h-full flex items-center justify-center text-danger">Error loading widget</div>`
+        }
       }
-
-      try {
-        const component = mount(widgetDef.component, {
-          target: el,
-          props: {
-            id: widgetId,
-            config: widgetData.config,
-            onRemove: () => removeWidget(widgetId),
-          },
-        })
-        mountedComponents.set(widgetId, component)
-      } catch (e) {
-        console.error(`Failed to mount widget ${widgetId}:`, e)
-        el.innerHTML = `<div class="h-full flex items-center justify-center text-danger">Error loading widget</div>`
-      }
+      gridStackReady = true
     }
-    gridStackReady = true
+
+    // Initialize grid
+    const isEditMode = $dashboardEditMode
+    grid = GridStack.init(
+      {
+        column: $currentLayout.columns || 12,
+        cellHeight: $currentLayout.rowHeight || 100,
+        margin: $currentLayout.margin || 8,
+        float: true,
+        animate: true,
+        staticGrid: !isEditMode,
+        disableResize: !isEditMode,
+        disableDrag: !isEditMode,
+      },
+      gridContainer,
+    )
+
+    // Always set up event listeners (they respect static mode)
+    grid.on('change', (_event: Event, items: GridStackNode[]) => {
+      if (!items?.length) return
+      const positions = items
+        .filter(item => item.id)
+        .map(item => ({
+          id: item.id as string,
+          position: { x: item.x ?? 0, y: item.y ?? 0, w: item.w ?? 4, h: item.h ?? 3 } as WidgetPosition,
+        }))
+      dashboardStore.updateWidgetPositions(positions)
+    })
+
+    grid.on('removed', (_event: Event, items: GridStackNode[]) => {
+      for (const item of items) {
+        const widgetId = item.id as string
+        const component = mountedComponents.get(widgetId)
+        if (component) {
+          try { unmount(component) } catch {}
+          mountedComponents.delete(widgetId)
+        }
+      }
+    })
+
+    // Load widgets
+    grid.load(layoutToGridWidgets($currentLayout.widgets))
+  } catch (e) {
+    console.error('Failed to initialize GridStack:', e)
   }
-
-  // Initialize grid
-  const isEditMode = $dashboardEditMode
-  grid = GridStack.init(
-    {
-      column: $currentLayout.columns || 12,
-      cellHeight: $currentLayout.rowHeight || 100,
-      margin: $currentLayout.margin || 8,
-      float: true,
-      animate: true,
-      staticGrid: !isEditMode,
-      disableResize: !isEditMode,
-      disableDrag: !isEditMode,
-    },
-    gridContainer,
-  )
-
-  // Always set up event listeners (they respect static mode)
-  grid.on('change', (_event: Event, items: GridStackNode[]) => {
-    if (!items?.length) return
-    const positions = items
-      .filter(item => item.id)
-      .map(item => ({
-        id: item.id as string,
-        position: { x: item.x ?? 0, y: item.y ?? 0, w: item.w ?? 4, h: item.h ?? 3 } as WidgetPosition,
-      }))
-    dashboardStore.updateWidgetPositions(positions)
-  })
-
-  grid.on('removed', (_event: Event, items: GridStackNode[]) => {
-    for (const item of items) {
-      const widgetId = item.id as string
-      const component = mountedComponents.get(widgetId)
-      if (component) {
-        try { unmount(component) } catch {}
-        mountedComponents.delete(widgetId)
-      }
-    }
-  })
-
-  // Load widgets
-  grid.load(layoutToGridWidgets($currentLayout.widgets))
 }
 
 // --- Effects ---
@@ -172,8 +176,8 @@ async function initGrid() {
 // Initialize grid when layout loads
 $effect(() => {
   const layout = $currentLayout
-  if (browser && gridContainer && layout && layout.widgets.length > 0 && !grid) {
-    setTimeout(() => initGrid(), 0)
+  if (browser && gridContainer && layout && !grid) {
+    tick().then(() => initGrid())
   }
 })
 
@@ -332,9 +336,17 @@ function getWidgetIcon(type: string) {
         </button>
       </div>
     {:else if $currentLayout}
-      {#if $currentLayout.widgets.length === 0}
-        <!-- Empty Dashboard -->
-        <div class="flex flex-col items-center justify-center h-full text-center p-8">
+      <!-- Widget Grid - always render for GridStack -->
+      <div
+        bind:this={gridContainer}
+        class="grid-stack p-4"
+      >
+        <!-- GridStack creates items via grid.load() and renderCB -->
+      </div>
+
+      {#if $currentLayout.widgets.length === 0 && !$dashboardEditMode}
+        <!-- Empty Dashboard Overlay -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-theme-bg-canvas/80">
           <SquaresFour size={64} class="text-theme-text-muted mb-4" />
           <h2 class="text-xl font-semibold text-theme-text-emphasis mb-2">
             This dashboard is empty
@@ -342,23 +354,13 @@ function getWidgetIcon(type: string) {
           <p class="text-theme-text-muted mb-6 max-w-md">
             Click "Edit" and then "Add Widget" to add widgets to your dashboard.
           </p>
-          {#if !$dashboardEditMode}
-            <button
-              onclick={() => dashboardStore.setEditMode(true)}
-              class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-            >
-              <PencilSimple size={20} />
-              <span>Start Editing</span>
-            </button>
-          {/if}
-        </div>
-      {:else}
-        <!-- Widget Grid - GridStack will manage the items -->
-        <div
-          bind:this={gridContainer}
-          class="grid-stack p-4"
-        >
-          <!-- GridStack creates items via grid.load() and renderCB -->
+          <button
+            onclick={() => dashboardStore.setEditMode(true)}
+            class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            <PencilSimple size={20} />
+            <span>Start Editing</span>
+          </button>
         </div>
       {/if}
     {/if}
