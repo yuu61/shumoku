@@ -5,6 +5,8 @@ interface NodeEntry {
   id: string
   label: string
   type?: string
+  vendor?: string
+  model?: string
 }
 
 interface Props {
@@ -31,7 +33,9 @@ let allNodes = $derived.by(() => {
     const labelEl = el.querySelector('text.node-label, text')
     const label = labelEl?.textContent?.trim() || id
     const type = el.getAttribute('data-device-type') || undefined
-    nodes.push({ id, label, type })
+    const vendor = el.getAttribute('data-device-vendor') || undefined
+    const model = el.getAttribute('data-device-model') || undefined
+    nodes.push({ id, label, type, vendor, model })
   })
   return nodes
 })
@@ -72,12 +76,14 @@ function handleSelect(nodeId: string) {
       {#each allNodes as node (node.id)}
         <Command.Item
           value={node.label}
-          keywords={[node.id, node.type ?? '']}
+          keywords={[node.id, node.type ?? '', node.vendor ?? '', node.model ?? '']}
           onSelect={() => handleSelect(node.id)}
         >
           <span>{node.label}</span>
-          {#if node.type}
-            <Command.Shortcut>{node.type}</Command.Shortcut>
+          {#if node.vendor || node.model || node.type}
+            <Command.Shortcut>
+              {[node.vendor, node.model, node.type].filter(Boolean).join(' / ')}
+            </Command.Shortcut>
           {/if}
         </Command.Item>
       {/each}
