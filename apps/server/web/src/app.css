@@ -109,7 +109,13 @@
   --ring: #34d399;
 }
 
-/* Base styles */
+/* Base styles — override Tailwind v4 default border-color (currentcolor) */
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
