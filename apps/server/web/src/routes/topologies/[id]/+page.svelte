@@ -9,6 +9,7 @@ import type { NodeSelectEvent, SubgraphSelectEvent } from '$lib/components/Inter
 import TopologySettings from '$lib/components/TopologySettings.svelte'
 import NodeMappingModal from '$lib/components/NodeMappingModal.svelte'
 import SubgraphInfoModal from '$lib/components/SubgraphInfoModal.svelte'
+import NodeSearchPalette from '$lib/components/NodeSearchPalette.svelte'
 import type { Topology, TopologyDataSource } from '$lib/types'
 import X from 'phosphor-svelte/lib/X'
 
@@ -24,6 +25,9 @@ let settingsOpen = false
 let mappingModalOpen = false
 let selectedNodeData: NodeSelectEvent | null = null
 let netboxBaseUrl: string | undefined = undefined
+
+// Node search palette state
+let searchPaletteOpen = false
 
 // Subgraph info modal state
 let subgraphModalOpen = false
@@ -95,7 +99,20 @@ function handleSubgraphDrillDown(subgraphId: string) {
 function handleMappingSaved(_nodeId: string, _mapping: { hostId?: string; hostName?: string }) {
   // Mapping is now handled by the shared store, no need to update local state
 }
+
+function handleSearchSelect(nodeId: string) {
+  diagramComponent?.panToNode(nodeId)
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault()
+    searchPaletteOpen = !searchPaletteOpen
+  }
+}
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <svelte:head>
   <title>{topology?.name || 'Topology'} - Shumoku</title>
@@ -117,7 +134,7 @@ function handleMappingSaved(_nodeId: string, _mapping: { hostId?: string; hostNa
       </div>
     {:else if topology}
       <div class="absolute inset-0">
-        <InteractiveSvgDiagram bind:this={diagramComponent} {topologyId} onToggleSettings={toggleSettings} {settingsOpen} onNodeSelect={handleNodeSelect} onSubgraphSelect={handleSubgraphSelect} />
+        <InteractiveSvgDiagram bind:this={diagramComponent} {topologyId} onToggleSettings={toggleSettings} onSearchOpen={() => searchPaletteOpen = true} {settingsOpen} onNodeSelect={handleNodeSelect} onSubgraphSelect={handleSubgraphSelect} />
       </div>
 
       <!-- Connection status indicator -->
@@ -161,6 +178,13 @@ function handleMappingSaved(_nodeId: string, _mapping: { hostId?: string; hostNa
   bind:open={subgraphModalOpen}
   subgraphData={selectedSubgraphData}
   onDrillDown={handleSubgraphDrillDown}
+/>
+
+<!-- Node Search Palette -->
+<NodeSearchPalette
+  bind:open={searchPaletteOpen}
+  getSvgElement={() => diagramComponent?.getSvgElement() ?? null}
+  onSelect={handleSearchSelect}
 />
 
 <!-- Node Mapping Modal -->

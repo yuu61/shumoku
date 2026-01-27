@@ -49,10 +49,12 @@ import MagnifyingGlassMinus from 'phosphor-svelte/lib/MagnifyingGlassMinus'
 import CornersOut from 'phosphor-svelte/lib/CornersOut'
 import ArrowCounterClockwise from 'phosphor-svelte/lib/ArrowCounterClockwise'
 import GearSix from 'phosphor-svelte/lib/GearSix'
+import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
 
 // Props
 export let topologyId: string
 export let onToggleSettings: (() => void) | undefined = undefined
+export let onSearchOpen: (() => void) | undefined = undefined
 export let settingsOpen = false
 export let onNodeSelect: ((event: NodeSelectEvent) => void) | undefined = undefined
 export let onSubgraphSelect: ((event: SubgraphSelectEvent) => void) | undefined = undefined
@@ -265,6 +267,41 @@ async function initializeCurrentSheet() {
     // Clear original styles cache when switching sheets
     originalLinkStyles.clear()
   }
+}
+
+// Expose SVG element for external use (e.g. node search palette)
+export function getSvgElement(): SVGSVGElement | null {
+  return svgElement
+}
+
+// Pan and zoom to center a specific node, then highlight it briefly.
+export function panToNode(nodeId: string) {
+  if (!svgElement || !panzoomInstance || !container) return
+
+  const nodeEl = svgElement.querySelector(`g.node[data-id="${nodeId}"]`) as SVGGElement | null
+  if (!nodeEl) return
+
+  // Pan node to container center
+  const { clientWidth: cw, clientHeight: ch } = container
+  const cRect = container.getBoundingClientRect()
+  const nRect = nodeEl.getBoundingClientRect()
+  const t = panzoomInstance.getTransform()
+  panzoomInstance.moveTo(
+    t.x + (cRect.left + cw / 2) - (nRect.left + nRect.width / 2),
+    t.y + (cRect.top + ch / 2) - (nRect.top + nRect.height / 2),
+  )
+
+  // Zoom so node area ≈ 5% of container area (consistent across shapes)
+  const areaRatio = Math.sqrt((cw * ch * 0.05) / (nRect.width * nRect.height))
+  const targetScale = Math.min(Math.max(t.scale * areaRatio, 2), 50)
+  panzoomInstance.zoomAbs(cw / 2, ch / 2, targetScale)
+
+  scale = panzoomInstance.getTransform().scale
+  updateDotGrid()
+
+  // Pulse highlight for 3 seconds
+  nodeEl.classList.add('search-highlight')
+  setTimeout(() => nodeEl.classList.remove('search-highlight'), 3000)
 }
 
 // Navigate to a child sheet (exported for external drill-down)
@@ -1163,6 +1200,11 @@ onDestroy(() => {
       <button on:click={resetView} title="Reset View">
         <ArrowCounterClockwise size={18} />
       </button>
+      {#if onSearchOpen}
+        <button on:click={onSearchOpen} title="Search Nodes ({navigator?.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}K)">
+          <MagnifyingGlass size={18} />
+        </button>
+      {/if}
       {#if onToggleSettings}
         <button on:click={onToggleSettings} title="Settings" class:active={settingsOpen}>
           <GearSix size={18} />
@@ -1288,6 +1330,18 @@ onDestroy(() => {
   .svg-wrapper :global(g.subgraph.highlighted > rect) {
     stroke: #60a5fa !important;
     stroke-width: 2px !important;
+  }
+
+  /* Search highlight pulse */
+  .svg-wrapper :global(g.node.search-highlight .node-bg rect) {
+    stroke: #f59e0b !important;
+    stroke-width: 3px !important;
+    animation: search-pulse 0.6s ease-in-out 3;
+  }
+
+  @keyframes search-pulse {
+    0%, 100% { stroke-opacity: 1; }
+    50% { stroke-opacity: 0.3; }
   }
 
   /* Clickable subgraph indicator */
