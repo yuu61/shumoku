@@ -446,7 +446,7 @@ function initPanZoom() {
   if (!svgWrapper || !container) return
 
   panzoomInstance = panzoom(svgWrapper, {
-    maxZoom: 10,
+    maxZoom: 50,
     minZoom: 0.1,
     smoothScroll: false,
     zoomDoubleClickSpeed: 1,
@@ -492,30 +492,15 @@ function initPanZoom() {
 }
 
 // Fit SVG to container
+// SVG uses width="100%" height="100%" with viewBox, so scale=1 = fully fitted.
+// panzoom transforms the wrapper, so resetting to scale=1 at origin fits the view.
 function fitToView() {
   if (!svgElement || !container || !panzoomInstance) return
 
-  const containerRect = container.getBoundingClientRect()
-  const viewBox = svgElement.viewBox.baseVal
-  if (!viewBox || viewBox.width === 0) return
-
-  const svgWidth = viewBox.width
-  const svgHeight = viewBox.height
-
-  const scaleX = containerRect.width / svgWidth
-  const scaleY = containerRect.height / svgHeight
-  const newScale = Math.min(scaleX, scaleY) * 0.85
-
-  panzoomInstance.zoomAbs(0, 0, newScale)
-
-  const scaledWidth = svgWidth * newScale
-  const scaledHeight = svgHeight * newScale
-  const offsetX = (containerRect.width - scaledWidth) / 2 - viewBox.x * newScale
-  const offsetY = (containerRect.height - scaledHeight) / 2 - viewBox.y * newScale
-
-  panzoomInstance.moveTo(offsetX, offsetY)
-  scale = newScale
-  initialFitScale = newScale // Store for zoom-out detection
+  panzoomInstance.zoomAbs(0, 0, 1)
+  panzoomInstance.moveTo(0, 0)
+  scale = 1
+  initialFitScale = 1
 }
 
 function resetView() {

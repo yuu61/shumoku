@@ -41,6 +41,17 @@ import type { DataAttributeOptions, RenderMode } from './types.js'
 // Render Colors (derived from Theme)
 // ============================================
 
+type CenterlineSegment =
+  | { type: 'line'; from: { x: number; y: number }; to: { x: number; y: number } }
+  | {
+      type: 'arc'
+      center: { x: number; y: number }
+      radius: number
+      t0: { x: number; y: number }
+      t1: { x: number; y: number }
+      sweepFlag: number
+    }
+
 interface RenderColors {
   backgroundColor: string
   defaultNodeFill: string
@@ -484,7 +495,7 @@ export class SVGRenderer {
     // Render legend box
     let svg = `<g class="legend" transform="translate(${legendX}, ${legendY})">
   <rect x="0" y="0" width="${legendWidth}" height="${legendHeight}" rx="4"
-    fill="${this.color('backgroundColor')}" stroke="${this.color('subgraphStroke')}" stroke-width="1" opacity="0.95" />
+    fill="${this.color('backgroundColor')}" stroke="${this.color('subgraphStroke')}" stroke-width="1.5" opacity="0.95" />
   <text x="${padding}" y="${padding + 12}" class="subgraph-label" font-size="11">Legend</text>`
 
     // Render items
@@ -504,9 +515,9 @@ export class SVGRenderer {
    * Render bandwidth indicator for legend
    */
   private renderBandwidthLegendIcon(lineCount: number): string {
-    const lineSpacing = 3
+    const strokeWidth = 3
+    const lineSpacing = strokeWidth * 2
     const lineWidth = 24
-    const strokeWidth = 2
     const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
 
     const lines = offsets.map((offset) => {
@@ -518,10 +529,14 @@ export class SVGRenderer {
   }
 
   private renderHeader(width: number, height: number, viewBox: string): string {
+    // Interactive mode: let the container control sizing via CSS
+    // Static mode: use exact pixel dimensions for standalone SVG
+    const sizeAttrs = this.isInteractive
+      ? 'width="100%" height="100%"'
+      : `width="${width}" height="${height}"`
     return `<svg xmlns="http://www.w3.org/2000/svg"
   viewBox="${viewBox}"
-  width="${width}"
-  height="${height}"
+  ${sizeAttrs}
   style="background: transparent">`
   }
 
@@ -574,7 +589,7 @@ export class SVGRenderer {
     const fill = surfaceColors.fill
     const stroke = surfaceColors.stroke
     const labelColor = surfaceColors.text
-    const strokeWidth = style.strokeWidth || 1.5
+    const strokeWidth = style.strokeWidth || 3
     const strokeDasharray = style.strokeDasharray || ''
     const labelPos = style.labelPosition || 'top'
 
@@ -774,7 +789,7 @@ ${fg}
       fill = style.fill || this.color('subgraphFill')
       stroke = style.stroke || this.color('defaultNodeStroke')
     }
-    const strokeWidth = style.strokeWidth || 1
+    const strokeWidth = style.strokeWidth || 1.5
     const strokeDasharray = style.strokeDasharray || ''
 
     const shape = this.renderNodeShape(
@@ -1403,7 +1418,7 @@ ${fg}
    * 100G → 5 lines
    */
   private getBandwidthConfig(bandwidth?: string): { lineCount: number; strokeWidth: number } {
-    const strokeWidth = 2
+    const strokeWidth = 3
     switch (bandwidth) {
       case '1G':
         return { lineCount: 1, strokeWidth }
@@ -1422,6 +1437,7 @@ ${fg}
 
   /**
    * Render bandwidth lines (single or multiple parallel lines)
+   * Uses segment+arc centerline model for mathematically correct concentric parallel lines
    */
   private renderBandwidthLines(
     id: string,
@@ -1434,34 +1450,31 @@ ${fg}
     type: LinkType,
   ): string {
     const { lineCount } = config
-    const lineSpacing = 3 // Space between parallel lines
+    const lineSpacing = strokeWidth * 2
 
     // Apply edge style transformations
     let effectivePoints = points
     let cornerRadius = 8
 
     if (this.edgeStyle === 'straight') {
-      // Straight lines: only use start and end points
       effectivePoints = [points[0], points[points.length - 1]]
       cornerRadius = 0
     } else if (this.edgeStyle === 'polyline') {
-      // Polyline: use all points but no corner rounding
       cornerRadius = 0
     }
-    // For 'orthogonal' and 'splines', use default corner radius
 
-    // Generate line paths
+    // Build centerline as segments + fillet arcs
+    const centerline = this.buildFilletedCenterline(effectivePoints, cornerRadius)
+    const basePath = this.centerlineToPath(centerline, 0)
+
     const lines: string[] = []
-    const basePath = this.generatePath(effectivePoints, cornerRadius)
 
     if (lineCount === 1) {
-      // Single line
       let linePath = `<path class="link" data-id="${id}" d="${basePath}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
   ${dasharray ? `stroke-dasharray="${dasharray}"` : ''}
   ${markerEnd ? `marker-end="${markerEnd}"` : ''} pointer-events="none" />`
 
-      // Double line effect for redundancy types
       if (type === 'double') {
         linePath = `<path class="link-double-outer" d="${basePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth + 2}" pointer-events="none" />
 <path class="link-double-inner" d="${basePath}" fill="none" stroke="white" stroke-width="${strokeWidth - 1}" pointer-events="none" />
@@ -1469,22 +1482,17 @@ ${linePath}`
       }
       lines.push(linePath)
     } else {
-      // Multiple parallel lines
       const offsets = this.calculateLineOffsets(lineCount, lineSpacing)
       for (const offset of offsets) {
-        const offsetPoints = this.offsetPoints(effectivePoints, offset)
-        // Pass offset to generatePath for radius adjustment at bends
-        const path = this.generatePath(offsetPoints, cornerRadius, effectivePoints, offset)
+        const path = this.centerlineToPath(centerline, offset)
         lines.push(`<path class="link" data-id="${id}" d="${path}"
   fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"
   ${dasharray ? `stroke-dasharray="${dasharray}"` : ''} pointer-events="none" />`)
       }
     }
 
-    // Calculate hit area width (same as actual lines, hidden underneath)
     const hitWidth = lineCount === 1 ? strokeWidth : (lineCount - 1) * lineSpacing + strokeWidth
 
-    // Wrap all lines in a group with transparent hit area on top
     return `<g class="link-lines">
 ${lines.join('\n')}
 <path class="link-hit-area" d="${basePath}"
@@ -1493,78 +1501,165 @@ ${lines.join('\n')}
   }
 
   /**
-   * Generate SVG path string from points with rounded corners
-   * For parallel lines, adjusts corner radius based on offset and turn direction
+   * Build a filleted centerline: sequence of line segments and arc definitions.
+   * Each corner is represented by its arc center, radius, tangent points, and sweep direction.
    */
-  private generatePath(
+  private buildFilletedCenterline(
     points: { x: number; y: number }[],
-    cornerRadius = 8,
-    originalPoints?: { x: number; y: number }[],
-    offset?: number,
-  ): string {
-    if (points.length < 2) return ''
-    if (points.length === 2) {
-      return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+    cornerRadius: number,
+  ): CenterlineSegment[] {
+    if (points.length < 2) return []
+    if (points.length === 2 || cornerRadius < 1) {
+      // No corners to fillet
+      return [{ type: 'line', from: points[0], to: points[points.length - 1] }]
     }
 
-    const parts: string[] = [`M ${points[0].x} ${points[0].y}`]
+    const segments: CenterlineSegment[] = []
+    let prevEnd = points[0]
 
     for (let i = 1; i < points.length - 1; i++) {
       const prev = points[i - 1]
       const curr = points[i]
       const next = points[i + 1]
 
-      // Calculate distances to prev and next points
       const distPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y)
       const distNext = Math.hypot(next.x - curr.x, next.y - curr.y)
 
-      // Adjust corner radius for parallel lines based on turn direction
-      let adjustedRadius = cornerRadius
-      if (originalPoints && offset !== undefined && i < originalPoints.length - 1) {
-        const origPrev = originalPoints[Math.min(i - 1, originalPoints.length - 1)]
-        const origCurr = originalPoints[Math.min(i, originalPoints.length - 1)]
-        const origNext = originalPoints[Math.min(i + 1, originalPoints.length - 1)]
-
-        // Calculate turn direction using cross product
-        const v1 = { x: origCurr.x - origPrev.x, y: origCurr.y - origPrev.y }
-        const v2 = { x: origNext.x - origCurr.x, y: origNext.y - origCurr.y }
-        const cross = v1.x * v2.y - v1.y * v2.x
-
-        // cross > 0: left turn, cross < 0: right turn
-        // For left turn: positive offset = outside (larger R), negative offset = inside (smaller R)
-        // For right turn: positive offset = inside (smaller R), negative offset = outside (larger R)
-        if (Math.abs(cross) > 0.01) {
-          const turnSign = cross > 0 ? 1 : -1
-          adjustedRadius = Math.max(1, cornerRadius - turnSign * offset)
-        }
-      }
-
-      // Limit radius to half the shortest segment
-      const maxRadius = Math.min(distPrev, distNext) / 2
-      const radius = Math.min(adjustedRadius, maxRadius)
-
-      if (radius < 1) {
-        // Too small for rounding, just use straight line
-        parts.push(`L ${curr.x} ${curr.y}`)
+      if (distPrev < 0.01 || distNext < 0.01) {
         continue
       }
 
-      // Calculate direction vectors
-      const dirPrev = { x: (curr.x - prev.x) / distPrev, y: (curr.y - prev.y) / distPrev }
-      const dirNext = { x: (next.x - curr.x) / distNext, y: (next.y - curr.y) / distNext }
+      // Direction unit vectors
+      const d0x = (curr.x - prev.x) / distPrev
+      const d0y = (curr.y - prev.y) / distPrev
+      const d1x = (next.x - curr.x) / distNext
+      const d1y = (next.y - curr.y) / distNext
 
-      // Points where curve starts and ends
-      const startCurve = { x: curr.x - dirPrev.x * radius, y: curr.y - dirPrev.y * radius }
-      const endCurve = { x: curr.x + dirNext.x * radius, y: curr.y + dirNext.y * radius }
+      // Cross product determines turn direction (positive = CCW in SVG y-down)
+      const cross = d0x * d1y - d0y * d1x
 
-      // Line to start of curve, then quadratic bezier through corner
-      parts.push(`L ${startCurve.x} ${startCurve.y}`)
-      parts.push(`Q ${curr.x} ${curr.y} ${endCurve.x} ${endCurve.y}`)
+      if (Math.abs(cross) < 0.001) {
+        // Collinear, no arc needed
+        continue
+      }
+
+      // Clamp radius to half the shortest adjacent segment
+      const maxRadius = Math.min(distPrev, distNext) / 2
+      const R = Math.min(cornerRadius, maxRadius)
+
+      if (R < 1) {
+        continue
+      }
+
+      // Tangent points on the incoming and outgoing segments
+      const t0 = { x: curr.x - d0x * R, y: curr.y - d0y * R }
+      const t1 = { x: curr.x + d1x * R, y: curr.y + d1y * R }
+
+      // Arc center: offset from curr along the bisector toward the inside
+      // For orthogonal (90°) turns: center is at curr + R * (-d0 + d1) rotated appropriately
+      // General: center = intersection of lines offset R inward from both segments
+      const sign = cross > 0 ? 1 : -1
+      // Inward normal of incoming segment (pointing toward arc center)
+      const n0x = -sign * d0y
+      const n0y = sign * d0x
+      const center = {
+        x: t0.x + n0x * R,
+        y: t0.y + n0y * R,
+      }
+
+      // sweep-flag: in SVG y-down, cross > 0 means clockwise visually = sweep=1
+      const sweepFlag = cross > 0 ? 1 : 0
+
+      // Line from previous end to tangent start
+      segments.push({ type: 'line', from: prevEnd, to: t0 })
+      // Arc segment
+      segments.push({ type: 'arc', center, radius: R, t0, t1, sweepFlag })
+
+      prevEnd = t1
     }
 
-    // Line to final point
+    // Final line segment
     const last = points[points.length - 1]
-    parts.push(`L ${last.x} ${last.y}`)
+    segments.push({ type: 'line', from: prevEnd, to: last })
+
+    return segments
+  }
+
+  /**
+   * Convert a filleted centerline to an SVG path string, optionally offset for parallel lines.
+   * Line segments are shifted by `offset` perpendicular to their direction.
+   * Arc segments become concentric arcs with radius R ± offset (same center).
+   */
+  private centerlineToPath(segments: CenterlineSegment[], offset: number): string {
+    if (segments.length === 0) return ''
+
+    const parts: string[] = []
+    let first = true
+
+    for (const seg of segments) {
+      if (seg.type === 'line') {
+        const dx = seg.to.x - seg.from.x
+        const dy = seg.to.y - seg.from.y
+        const len = Math.hypot(dx, dy)
+
+        let fx = seg.from.x
+        let fy = seg.from.y
+        let tx = seg.to.x
+        let ty = seg.to.y
+
+        if (len > 0.01 && offset !== 0) {
+          // Perpendicular unit vector (left normal)
+          const nx = -dy / len
+          const ny = dx / len
+          fx += nx * offset
+          fy += ny * offset
+          tx += nx * offset
+          ty += ny * offset
+        }
+
+        if (first) {
+          parts.push(`M ${fx} ${fy}`)
+          first = false
+        }
+        parts.push(`L ${tx} ${ty}`)
+      } else {
+        // Arc segment — concentric offset
+        const { center, radius, t0, t1, sweepFlag } = seg
+
+        // Offset radius: inner lines get smaller R, outer get larger
+        // The offset sign relative to the arc is determined by sweep direction
+        const signFactor = sweepFlag === 1 ? -1 : 1
+        const Ro = radius + signFactor * offset
+
+        if (Ro < 0.5) {
+          // Radius too small, degenerate to sharp corner
+          // Compute offset tangent points by scaling from center
+          const scale = Math.max(0.5, Ro) / radius
+          const ot1x = center.x + (t1.x - center.x) * scale
+          const ot1y = center.y + (t1.y - center.y) * scale
+          if (first) {
+            const ot0x = center.x + (t0.x - center.x) * scale
+            const ot0y = center.y + (t0.y - center.y) * scale
+            parts.push(`M ${ot0x} ${ot0y}`)
+            first = false
+          }
+          parts.push(`L ${ot1x} ${ot1y}`)
+        } else {
+          // Offset tangent points: same angle from center, different radius
+          const ot0x = center.x + (t0.x - center.x) * (Ro / radius)
+          const ot0y = center.y + (t0.y - center.y) * (Ro / radius)
+          const ot1x = center.x + (t1.x - center.x) * (Ro / radius)
+          const ot1y = center.y + (t1.y - center.y) * (Ro / radius)
+
+          if (first) {
+            parts.push(`M ${ot0x} ${ot0y}`)
+            first = false
+          }
+          // SVG arc: A rx ry x-rotation large-arc-flag sweep-flag x y
+          parts.push(`A ${Ro} ${Ro} 0 0 ${sweepFlag} ${ot1x} ${ot1y}`)
+        }
+      }
+    }
 
     return parts.join(' ')
   }
@@ -1581,116 +1676,6 @@ ${lines.join('\n')}
       offsets.push(startOffset + i * spacing)
     }
     return offsets
-  }
-
-  /**
-   * Offset points perpendicular to line direction, handling each segment properly
-   * For orthogonal paths, calculates intersection point at bends for clean corners
-   */
-  private offsetPoints(
-    points: { x: number; y: number }[],
-    offset: number,
-  ): { x: number; y: number }[] {
-    if (points.length < 2) return points
-
-    const result: { x: number; y: number }[] = []
-
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i]
-
-      if (i === 0) {
-        // First point: use direction to next point
-        const next = points[i + 1]
-        const perp = this.getPerpendicular(p, next)
-        result.push({ x: p.x + perp.x * offset, y: p.y + perp.y * offset })
-      } else if (i === points.length - 1) {
-        // Last point: use direction from previous point
-        const prev = points[i - 1]
-        const perp = this.getPerpendicular(prev, p)
-        result.push({ x: p.x + perp.x * offset, y: p.y + perp.y * offset })
-      } else {
-        // Middle point (bend): calculate intersection of offset lines
-        const prev = points[i - 1]
-        const next = points[i + 1]
-        const perpPrev = this.getPerpendicular(prev, p)
-        const perpNext = this.getPerpendicular(p, next)
-
-        // Check if direction changed (bend point)
-        const directionChanged =
-          Math.abs(perpPrev.x - perpNext.x) > 0.01 || Math.abs(perpPrev.y - perpNext.y) > 0.01
-
-        if (directionChanged) {
-          // Calculate intersection of the two offset lines
-          const intersection = this.getOffsetIntersection(prev, p, next, offset)
-          if (intersection) {
-            result.push(intersection)
-          } else {
-            // Fallback: use simple offset
-            result.push({ x: p.x + perpPrev.x * offset, y: p.y + perpPrev.y * offset })
-          }
-        } else {
-          // No bend, just offset the point
-          result.push({ x: p.x + perpPrev.x * offset, y: p.y + perpPrev.y * offset })
-        }
-      }
-    }
-
-    return result
-  }
-
-  /**
-   * Calculate intersection point of two offset lines at a bend
-   */
-  private getOffsetIntersection(
-    prev: { x: number; y: number },
-    curr: { x: number; y: number },
-    next: { x: number; y: number },
-    offset: number,
-  ): { x: number; y: number } | null {
-    const perpPrev = this.getPerpendicular(prev, curr)
-    const perpNext = this.getPerpendicular(curr, next)
-
-    // Offset start point on incoming segment
-    const p1 = { x: prev.x + perpPrev.x * offset, y: prev.y + perpPrev.y * offset }
-    // Offset start point on outgoing segment
-    const p3 = { x: curr.x + perpNext.x * offset, y: curr.y + perpNext.y * offset }
-
-    // Direction vectors
-    const d1 = { x: curr.x - prev.x, y: curr.y - prev.y }
-    const d2 = { x: next.x - curr.x, y: next.y - curr.y }
-
-    // Calculate intersection using parametric form
-    const cross = d1.x * d2.y - d1.y * d2.x
-    if (Math.abs(cross) < 0.0001) {
-      // Lines are parallel, no intersection
-      return null
-    }
-
-    const dx = p3.x - p1.x
-    const dy = p3.y - p1.y
-    const t = (dx * d2.y - dy * d2.x) / cross
-
-    return {
-      x: p1.x + t * d1.x,
-      y: p1.y + t * d1.y,
-    }
-  }
-
-  /**
-   * Get perpendicular unit vector for a line segment
-   */
-  private getPerpendicular(
-    from: { x: number; y: number },
-    to: { x: number; y: number },
-  ): { x: number; y: number } {
-    const dx = to.x - from.x
-    const dy = to.y - from.y
-    const len = Math.sqrt(dx * dx + dy * dy)
-
-    if (len === 0) return { x: 0, y: 0 }
-
-    // Perpendicular unit vector (rotate 90 degrees)
-    return { x: -dy / len, y: dx / len }
   }
 
   /**
