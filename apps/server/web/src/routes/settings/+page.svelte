@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte'
 import { api } from '$lib/api'
+import { themeSetting } from '$lib/stores'
 import GithubLogo from 'phosphor-svelte/lib/GithubLogo'
 import FileText from 'phosphor-svelte/lib/FileText'
 
@@ -40,6 +41,7 @@ function saveLocalSettings() {
   localStorage.setItem('shumoku-settings', JSON.stringify(localSettings))
 
   // Apply theme
+  themeSetting.set(theme)
   if (theme === 'dark') {
     document.documentElement.classList.add('dark')
   } else {
