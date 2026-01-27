@@ -617,22 +617,13 @@ function setupInteractivity() {
     sgEl.addEventListener('mousemove', (e) => updateTooltipPosition(e))
     sgEl.addEventListener('mouseleave', () => handleSubgraphLeave())
 
-    // Single-click: show info modal (suppressed during drag/pan)
+    // Single-click: show info modal (drill-down available via modal button)
     sgEl.addEventListener('click', (e) => {
       if (wasDrag(e)) return
       e.stopPropagation()
       handleSubgraphSingleClick(sgId)
     })
     sgEl.style.cursor = 'pointer'
-
-    // Enable double-click navigation if this subgraph has a corresponding sheet
-    if (hasSheet || sheets[sgId]) {
-      sgEl.addEventListener('dblclick', (e) => {
-        e.stopPropagation()
-        e.preventDefault()
-        handleSubgraphClick(sgId)
-      })
-    }
   })
 
   // Link hover
