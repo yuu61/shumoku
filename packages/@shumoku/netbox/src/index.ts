@@ -47,6 +47,8 @@ export type {
   NetBoxSiteResponse,
   // NetBox API types
   NetBoxTag,
+  NetBoxTagFull,
+  NetBoxTagResponse,
   NetBoxTermination,
   NetBoxVirtualMachine,
   NetBoxVirtualMachineResponse,

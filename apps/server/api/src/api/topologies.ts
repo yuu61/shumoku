@@ -6,6 +6,7 @@
 import { Hono } from 'hono'
 import { TopologyService } from '../services/topology.js'
 import { DataSourceService } from '../services/datasource.js'
+import { TopologySourcesService } from '../services/topology-sources.js'
 import type { TopologyInput, ZabbixMapping } from '../types.js'
 import type { AlertQueryOptions } from '../plugins/types.js'
 import { renderEmbeddable, type EmbeddableRenderOutput } from '@shumoku/renderer'
@@ -15,6 +16,7 @@ import { BunHierarchicalLayout } from '../layout.js'
 // Singleton instances for shared state
 let _topologyService: TopologyService | null = null
 let _dataSourceService: DataSourceService | null = null
+let _topologySourcesService: TopologySourcesService | null = null
 
 export function getTopologyService(): TopologyService {
   if (!_topologyService) {
@@ -28,6 +30,13 @@ function getDataSourceService(): DataSourceService {
     _dataSourceService = new DataSourceService()
   }
   return _dataSourceService
+}
+
+function getTopologySourcesService(): TopologySourcesService {
+  if (!_topologySourcesService) {
+    _topologySourcesService = new TopologySourcesService()
+  }
+  return _topologySourcesService
 }
 
 export function createTopologiesApi(): Hono {
@@ -340,8 +349,17 @@ export function createTopologiesApi(): Hono {
 
       console.log('[sync-from-source] Fetching from source:', topology.topologySourceId)
 
+      // Look up topology_data_sources for per-source options
+      const topologySources = getTopologySourcesService().listByPurpose(id, 'topology')
+      const matchingSource = topologySources.find(
+        (s) => s.dataSourceId === topology.topologySourceId,
+      )
+
       // Get the topology from the source
-      const graph = await dataSourceService.fetchTopology(topology.topologySourceId)
+      const graph = await dataSourceService.fetchTopologyWithOptionsJson(
+        topology.topologySourceId,
+        matchingSource?.optionsJson,
+      )
       if (!graph) {
         return c.json({ error: 'Failed to fetch topology from source' }, 500)
       }

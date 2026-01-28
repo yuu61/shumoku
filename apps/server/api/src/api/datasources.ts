@@ -207,5 +207,20 @@ export function createDataSourcesApi(): Hono {
     }
   })
 
+  // Get filter options (NetBox: sites & tags)
+  app.get('/:id/filter-options', async (c) => {
+    const id = c.req.param('id')
+    try {
+      const options = await service.getFilterOptions(id)
+      if (!options) {
+        return c.json({ error: 'Filter options not supported for this data source type' }, 400)
+      }
+      return c.json(options)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return c.json({ error: message }, 500)
+    }
+  })
+
   return app
 }

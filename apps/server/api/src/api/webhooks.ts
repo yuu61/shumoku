@@ -72,8 +72,11 @@ webhooksApi.post('/topology/:secret', async (c) => {
   }
 
   try {
-    // Fetch fresh topology from data source
-    const graph = await getDataSourceService().fetchTopology(source.dataSourceId)
+    // Fetch fresh topology from data source (with per-source options)
+    const graph = await getDataSourceService().fetchTopologyWithOptionsJson(
+      source.dataSourceId,
+      source.optionsJson,
+    )
     if (!graph) {
       console.log('[Webhook] Data source does not support topology')
       return c.json({ error: 'Data source does not support topology' }, 400)

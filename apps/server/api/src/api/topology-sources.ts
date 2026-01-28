@@ -10,7 +10,9 @@ import type { TopologyDataSource, TopologyDataSourceInput, SyncMode } from '../t
 import { getTopologyService } from './topologies.js'
 
 /** Strip webhookSecret from API responses */
-function stripSecret<T extends TopologyDataSource>(source: T): Omit<T, 'webhookSecret'> & { hasWebhookSecret: boolean } {
+function stripSecret<T extends TopologyDataSource>(
+  source: T,
+): Omit<T, 'webhookSecret'> & { hasWebhookSecret: boolean } {
   const { webhookSecret, ...rest } = source
   return { ...rest, hasWebhookSecret: !!webhookSecret }
 }
@@ -117,7 +119,7 @@ topologySourcesApi.put('/:topologyId/sources/:sourceId', async (c) => {
     return c.json({ error: 'Topology data source not found' }, 404)
   }
 
-  const body = await c.req.json<{ syncMode?: SyncMode; priority?: number }>()
+  const body = await c.req.json<{ syncMode?: SyncMode; priority?: number; optionsJson?: string }>()
 
   const updated = getTopologySourcesService().update(sourceId, body)
   if (!updated) {
@@ -217,8 +219,11 @@ topologySourcesApi.post('/:topologyId/sources/:sourceId/sync', async (c) => {
   }
 
   try {
-    // Fetch topology from data source
-    const graph = await getDataSourceService().fetchTopology(source.dataSourceId)
+    // Fetch topology from data source (with per-source options)
+    const graph = await getDataSourceService().fetchTopologyWithOptionsJson(
+      source.dataSourceId,
+      source.optionsJson,
+    )
     if (!graph) {
       return c.json({ error: 'Data source does not support topology' }, 400)
     }

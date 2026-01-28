@@ -23,6 +23,7 @@ interface TopologyDataSourceRow {
   webhook_secret: string | null
   last_synced_at: number | null
   priority: number
+  options_json: string | null
   created_at: number
   updated_at: number
   // Joined columns from data_sources
@@ -46,6 +47,7 @@ function rowToTopologyDataSource(row: TopologyDataSourceRow): TopologyDataSource
     webhookSecret: row.webhook_secret || undefined,
     lastSyncedAt: row.last_synced_at || undefined,
     priority: row.priority,
+    optionsJson: row.options_json || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -214,8 +216,8 @@ export class TopologySourcesService {
     this.db
       .query(
         `INSERT INTO topology_data_sources
-        (id, topology_id, data_source_id, purpose, sync_mode, webhook_secret, priority, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, topology_id, data_source_id, purpose, sync_mode, webhook_secret, priority, options_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -225,6 +227,7 @@ export class TopologySourcesService {
         syncMode,
         webhookSecret,
         input.priority ?? 0,
+        input.optionsJson ?? null,
         now,
         now,
       )
@@ -237,7 +240,7 @@ export class TopologySourcesService {
    */
   update(
     id: string,
-    updates: Partial<Pick<TopologyDataSourceInput, 'syncMode' | 'priority'>>,
+    updates: Partial<Pick<TopologyDataSourceInput, 'syncMode' | 'priority' | 'optionsJson'>>,
   ): TopologyDataSource | null {
     const existing = this.get(id)
     if (!existing) return null
@@ -261,6 +264,11 @@ export class TopologySourcesService {
     if (updates.priority !== undefined) {
       updateParts.push('priority = ?')
       values.push(updates.priority)
+    }
+
+    if (updates.optionsJson !== undefined) {
+      updateParts.push('options_json = ?')
+      values.push(updates.optionsJson)
     }
 
     if (updateParts.length === 0) return existing

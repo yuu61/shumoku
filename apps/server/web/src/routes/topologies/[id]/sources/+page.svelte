@@ -42,6 +42,15 @@ let syncResults = $state<Record<string, { nodeCount: number; linkCount: number }
 // Webhook URL state
 let copiedSecret = $state<string | null>(null)
 
+// Filter options cache per data source ID
+let filterOptionsCache = $state<
+  Record<
+    string,
+    { sites: { slug: string; name: string }[]; tags: { slug: string; name: string }[] }
+  >
+>({})
+let filterOptionsLoading = $state<Record<string, boolean>>({})
+
 onMount(async () => {
   try {
     const [topoData, sources, topologySources, metricsSources] = await Promise.all([
@@ -61,13 +70,34 @@ onMount(async () => {
       purpose: s.purpose,
       syncMode: s.syncMode,
       priority: s.priority,
+      optionsJson: s.optionsJson,
     }))
+
+    // Preload filter options for NetBox sources
+    for (const s of editableSources) {
+      loadFilterOptions(s.dataSourceId)
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to load data'
   } finally {
     loading = false
   }
 })
+
+async function loadFilterOptions(dataSourceId: string) {
+  if (filterOptionsCache[dataSourceId] || filterOptionsLoading[dataSourceId]) return
+  const ds = getDataSource(dataSourceId)
+  if (ds?.type !== 'netbox') return
+  filterOptionsLoading = { ...filterOptionsLoading, [dataSourceId]: true }
+  try {
+    const options = await api.dataSources.getFilterOptions(dataSourceId)
+    filterOptionsCache = { ...filterOptionsCache, [dataSourceId]: options }
+  } catch {
+    // silently fail — user can still type manually
+  } finally {
+    filterOptionsLoading = { ...filterOptionsLoading, [dataSourceId]: false }
+  }
+}
 
 function getDataSource(id: string): DataSource | undefined {
   return [...topologyDataSources, ...metricsDataSources].find((ds) => ds.id === id)
@@ -107,6 +137,9 @@ function removeSource(index: number) {
 function updateSource(index: number, updates: Partial<TopologyDataSourceInput>) {
   editableSources = editableSources.map((s, i) => (i === index ? { ...s, ...updates } : s))
   hasChanges = true
+  if (updates.dataSourceId) {
+    loadFilterOptions(updates.dataSourceId)
+  }
 }
 
 async function handleSave() {
@@ -152,6 +185,45 @@ async function copyWebhookUrl(source: TopologyDataSource) {
 
 function getSourcesByPurpose(purpose: 'topology' | 'metrics') {
   return editableSources.map((s, index) => ({ ...s, index })).filter((s) => s.purpose === purpose)
+}
+
+interface NetBoxOptions {
+  groupBy?: string
+  siteFilter?: string[]
+  tagFilter?: string[]
+}
+
+function parseOptions(optionsJson?: string): NetBoxOptions {
+  if (!optionsJson) return {}
+  try {
+    const raw = JSON.parse(optionsJson)
+    // Normalize legacy string values to arrays
+    if (typeof raw.siteFilter === 'string') {
+      raw.siteFilter = raw.siteFilter ? [raw.siteFilter] : []
+    }
+    if (typeof raw.tagFilter === 'string') {
+      raw.tagFilter = raw.tagFilter ? [raw.tagFilter] : []
+    }
+    return raw
+  } catch {
+    return {}
+  }
+}
+
+function updateOptions(index: number, patch: Partial<NetBoxOptions>) {
+  const current = parseOptions(editableSources[index].optionsJson)
+  const merged = { ...current, ...patch }
+  // Remove empty values
+  if (!merged.groupBy) delete merged.groupBy
+  if (!merged.siteFilter?.length) delete merged.siteFilter
+  if (!merged.tagFilter?.length) delete merged.tagFilter
+  const json = Object.keys(merged).length > 0 ? JSON.stringify(merged) : undefined
+  updateSource(index, { optionsJson: json })
+}
+
+function toggleArrayOption(arr: string[] | undefined, value: string): string[] {
+  const current = arr || []
+  return current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
 }
 </script>
 
@@ -251,6 +323,94 @@ function getSourcesByPurpose(purpose: 'topology' | 'metrics') {
                         <option value="webhook">Webhook (real-time from {dataSource?.type || 'source'})</option>
                       </select>
                     </div>
+
+                    <!-- NetBox options (if source is netbox type) -->
+                    {#if dataSource?.type === 'netbox'}
+                      {@const opts = parseOptions(source.optionsJson)}
+                      {@const filterOpts = filterOptionsCache[source.dataSourceId]}
+                      {@const isLoading = filterOptionsLoading[source.dataSourceId]}
+                      <div class="border-t border-theme-border pt-3 mt-3 space-y-3">
+                        <p class="text-xs font-medium text-theme-text-muted uppercase tracking-wide">NetBox Options</p>
+
+                        <div>
+                          <label for="opts-groupby-{source.index}" class="text-xs text-theme-text-muted">Group By</label>
+                          <select
+                            id="opts-groupby-{source.index}"
+                            class="input mt-1"
+                            value={opts.groupBy || 'tag'}
+                            onchange={(e) => updateOptions(source.index, { groupBy: e.currentTarget.value })}
+                          >
+                            <option value="tag">Tag</option>
+                            <option value="site">Site</option>
+                            <option value="location">Location</option>
+                            <option value="prefix">Prefix</option>
+                            <option value="none">None</option>
+                          </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                          <div>
+                            <label class="text-xs text-theme-text-muted">Site Filter</label>
+                            {#if isLoading}
+                              <div class="input mt-1 text-theme-text-muted text-sm">Loading...</div>
+                            {:else if filterOpts?.sites?.length}
+                              <div class="mt-1 flex flex-wrap gap-1.5">
+                                {#each filterOpts.sites as site}
+                                  {@const selected = opts.siteFilter?.includes(site.slug)}
+                                  <button
+                                    type="button"
+                                    class="px-2 py-0.5 rounded-full text-xs border transition-colors
+                                      {selected
+                                        ? 'bg-primary/15 border-primary/40 text-primary'
+                                        : 'bg-theme-bg-canvas border-theme-border text-theme-text-muted hover:border-theme-text-muted'}"
+                                    onclick={() => updateOptions(source.index, { siteFilter: toggleArrayOption(opts.siteFilter, site.slug) })}
+                                  >
+                                    {site.name}
+                                  </button>
+                                {/each}
+                              </div>
+                              {#if opts.siteFilter?.length}
+                                <p class="text-xs text-theme-text-muted mt-1">{opts.siteFilter.length} selected</p>
+                              {:else}
+                                <p class="text-xs text-theme-text-muted mt-1">All sites (no filter)</p>
+                              {/if}
+                            {:else}
+                              <p class="text-xs text-theme-text-muted mt-1">No sites found</p>
+                            {/if}
+                          </div>
+
+                          <div>
+                            <label class="text-xs text-theme-text-muted">Tag Filter</label>
+                            {#if isLoading}
+                              <div class="input mt-1 text-theme-text-muted text-sm">Loading...</div>
+                            {:else if filterOpts?.tags?.length}
+                              <div class="mt-1 flex flex-wrap gap-1.5">
+                                {#each filterOpts.tags as tag}
+                                  {@const selected = opts.tagFilter?.includes(tag.slug)}
+                                  <button
+                                    type="button"
+                                    class="px-2 py-0.5 rounded-full text-xs border transition-colors
+                                      {selected
+                                        ? 'bg-primary/15 border-primary/40 text-primary'
+                                        : 'bg-theme-bg-canvas border-theme-border text-theme-text-muted hover:border-theme-text-muted'}"
+                                    onclick={() => updateOptions(source.index, { tagFilter: toggleArrayOption(opts.tagFilter, tag.slug) })}
+                                  >
+                                    {tag.name}
+                                  </button>
+                                {/each}
+                              </div>
+                              {#if opts.tagFilter?.length}
+                                <p class="text-xs text-theme-text-muted mt-1">{opts.tagFilter.length} selected</p>
+                              {:else}
+                                <p class="text-xs text-theme-text-muted mt-1">All tags (no filter)</p>
+                              {/if}
+                            {:else}
+                              <p class="text-xs text-theme-text-muted mt-1">No tags found</p>
+                            {/if}
+                          </div>
+                        </div>
+                      </div>
+                    {/if}
 
                     <!-- Webhook URL (if webhook mode and saved) -->
                     {#if source.syncMode === 'webhook' && currentSource?.webhookSecret}

@@ -107,6 +107,11 @@ export const dataSources = {
 
   discoverMetrics: (id: string, hostId: string) =>
     request<DiscoveredMetric[]>(`/datasources/${id}/hosts/${hostId}/metrics`),
+
+  getFilterOptions: (id: string) =>
+    request<{ sites: { slug: string; name: string }[]; tags: { slug: string; name: string }[] }>(
+      `/datasources/${id}/filter-options`,
+    ),
 }
 
 // Topologies API

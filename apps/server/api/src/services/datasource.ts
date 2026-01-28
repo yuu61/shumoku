@@ -241,13 +241,38 @@ export class DataSourceService {
   /**
    * Fetch topology from a data source (if supported)
    */
-  async fetchTopology(id: string): Promise<NetworkGraph | null> {
+  async fetchTopology(id: string, options?: Record<string, unknown>): Promise<NetworkGraph | null> {
     const plugin = this.getPlugin(id)
     if (!plugin || !hasTopologyCapability(plugin)) {
       return null
     }
 
-    return plugin.fetchTopology()
+    return plugin.fetchTopology(options)
+  }
+
+  /**
+   * Fetch topology with options parsed from JSON string
+   */
+  async fetchTopologyWithOptionsJson(
+    dataSourceId: string,
+    optionsJson?: string,
+  ): Promise<NetworkGraph | null> {
+    const options = optionsJson ? JSON.parse(optionsJson) : undefined
+    return this.fetchTopology(dataSourceId, options)
+  }
+
+  /**
+   * Get filter options for a data source (NetBox only)
+   */
+  async getFilterOptions(id: string): Promise<{
+    sites: { slug: string; name: string }[]
+    tags: { slug: string; name: string }[]
+  } | null> {
+    const plugin = this.getPlugin(id)
+    if (!plugin || plugin.type !== 'netbox') {
+      return null
+    }
+    return (plugin as import('../plugins/netbox.js').NetBoxPlugin).getFilterOptions()
   }
 
   /**

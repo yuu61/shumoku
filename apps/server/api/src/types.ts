@@ -72,8 +72,6 @@ export interface DataSourceInput {
 export interface NetBoxConfig {
   url: string
   token: string
-  siteFilter?: string
-  tagFilter?: string
 }
 
 export interface Topology {
@@ -111,6 +109,7 @@ export interface TopologyDataSource {
   webhookSecret?: string
   lastSyncedAt?: number
   priority: number
+  optionsJson?: string
   createdAt: number
   updatedAt: number
   // Joined data
@@ -122,6 +121,7 @@ export interface TopologyDataSourceInput {
   purpose: DataSourcePurpose
   syncMode?: SyncMode
   priority?: number
+  optionsJson?: string
 }
 
 export interface Dashboard {

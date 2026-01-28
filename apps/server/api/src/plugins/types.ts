@@ -110,7 +110,7 @@ export interface TopologyCapable {
   /**
    * Fetch the current topology
    */
-  fetchTopology(): Promise<NetworkGraph>
+  fetchTopology(options?: Record<string, unknown>): Promise<NetworkGraph>
 
   /**
    * Watch for topology changes (optional)
@@ -285,8 +285,6 @@ export interface ZabbixPluginConfig {
 export interface NetBoxPluginConfig {
   url: string
   token: string
-  siteFilter?: string
-  tagFilter?: string
 }
 
 /**

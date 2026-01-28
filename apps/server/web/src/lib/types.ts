@@ -167,6 +167,7 @@ export interface TopologyDataSource {
   webhookSecret?: string
   lastSyncedAt?: number
   priority: number
+  optionsJson?: string
   createdAt: number
   updatedAt: number
   dataSource?: DataSource
@@ -177,6 +178,7 @@ export interface TopologyDataSourceInput {
   purpose: DataSourcePurpose
   syncMode?: SyncMode
   priority?: number
+  optionsJson?: string
 }
 
 export interface ApiError {

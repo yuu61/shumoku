@@ -11,6 +11,7 @@ import type {
   NetBoxLocationResponse,
   NetBoxPrefixResponse,
   NetBoxSiteResponse,
+  NetBoxTagResponse,
   NetBoxVirtualMachineResponse,
   NetBoxVMInterfaceResponse,
 } from './types.js'
@@ -19,13 +20,13 @@ import type {
  * Query parameters for filtering API requests
  */
 export interface QueryParams {
-  site?: string // Filter by site slug
+  site?: string | string[] // Filter by site slug(s)
   site_id?: number // Filter by site ID
-  location?: string // Filter by location slug
+  location?: string | string[] // Filter by location slug(s)
   location_id?: number // Filter by location ID
   role?: string // Filter by role slug
   status?: string // Filter by status (active, planned, staged, failed, offline)
-  tag?: string // Filter by tag slug
+  tag?: string | string[] // Filter by tag slug(s)
   manufacturer?: string // Filter by manufacturer slug
   device_type?: string // Filter by device type slug
   q?: string // Search query
@@ -81,7 +82,12 @@ export class NetBoxClient {
 
     if (params) {
       for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined && value !== null) {
+        if (value === undefined || value === null) continue
+        if (Array.isArray(value)) {
+          for (const v of value) {
+            searchParams.append(key, String(v))
+          }
+        } else {
           searchParams.set(key, String(value))
         }
       }
@@ -109,6 +115,13 @@ export class NetBoxClient {
    */
   private async getIpam<T>(endpoint: string, params?: QueryParams): Promise<T> {
     return this.get<T>(`ipam/${endpoint}`, params)
+  }
+
+  /**
+   * Make GET request to NetBox Extras API
+   */
+  private async getExtras<T>(endpoint: string, params?: QueryParams): Promise<T> {
+    return this.get<T>(`extras/${endpoint}`, params)
   }
 
   /**
@@ -190,6 +203,13 @@ export class NetBoxClient {
    */
   async fetchLocations(params?: QueryParams): Promise<NetBoxLocationResponse> {
     return this.getDcim<NetBoxLocationResponse>('locations', params)
+  }
+
+  /**
+   * Fetch tags
+   */
+  async fetchTags(): Promise<NetBoxTagResponse> {
+    return this.getExtras<NetBoxTagResponse>('tags')
   }
 
   /**

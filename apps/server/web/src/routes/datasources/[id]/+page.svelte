@@ -23,16 +23,12 @@ let formName = $state('')
 let formUrl = $state('')
 let formToken = $state('')
 let formPollInterval = $state(30000)
-let formSiteFilter = $state('')
-let formTagFilter = $state('')
 let hasExistingToken = $state(false)
 
 interface ParsedConfig {
   url?: string
   token?: string
   pollInterval?: number
-  siteFilter?: string
-  tagFilter?: string
 }
 
 function parseConfig(configJson: string): ParsedConfig {
@@ -59,15 +55,6 @@ function getConfigFromForm(type: DataSourceType, existingConfig?: ParsedConfig):
     config.pollInterval = formPollInterval
   }
 
-  if (type === 'netbox') {
-    if (formSiteFilter.trim()) {
-      config.siteFilter = formSiteFilter.trim()
-    }
-    if (formTagFilter.trim()) {
-      config.tagFilter = formTagFilter.trim()
-    }
-  }
-
   return JSON.stringify(config)
 }
 
@@ -79,8 +66,6 @@ onMount(async () => {
     formUrl = config.url || ''
     formToken = '' // Don't show existing token
     formPollInterval = config.pollInterval || 30000
-    formSiteFilter = config.siteFilter || ''
-    formTagFilter = config.tagFilter || ''
     hasExistingToken = !!config.token
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to load data source'
@@ -221,32 +206,6 @@ async function handleDelete() {
                   <option value={60000}>1 minute</option>
                   <option value={300000}>5 minutes</option>
                 </select>
-              </div>
-            {/if}
-
-            {#if dataSource.type === 'netbox'}
-              <div>
-                <label for="siteFilter" class="label">Site Filter (optional)</label>
-                <input
-                  type="text"
-                  id="siteFilter"
-                  class="input"
-                  placeholder="e.g., tokyo-dc1"
-                  bind:value={formSiteFilter}
-                />
-                <p class="text-xs text-theme-text-muted mt-1">Filter devices by site slug</p>
-              </div>
-
-              <div>
-                <label for="tagFilter" class="label">Tag Filter (optional)</label>
-                <input
-                  type="text"
-                  id="tagFilter"
-                  class="input"
-                  placeholder="e.g., production"
-                  bind:value={formTagFilter}
-                />
-                <p class="text-xs text-theme-text-muted mt-1">Filter devices by tag slug</p>
               </div>
             {/if}
 

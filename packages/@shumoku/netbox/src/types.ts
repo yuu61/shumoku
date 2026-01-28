@@ -332,6 +332,21 @@ export interface NetBoxLocationResponse {
   results: NetBoxLocation[]
 }
 
+export interface NetBoxTagFull {
+  id: number
+  name: string
+  slug: string
+  color: string
+  description: string
+}
+
+export interface NetBoxTagResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: NetBoxTagFull[]
+}
+
 // ============================================
 // Tag Mapping Configuration
 // ============================================

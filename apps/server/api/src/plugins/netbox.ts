@@ -78,19 +78,19 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
   // TopologyCapable Implementation
   // ============================================
 
-  async fetchTopology(): Promise<NetworkGraph> {
+  async fetchTopology(options?: Record<string, unknown>): Promise<NetworkGraph> {
     if (!this.client || !this.config) {
       throw new Error('Plugin not initialized')
     }
 
-    // Build query params from config filters
-    const params: Record<string, string | number> = {}
-    if (this.config.siteFilter) {
-      params.site = this.config.siteFilter
-    }
-    if (this.config.tagFilter) {
-      params.tag = this.config.tagFilter
-    }
+    // Extract per-topology options (siteFilter/tagFilter support string or string[])
+    const groupBy = (options?.groupBy as string) || 'tag'
+
+    const params: Record<string, string | string[] | number> = {}
+    const site = options?.siteFilter as string | string[] | undefined
+    const tag = options?.tagFilter as string | string[] | undefined
+    if (site && (!Array.isArray(site) || site.length > 0)) params.site = site
+    if (tag && (!Array.isArray(tag) || tag.length > 0)) params.tag = tag
 
     console.log('[NetBox] Fetching topology with params:', params)
 
@@ -109,7 +109,7 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
 
     // Convert to NetworkGraph using @shumoku/netbox converter
     const graph = convertToNetworkGraph(deviceResp, interfaceResp, cableResp, {
-      groupBy: 'tag',
+      groupBy: groupBy as 'tag' | 'site' | 'location' | 'prefix' | 'none',
       showPorts: true,
       colorByCableType: true,
       useRoleForType: true,
@@ -133,15 +133,7 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
       return []
     }
 
-    const params: Record<string, string | number> = {}
-    if (this.config.siteFilter) {
-      params.site = this.config.siteFilter
-    }
-    if (this.config.tagFilter) {
-      params.tag = this.config.tagFilter
-    }
-
-    const deviceResp = await this.client.fetchDevices(params)
+    const deviceResp = await this.client.fetchDevices()
 
     return deviceResp.results.map((device) => ({
       id: String(device.id),
@@ -170,6 +162,29 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
       lastValue: iface.enabled ? 'enabled' : 'disabled',
       unit: iface.type?.label || 'interface',
     }))
+  }
+
+  // ============================================
+  // Filter Options (for UI dropdowns)
+  // ============================================
+
+  async getFilterOptions(): Promise<{
+    sites: { slug: string; name: string }[]
+    tags: { slug: string; name: string }[]
+  }> {
+    if (!this.client) {
+      return { sites: [], tags: [] }
+    }
+
+    const [siteResp, tagResp] = await Promise.all([
+      this.client.fetchSites(),
+      this.client.fetchTags(),
+    ])
+
+    return {
+      sites: siteResp.results.map((s) => ({ slug: s.slug, name: s.name })),
+      tags: tagResp.results.map((t) => ({ slug: t.slug, name: t.name })),
+    }
   }
 
   // ============================================
