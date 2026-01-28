@@ -31,7 +31,7 @@ const METRIC_PRESETS: Record<string, PrometheusCustomMetrics> = {
     inOctets: 'ifHCInOctets',
     outOctets: 'ifHCOutOctets',
     interfaceLabel: 'ifName',
-    upMetric: 'snmp_up',
+    upMetric: 'up',
   },
   node_exporter: {
     inOctets: 'node_network_receive_bytes_total',
@@ -137,6 +137,7 @@ export class PrometheusPlugin
   // ============================================
 
   async pollMetrics(mapping: ZabbixMapping): Promise<MetricsData> {
+    const warnings: string[] = []
     const metrics: MetricsData = {
       nodes: {},
       links: {},
@@ -145,6 +146,24 @@ export class PrometheusPlugin
 
     if (!this.metrics) {
       return metrics
+    }
+
+    // Exporter health check (scrape target status)
+    // Only run when jobFilter is configured to avoid noisy results from unrelated jobs
+    if (this.config?.jobFilter) {
+      try {
+        const query = `up{job="${this.config.jobFilter}"}`
+        const result = await this.instantQuery(query)
+        const total = result.result.length
+        const down = result.result.filter((r) => r.value[1] === '0').length
+        if (down > 0) {
+          warnings.push(
+            `Scrape targets: ${down}/${total} down (job: ${this.config.jobFilter})`,
+          )
+        }
+      } catch {
+        warnings.push('Failed to check scrape target health')
+      }
     }
 
     // Poll node metrics (up/down status)
@@ -208,6 +227,9 @@ export class PrometheusPlugin
       }
     }
 
+    if (warnings.length > 0) {
+      metrics.warnings = warnings
+    }
     return metrics
   }
 
@@ -554,6 +576,7 @@ export class PrometheusPlugin
     return fetch(url, {
       ...options,
       headers,
+      signal: AbortSignal.timeout(5000),
     })
   }
 

@@ -22,6 +22,7 @@ export {
   metricsConnected,
   metricsData,
   metricsError,
+  metricsWarnings,
   type NodeStatus,
   type EdgeStatus,
   type NodeMetrics,

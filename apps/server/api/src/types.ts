@@ -161,6 +161,7 @@ export interface MetricsData {
   nodes: Record<string, NodeMetrics>
   links: Record<string, LinkMetrics>
   timestamp: number
+  warnings?: string[]
 }
 
 // ============================================

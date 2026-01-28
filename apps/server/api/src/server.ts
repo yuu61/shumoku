@@ -248,6 +248,7 @@ export class Server {
       nodes: filteredNodes,
       links: filteredLinks,
       timestamp: metrics.timestamp,
+      warnings: metrics.warnings,
     }
   }
 

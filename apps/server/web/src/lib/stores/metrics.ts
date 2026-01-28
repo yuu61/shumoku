@@ -26,6 +26,7 @@ export interface MetricsData {
   nodes: Record<string, NodeMetrics>
   links: Record<string, EdgeMetrics>
   timestamp: number
+  warnings?: string[]
 }
 
 interface MetricsMessage {
@@ -234,3 +235,7 @@ export const metricsStore = createMetricsStore()
 export const metricsConnected = derived(metricsStore, ($store) => $store.connected)
 export const metricsData = derived(metricsStore, ($store) => $store.metrics)
 export const metricsError = derived(metricsStore, ($store) => $store.error)
+export const metricsWarnings = derived(
+  metricsStore,
+  ($store) => $store.metrics?.warnings ?? [],
+)

@@ -38,6 +38,7 @@ import type { PanZoom } from 'panzoom'
 import {
   metricsStore,
   metricsData,
+  metricsWarnings,
   liveUpdatesEnabled,
   showTrafficFlow,
   showNodeStatus,
@@ -1158,6 +1159,15 @@ onDestroy(() => {
       </div>
     {/if}
 
+    <!-- Warnings banner -->
+    {#if $liveUpdatesEnabled && $metricsWarnings.length > 0}
+      <div class="warnings-banner">
+        {#each $metricsWarnings as warning}
+          <span class="warning-text">{warning}</span>
+        {/each}
+      </div>
+    {/if}
+
     <div class="svg-wrapper" bind:this={svgWrapper}>
       {@html svgContent}
     </div>
@@ -1512,5 +1522,34 @@ onDestroy(() => {
     width: 12px;
     height: 4px;
     border-radius: 2px;
+  }
+
+  /* Warnings banner */
+  .warnings-banner {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 16px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    z-index: 10;
+    font-size: 12px;
+    color: #92400e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  :global(.dark) .warnings-banner {
+    background: #451a03;
+    border-color: #b45309;
+    color: #fcd34d;
+  }
+
+  .warning-text {
+    white-space: nowrap;
   }
 </style>
