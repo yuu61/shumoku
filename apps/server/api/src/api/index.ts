@@ -10,10 +10,18 @@ import { createTopologiesApi } from './topologies.js'
 import { createSettingsApi } from './settings.js'
 import { topologySourcesApi } from './topology-sources.js'
 import { webhooksApi } from './webhooks.js'
+import { createAuthApi } from './auth.js'
+import { authMiddleware } from '../middleware/auth.js'
 import { INTERACTIVE_IIFE } from '@shumoku/renderer/iife-string'
 
 export function createApiRouter(): Hono {
   const api = new Hono()
+
+  // Auth routes (public, must be before middleware)
+  api.route('/auth', createAuthApi())
+
+  // Apply authentication middleware to all subsequent routes
+  api.use('*', authMiddleware)
 
   // Mount API routes
   api.route('/dashboards', createDashboardsApi())

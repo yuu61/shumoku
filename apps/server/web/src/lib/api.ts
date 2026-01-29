@@ -281,6 +281,33 @@ export const health = {
   check: () => request<{ status: string; timestamp: number }>('/health'),
 }
 
+// Auth API
+export interface AuthStatus {
+  setupComplete: boolean
+  authenticated: boolean
+}
+
+export const auth = {
+  status: () => request<AuthStatus>('/auth/status'),
+
+  setup: (password: string) =>
+    request<{ success: boolean }>('/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+
+  login: (password: string) =>
+    request<{ success: boolean }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+
+  logout: () =>
+    request<{ success: boolean }>('/auth/logout', {
+      method: 'POST',
+    }),
+}
+
 // Combined API export
 export const api = {
   dashboards,
@@ -288,4 +315,5 @@ export const api = {
   topologies,
   settings,
   health,
+  auth,
 }

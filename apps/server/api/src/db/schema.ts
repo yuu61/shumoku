@@ -11,6 +11,7 @@ import migration001 from './migrations/001_initial.sql'
 import migration002 from './migrations/002_health_check.sql'
 import migration003 from './migrations/003_topology_data_sources.sql'
 import migration004 from './migrations/004_topology_source_options.sql'
+import migration005 from './migrations/005_auth.sql'
 
 /** Ordered list of all migrations */
 const MIGRATIONS: { name: string; sql: string }[] = [
@@ -18,6 +19,7 @@ const MIGRATIONS: { name: string; sql: string }[] = [
   { name: '002_health_check.sql', sql: migration002 },
   { name: '003_topology_data_sources.sql', sql: migration003 },
   { name: '004_topology_source_options.sql', sql: migration004 },
+  { name: '005_auth.sql', sql: migration005 },
 ]
 
 interface MigrationRecord {
