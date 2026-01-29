@@ -4,7 +4,7 @@
  * Supports 'light', 'dark', and 'system' (follows OS preference).
  */
 
-import { derived, writable } from 'svelte/store'
+import { writable } from 'svelte/store'
 import { browser } from '$app/environment'
 
 export type ThemeValue = 'light' | 'dark' | 'system'
@@ -45,8 +45,17 @@ function persist(value: ThemeValue) {
   } catch {}
 }
 
+const initial = loadTheme()
+
+// Resolved theme: the actually applied 'light' | 'dark'
+const _resolved = writable<'light' | 'dark'>(resolveTheme(initial))
+export const resolvedTheme = { subscribe: _resolved.subscribe }
+
+function updateResolved(setting: ThemeValue) {
+  _resolved.set(resolveTheme(setting))
+}
+
 function createThemeSettingStore() {
-  const initial = loadTheme()
   const { subscribe, set: _set } = writable<ThemeValue>(initial)
 
   // Apply initial theme
@@ -57,6 +66,7 @@ function createThemeSettingStore() {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       if (loadTheme() === 'system') {
         applyTheme('system')
+        updateResolved('system')
       }
     })
   }
@@ -67,6 +77,7 @@ function createThemeSettingStore() {
       _set(value)
       applyTheme(value)
       persist(value)
+      updateResolved(value)
     },
     /** Header toggle: light ↔ dark (explicit override, exits system mode) */
     toggle() {
@@ -77,6 +88,3 @@ function createThemeSettingStore() {
 }
 
 export const themeSetting = createThemeSettingStore()
-
-/** The actually applied theme ('light' | 'dark'), resolving 'system' */
-export const resolvedTheme = derived(themeSetting, ($t) => resolveTheme($t))
