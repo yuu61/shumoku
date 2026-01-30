@@ -11,6 +11,7 @@ interface DashboardRow {
   id: string
   name: string
   layout_json: string
+  share_token: string | null
   created_at: number
   updated_at: number
 }
@@ -20,6 +21,7 @@ function rowToDashboard(row: DashboardRow): Dashboard {
     id: row.id,
     name: row.name,
     layoutJson: row.layout_json,
+    shareToken: row.share_token ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -109,5 +111,43 @@ export class DashboardService {
   delete(id: string): boolean {
     const result = this.db.query('DELETE FROM dashboards WHERE id = ?').run(id)
     return result.changes > 0
+  }
+
+  /**
+   * Enable sharing by generating a token
+   */
+  async share(id: string): Promise<string | null> {
+    const existing = this.get(id)
+    if (!existing) return null
+
+    const { nanoid } = await import('nanoid')
+    const token = nanoid(24)
+    this.db
+      .query('UPDATE dashboards SET share_token = ?, updated_at = ? WHERE id = ?')
+      .run(token, timestamp(), id)
+    return token
+  }
+
+  /**
+   * Disable sharing by clearing the token
+   */
+  unshare(id: string): boolean {
+    const existing = this.get(id)
+    if (!existing) return false
+
+    this.db
+      .query('UPDATE dashboards SET share_token = NULL, updated_at = ? WHERE id = ?')
+      .run(timestamp(), id)
+    return true
+  }
+
+  /**
+   * Get a dashboard by its share token
+   */
+  getByShareToken(token: string): Dashboard | null {
+    const row = this.db
+      .query('SELECT * FROM dashboards WHERE share_token = ?')
+      .get(token) as DashboardRow | undefined
+    return row ? rowToDashboard(row) : null
   }
 }

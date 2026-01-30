@@ -81,6 +81,7 @@ export interface Topology {
   topologySourceId?: string // Data source for structure (e.g., NetBox)
   metricsSourceId?: string // Data source for metrics (e.g., Zabbix)
   mappingJson?: string
+  shareToken?: string
   createdAt: number
   updatedAt: number
 }
@@ -128,6 +129,7 @@ export interface Dashboard {
   id: string
   name: string
   layoutJson: string
+  shareToken?: string
   createdAt: number
   updatedAt: number
 }

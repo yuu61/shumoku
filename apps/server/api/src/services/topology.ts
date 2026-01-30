@@ -22,6 +22,7 @@ interface TopologyRow {
   topology_source_id: string | null
   metrics_source_id: string | null
   mapping_json: string | null
+  share_token: string | null
   created_at: number
   updated_at: number
 }
@@ -34,6 +35,7 @@ function rowToTopology(row: TopologyRow): Topology {
     topologySourceId: row.topology_source_id ?? undefined,
     metricsSourceId: row.metrics_source_id ?? undefined,
     mappingJson: row.mapping_json ?? undefined,
+    shareToken: row.share_token ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -240,6 +242,44 @@ export class TopologyService {
     const result = this.db.query('DELETE FROM topologies WHERE id = ?').run(id)
     this.cache.delete(id)
     return result.changes > 0
+  }
+
+  /**
+   * Enable sharing by generating a token
+   */
+  async share(id: string): Promise<string | null> {
+    const existing = this.get(id)
+    if (!existing) return null
+
+    const { nanoid } = await import('nanoid')
+    const token = nanoid(24)
+    this.db
+      .query('UPDATE topologies SET share_token = ?, updated_at = ? WHERE id = ?')
+      .run(token, timestamp(), id)
+    return token
+  }
+
+  /**
+   * Disable sharing by clearing the token
+   */
+  unshare(id: string): boolean {
+    const existing = this.get(id)
+    if (!existing) return false
+
+    this.db
+      .query('UPDATE topologies SET share_token = NULL, updated_at = ? WHERE id = ?')
+      .run(timestamp(), id)
+    return true
+  }
+
+  /**
+   * Get a topology by its share token
+   */
+  getByShareToken(token: string): Topology | null {
+    const row = this.db
+      .query('SELECT * FROM topologies WHERE share_token = ?')
+      .get(token) as TopologyRow | undefined
+    return row ? rowToTopology(row) : null
   }
 
   /**

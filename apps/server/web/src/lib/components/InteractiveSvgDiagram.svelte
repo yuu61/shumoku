@@ -53,12 +53,17 @@ import GearSix from 'phosphor-svelte/lib/GearSix'
 import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
 
 // Props
-export let topologyId: string
+export let topologyId: string = ''
+export let renderUrl: string = ''
+export let readOnly = false
 export let onToggleSettings: (() => void) | undefined = undefined
 export let onSearchOpen: (() => void) | undefined = undefined
 export let settingsOpen = false
 export let onNodeSelect: ((event: NodeSelectEvent) => void) | undefined = undefined
 export let onSubgraphSelect: ((event: SubgraphSelectEvent) => void) | undefined = undefined
+
+// Compute effective render URL
+$: effectiveRenderUrl = renderUrl || `/api/topologies/${topologyId}/render`
 
 // Sheet types for hierarchical navigation
 interface SheetInfo {
@@ -195,7 +200,7 @@ async function loadContent() {
   loading = true
   error = ''
   try {
-    const res = await fetch(`/api/topologies/${topologyId}/render`)
+    const res = await fetch(effectiveRenderUrl)
     if (!res.ok) {
       throw new Error(`Failed to load topology: ${res.status}`)
     }
@@ -881,7 +886,7 @@ function resetNodeStyles() {
 
 let prevLiveUpdates = $liveUpdatesEnabled
 
-$: if (topologyId && prevLiveUpdates !== $liveUpdatesEnabled) {
+$: if (!readOnly && topologyId && prevLiveUpdates !== $liveUpdatesEnabled) {
   prevLiveUpdates = $liveUpdatesEnabled
   if ($liveUpdatesEnabled) {
     metricsStore.connect()
@@ -920,16 +925,16 @@ $: if (svgElement && $metricsData) {
 onMount(async () => {
   await loadContent()
 
-  if ($liveUpdatesEnabled && topologyId) {
+  if (!readOnly && $liveUpdatesEnabled && topologyId) {
     metricsStore.connect()
     metricsStore.subscribeToTopology(topologyId)
   }
 })
 
 onDestroy(() => {
-  // Don't disconnect - just unsubscribe. The store is a singleton and
-  // disconnecting would affect other components or the next navigation.
-  metricsStore.unsubscribe()
+  if (!readOnly) {
+    metricsStore.unsubscribe()
+  }
   if (panzoomInstance) {
     panzoomInstance.dispose()
   }

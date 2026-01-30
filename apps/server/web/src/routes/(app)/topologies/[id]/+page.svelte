@@ -11,6 +11,7 @@ import NodeMappingModal from '$lib/components/NodeMappingModal.svelte'
 import SubgraphInfoModal from '$lib/components/SubgraphInfoModal.svelte'
 import NodeSearchPalette from '$lib/components/NodeSearchPalette.svelte'
 import type { Topology, TopologyDataSource } from '$lib/types'
+import ShareButton from '$lib/components/ShareButton.svelte'
 import X from 'phosphor-svelte/lib/X'
 
 let topology: Topology | null = null
@@ -104,6 +105,18 @@ function handleSearchSelect(nodeId: string) {
   diagramComponent?.panToNode(nodeId)
 }
 
+async function handleShare() {
+  if (!topology) return
+  const result = await api.topologies.share(topologyId)
+  topology = { ...topology, shareToken: result.shareToken }
+}
+
+async function handleUnshare() {
+  if (!topology) return
+  await api.topologies.unshare(topologyId)
+  topology = { ...topology, shareToken: undefined }
+}
+
 function handleKeydown(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     e.preventDefault()
@@ -135,6 +148,11 @@ function handleKeydown(e: KeyboardEvent) {
     {:else if topology}
       <div class="absolute inset-0">
         <InteractiveSvgDiagram bind:this={diagramComponent} {topologyId} onToggleSettings={toggleSettings} onSearchOpen={() => searchPaletteOpen = true} {settingsOpen} onNodeSelect={handleNodeSelect} onSubgraphSelect={handleSubgraphSelect} />
+      </div>
+
+      <!-- Share button -->
+      <div class="absolute top-4 right-4 z-10">
+        <ShareButton shareToken={topology.shareToken} shareType="topologies" onShare={handleShare} onUnshare={handleUnshare} />
       </div>
 
       <!-- Connection status indicator -->

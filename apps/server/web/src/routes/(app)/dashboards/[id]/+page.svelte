@@ -14,6 +14,8 @@ import {
 } from '$lib/stores/dashboards'
 import { initializeWidgets, getAllWidgets, getWidget } from '$lib/widgets'
 import type { WidgetPosition } from '$lib/types'
+import ShareButton from '$lib/components/ShareButton.svelte'
+import { api } from '$lib/api'
 import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk'
 import X from 'phosphor-svelte/lib/X'
@@ -263,6 +265,21 @@ function removeWidget(widgetId: string) {
 
 // --- UI Helpers ---
 
+async function handleShare() {
+  const dashboard = $currentDashboard
+  if (!dashboard || !id) return
+  const result = await api.dashboards.share(dashboard.id)
+  // Refresh to pick up new shareToken
+  dashboardStore.get(id)
+}
+
+async function handleUnshare() {
+  const dashboard = $currentDashboard
+  if (!dashboard || !id) return
+  await api.dashboards.unshare(dashboard.id)
+  dashboardStore.get(id)
+}
+
 function getWidgetIcon(type: string) {
   const icons: Record<string, typeof SquaresFour> = {
     topology: TreeStructure,
@@ -320,6 +337,7 @@ function getWidgetIcon(type: string) {
         </button>
       {:else}
         <!-- View Mode Actions -->
+        <ShareButton shareToken={$currentDashboard?.shareToken} shareType="dashboards" onShare={handleShare} onUnshare={handleUnshare} />
         <button
           onclick={() => dashboardStore.setEditMode(true)}
           class="flex items-center gap-2 px-3 py-1.5 bg-theme-bg-canvas border border-theme-border rounded-lg hover:border-primary/50 transition-colors text-sm"

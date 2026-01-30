@@ -13,6 +13,88 @@ import { renderEmbeddable, type EmbeddableRenderOutput } from '@shumoku/renderer
 import { buildHierarchicalSheets } from '@shumoku/core'
 import { BunHierarchicalLayout } from '../layout.js'
 
+/**
+ * Build render output from a parsed topology
+ * Shared between authenticated and public (share) endpoints
+ */
+export async function buildRenderOutput(parsed: import('../services/topology.js').ParsedTopology) {
+  const hasSubgraphs = parsed.graph.subgraphs && parsed.graph.subgraphs.length > 0
+
+  if (hasSubgraphs) {
+    const layoutEngine = new BunHierarchicalLayout({
+      iconDimensions: parsed.iconDimensions.byKey,
+    })
+    const sheets = await buildHierarchicalSheets(parsed.graph, parsed.layout, layoutEngine)
+
+    const renderedSheets: Record<
+      string,
+      {
+        svg: string
+        css: string
+        viewBox: EmbeddableRenderOutput['viewBox']
+        label: string
+        parentId: string | null
+      }
+    > = {}
+
+    for (const [sheetId, sheetData] of sheets) {
+      const output = renderEmbeddable(
+        {
+          graph: sheetData.graph,
+          layout: sheetData.layout,
+          iconDimensions: parsed.iconDimensions,
+        },
+        { hierarchical: true, toolbar: false },
+      )
+
+      let parentId: string | null = null
+      let label = sheetData.graph.name || sheetId
+
+      if (sheetId !== 'root') {
+        parentId = 'root'
+        const subgraph = parsed.graph.subgraphs?.find((sg) => sg.id === sheetId)
+        if (subgraph) {
+          label = subgraph.label || sheetId
+        }
+      }
+
+      renderedSheets[sheetId] = {
+        svg: output.svg,
+        css: output.css,
+        viewBox: output.viewBox,
+        label,
+        parentId,
+      }
+    }
+
+    return {
+      id: parsed.id,
+      name: parsed.name,
+      hierarchical: true as const,
+      sheets: renderedSheets,
+      rootSheetId: 'root',
+      nodeCount: parsed.graph.nodes.length,
+      edgeCount: parsed.graph.links.length,
+    }
+  }
+
+  const output = renderEmbeddable(
+    { graph: parsed.graph, layout: parsed.layout, iconDimensions: parsed.iconDimensions },
+    { hierarchical: false, toolbar: false },
+  )
+
+  return {
+    id: parsed.id,
+    name: parsed.name,
+    hierarchical: false as const,
+    svg: output.svg,
+    css: output.css,
+    viewBox: output.viewBox,
+    nodeCount: parsed.graph.nodes.length,
+    edgeCount: parsed.graph.links.length,
+  }
+}
+
 // Singleton instances for shared state
 let _topologyService: TopologyService | null = null
 let _dataSourceService: DataSourceService | null = null
@@ -98,87 +180,7 @@ export function createTopologiesApi(): Hono {
       if (!parsed) {
         return c.json({ error: 'Topology not found' }, 404)
       }
-
-      // Check if topology has hierarchical content
-      const hasSubgraphs = parsed.graph.subgraphs && parsed.graph.subgraphs.length > 0
-
-      if (hasSubgraphs) {
-        // Build hierarchical sheets
-        const layoutEngine = new BunHierarchicalLayout({
-          iconDimensions: parsed.iconDimensions.byKey,
-        })
-        const sheets = await buildHierarchicalSheets(parsed.graph, parsed.layout, layoutEngine)
-
-        // Render each sheet
-        const renderedSheets: Record<
-          string,
-          {
-            svg: string
-            css: string
-            viewBox: EmbeddableRenderOutput['viewBox']
-            label: string
-            parentId: string | null
-          }
-        > = {}
-
-        for (const [sheetId, sheetData] of sheets) {
-          const output = renderEmbeddable(
-            {
-              graph: sheetData.graph,
-              layout: sheetData.layout,
-              iconDimensions: parsed.iconDimensions,
-            },
-            { hierarchical: true, toolbar: false },
-          )
-
-          // Find parent for breadcrumb navigation
-          let parentId: string | null = null
-          let label = sheetData.graph.name || sheetId
-
-          if (sheetId !== 'root') {
-            parentId = 'root' // All child sheets have root as parent for now
-            const subgraph = parsed.graph.subgraphs?.find((sg) => sg.id === sheetId)
-            if (subgraph) {
-              label = subgraph.label || sheetId
-            }
-          }
-
-          renderedSheets[sheetId] = {
-            svg: output.svg,
-            css: output.css,
-            viewBox: output.viewBox,
-            label,
-            parentId,
-          }
-        }
-
-        return c.json({
-          id: parsed.id,
-          name: parsed.name,
-          hierarchical: true,
-          sheets: renderedSheets,
-          rootSheetId: 'root',
-          nodeCount: parsed.graph.nodes.length,
-          edgeCount: parsed.graph.links.length,
-        })
-      }
-
-      // Non-hierarchical: return single sheet
-      const output = renderEmbeddable(
-        { graph: parsed.graph, layout: parsed.layout, iconDimensions: parsed.iconDimensions },
-        { hierarchical: false, toolbar: false },
-      )
-
-      return c.json({
-        id: parsed.id,
-        name: parsed.name,
-        hierarchical: false,
-        svg: output.svg,
-        css: output.css,
-        viewBox: output.viewBox,
-        nodeCount: parsed.graph.nodes.length,
-        edgeCount: parsed.graph.links.length,
-      })
+      return c.json(await buildRenderOutput(parsed))
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       return c.json({ error: message }, 500)
@@ -478,6 +480,26 @@ export function createTopologiesApi(): Hono {
       const message = err instanceof Error ? err.message : String(err)
       return c.json({ error: message }, 500)
     }
+  })
+
+  // Enable sharing (generate token)
+  app.post('/:id/share', async (c) => {
+    const id = c.req.param('id')
+    const token = await service.share(id)
+    if (!token) {
+      return c.json({ error: 'Topology not found' }, 404)
+    }
+    return c.json({ shareToken: token })
+  })
+
+  // Disable sharing (remove token)
+  app.delete('/:id/share', (c) => {
+    const id = c.req.param('id')
+    const success = service.unshare(id)
+    if (!success) {
+      return c.json({ error: 'Topology not found' }, 404)
+    }
+    return c.json({ success: true })
   })
 
   // Delete topology

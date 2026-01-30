@@ -193,6 +193,17 @@ export const topologies = {
     return request<Alert[]>(url)
   },
 
+  // Sharing
+  share: (id: string) =>
+    request<{ shareToken: string }>(`/topologies/${id}/share`, {
+      method: 'POST',
+    }),
+
+  unshare: (id: string) =>
+    request<{ success: boolean }>(`/topologies/${id}/share`, {
+      method: 'DELETE',
+    }),
+
   // Topology Data Sources (many-to-many)
   sources: {
     list: (topologyId: string) =>
@@ -272,6 +283,16 @@ export const dashboards = {
 
   delete: (id: string) =>
     request<{ success: boolean }>(`/dashboards/${id}`, {
+      method: 'DELETE',
+    }),
+
+  share: (id: string) =>
+    request<{ shareToken: string }>(`/dashboards/${id}/share`, {
+      method: 'POST',
+    }),
+
+  unshare: (id: string) =>
+    request<{ success: boolean }>(`/dashboards/${id}/share`, {
       method: 'DELETE',
     }),
 }

@@ -79,6 +79,26 @@ export function createDashboardsApi(): Hono {
     }
   })
 
+  // Enable sharing (generate token)
+  app.post('/:id/share', async (c) => {
+    const id = c.req.param('id')
+    const token = await service.share(id)
+    if (!token) {
+      return c.json({ error: 'Dashboard not found' }, 404)
+    }
+    return c.json({ shareToken: token })
+  })
+
+  // Disable sharing (remove token)
+  app.delete('/:id/share', (c) => {
+    const id = c.req.param('id')
+    const success = service.unshare(id)
+    if (!success) {
+      return c.json({ error: 'Dashboard not found' }, 404)
+    }
+    return c.json({ success: true })
+  })
+
   // Delete dashboard
   app.delete('/:id', (c) => {
     const id = c.req.param('id')

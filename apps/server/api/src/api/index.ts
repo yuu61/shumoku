@@ -11,14 +11,16 @@ import { createSettingsApi } from './settings.js'
 import { topologySourcesApi } from './topology-sources.js'
 import { webhooksApi } from './webhooks.js'
 import { createAuthApi } from './auth.js'
+import { createShareApi } from './share.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { INTERACTIVE_IIFE } from '@shumoku/renderer/iife-string'
 
 export function createApiRouter(): Hono {
   const api = new Hono()
 
-  // Auth routes (public, must be before middleware)
+  // Public routes (must be before auth middleware)
   api.route('/auth', createAuthApi())
+  api.route('/share', createShareApi())
 
   // Apply authentication middleware to all subsequent routes
   api.use('*', authMiddleware)
