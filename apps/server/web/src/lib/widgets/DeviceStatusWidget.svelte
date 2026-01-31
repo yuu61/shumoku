@@ -2,23 +2,25 @@
 import { onMount, onDestroy } from 'svelte'
 import { api } from '$lib/api'
 import { dashboardStore } from '$lib/stores/dashboards'
-import { emitHighlightByAttribute, emitClearHighlight } from '$lib/stores/widgetEvents'
+import {
+  emitHighlightByAttribute,
+  emitHighlightNodes,
+  emitClearHighlight,
+} from '$lib/stores/widgetEvents'
 import WidgetWrapper from './WidgetWrapper.svelte'
 import Cpu from 'phosphor-svelte/lib/Cpu'
 import Spinner from 'phosphor-svelte/lib/Spinner'
 import type { Topology, NetworkNode } from '$lib/types'
 
+// --- Props ---
 interface Props {
   id: string
-  config: {
-    topologyId?: string
-    title?: string
-  }
+  config: { topologyId?: string; title?: string }
   onRemove?: () => void
 }
-
 let { id, config, onRemove }: Props = $props()
 
+// --- State ---
 let topologies: Topology[] = $state([])
 let nodes: NetworkNode[] = $state([])
 let nodeMetrics: Record<string, { status: 'up' | 'down' | 'unknown' }> = $state({})
@@ -27,8 +29,20 @@ let error = $state('')
 let showSelector = $state(false)
 let isHovered = $state(false)
 let hoveredType = $state<string | null>(null)
+let hoveredSegment = $state<{ type: string; status: string } | null>(null)
 
-// Group nodes by type and calculate status
+// --- Constants ---
+const STATUS_COLORS: Record<string, string> = {
+  up: '#22c55e',
+  down: '#ef4444',
+  unknown: '#6b7280',
+}
+const CX = 18, CY = 18, R = 15.5, SW = 3
+const CIRC = 2 * Math.PI * R
+const GAP = 0.08 * R       // gap between segments (arc length)
+const TYPE_GAP = 0.14 * R  // larger gap between device types
+
+// --- Types ---
 interface TypeStatus {
   type: string
   displayName: string
@@ -36,342 +50,270 @@ interface TypeStatus {
   up: number
   down: number
   unknown: number
-  score: number // 0-100
+  score: number
 }
 
-let typeStatuses = $derived.by(() => {
-  if (nodes.length === 0) return []
-
-  // Group nodes by type
-  const groups = new Map<
-    string,
-    { nodes: NetworkNode[]; up: number; down: number; unknown: number }
-  >()
-
-  for (const node of nodes) {
-    const type = node.type || 'unknown'
-    if (!groups.has(type)) {
-      groups.set(type, { nodes: [], up: 0, down: 0, unknown: 0 })
-    }
-    const group = groups.get(type)!
-    group.nodes.push(node)
-
-    const status = nodeMetrics[node.id]?.status || 'unknown'
-    if (status === 'up') group.up++
-    else if (status === 'down') group.down++
-    else group.unknown++
-  }
-
-  // Convert to array with scores
-  const result: TypeStatus[] = []
-  for (const [type, group] of groups) {
-    const total = group.nodes.length
-    const score = total > 0 ? Math.round((group.up / total) * 100) : 0
-    result.push({
-      type,
-      displayName: formatTypeName(type),
-      total,
-      up: group.up,
-      down: group.down,
-      unknown: group.unknown,
-      score,
-    })
-  }
-
-  // Sort by total count descending
-  return result.sort((a, b) => b.total - a.total)
-})
-
-// Status colors (Lighthouse style)
-const STATUS_COLORS = {
-  up: '#22c55e', // green
-  down: '#ef4444', // red
-  unknown: '#6b7280', // gray
+interface Segment {
+  color: string
+  dashArray: string
+  dashOffset: number
+  opacity: number
+  type?: string
+  status?: string
 }
 
-// Overall stats
-let overallStats = $derived.by(() => {
-  let total = 0,
-    up = 0,
-    down = 0,
-    unknown = 0
-  for (const s of typeStatuses) {
-    total += s.total
-    up += s.up
-    down += s.down
-    unknown += s.unknown
-  }
-  const score = total > 0 ? Math.round((up / total) * 100) : 0
-  return { total, up, down, unknown, score }
-})
-
-// Calculate pie segments with padAngle - by up/down/unknown status
-let statusSegments = $derived.by(() => {
-  const { total, up, down, unknown } = overallStats
-  if (total === 0) return []
-
-  const circumference = 2 * Math.PI * 15.5 // r=15.5
-  const padAngle = 0.08 // Gap between segments (in radians, ~4.5 degrees)
-  const padLength = padAngle * 15.5 // Convert to arc length
-
-  // Count non-zero segments for padding calculation
-  const statuses = [
-    { status: 'up', count: up, color: STATUS_COLORS.up },
-    { status: 'down', count: down, color: STATUS_COLORS.down },
-    { status: 'unknown', count: unknown, color: STATUS_COLORS.unknown },
-  ].filter((s) => s.count > 0)
-
-  const numSegments = statuses.length
-  const totalPadding = numSegments > 1 ? padLength * numSegments : 0
-  const availableLength = circumference - totalPadding
-
-  const segments: {
-    status: string
-    count: number
-    color: string
-    dashArray: string
-    dashOffset: number
-  }[] = []
-  let currentOffset = 0
-
-  for (const s of statuses) {
-    const ratio = s.count / total
-    const length = ratio * availableLength
-    segments.push({
-      ...s,
-      dashArray: `${length} ${circumference - length}`,
-      dashOffset: -currentOffset,
-    })
-    currentOffset += length + (numSegments > 1 ? padLength : 0)
-  }
-
-  return segments
-})
-
-// Calculate pie segments for hover state - by device type, but with up/down/unknown colors
-let typeSegments = $derived.by(() => {
-  if (typeStatuses.length === 0) return []
-
-  const total = overallStats.total
-  if (total === 0) return []
-
-  const circumference = 2 * Math.PI * 15.5
-  const typePadAngle = 0.12 // Larger gap between types
-  const statusPadAngle = 0.03 // Smaller gap within type
-  const typePadLength = typePadAngle * 15.5
-  const statusPadLength = statusPadAngle * 15.5
-
-  // Count total segments and gaps
-  let totalStatusSegments = 0
-  let totalTypeGaps = 0
-  for (const status of typeStatuses) {
-    const statusCount =
-      (status.up > 0 ? 1 : 0) + (status.down > 0 ? 1 : 0) + (status.unknown > 0 ? 1 : 0)
-    totalStatusSegments += statusCount
-    if (statusCount > 0) totalTypeGaps++
-  }
-  const totalStatusGaps = Math.max(0, totalStatusSegments - totalTypeGaps)
-
-  const totalPadding =
-    (totalTypeGaps > 1 ? typePadLength * totalTypeGaps : 0) + statusPadLength * totalStatusGaps
-  const availableLength = circumference - totalPadding
-
-  const segments: {
-    type: string
-    status: string
-    count: number
-    color: string
-    dashArray: string
-    dashOffset: number
-  }[] = []
-  let currentOffset = 0
-  let isFirstType = true
-
-  for (const typeStatus of typeStatuses) {
-    const statuses = [
-      { status: 'up', count: typeStatus.up, color: STATUS_COLORS.up },
-      { status: 'down', count: typeStatus.down, color: STATUS_COLORS.down },
-      { status: 'unknown', count: typeStatus.unknown, color: STATUS_COLORS.unknown },
-    ].filter((s) => s.count > 0)
-
-    if (statuses.length === 0) continue
-
-    // Add type gap (except for first type)
-    if (!isFirstType && totalTypeGaps > 1) {
-      currentOffset += typePadLength
-    }
-    isFirstType = false
-
-    let isFirstStatus = true
-    for (const s of statuses) {
-      // Add status gap within type (except for first status)
-      if (!isFirstStatus) {
-        currentOffset += statusPadLength
-      }
-      isFirstStatus = false
-
-      const ratio = s.count / total
-      const length = ratio * availableLength
-      segments.push({
-        type: typeStatus.type,
-        status: s.status,
-        count: s.count,
-        color: s.color,
-        dashArray: `${length} ${circumference - length}`,
-        dashOffset: -currentOffset,
-      })
-      currentOffset += length
-    }
-  }
-
-  return segments
-})
-
-// Calculate label positions for each type (center angle of the type's segments)
-let typeLabels = $derived.by(() => {
-  if (typeStatuses.length === 0) return []
-
-  const total = overallStats.total
-  if (total === 0) return []
-
-  const r = 15.5
-  const labelRadius = 20 // Position labels just outside the circle
-  const circumference = 2 * Math.PI * r
-  const typePadAngle = 0.12
-  const statusPadAngle = 0.03
-  const typePadLength = typePadAngle * r
-  const statusPadLength = statusPadAngle * r
-
-  // Same calculation as typeSegments to find type boundaries
-  let totalStatusSegments = 0
-  let totalTypeGaps = 0
-  for (const status of typeStatuses) {
-    const statusCount =
-      (status.up > 0 ? 1 : 0) + (status.down > 0 ? 1 : 0) + (status.unknown > 0 ? 1 : 0)
-    totalStatusSegments += statusCount
-    if (statusCount > 0) totalTypeGaps++
-  }
-  const totalStatusGaps = Math.max(0, totalStatusSegments - totalTypeGaps)
-  const totalPadding =
-    (totalTypeGaps > 1 ? typePadLength * totalTypeGaps : 0) + statusPadLength * totalStatusGaps
-  const availableLength = circumference - totalPadding
-
-  const labels: { type: string; displayName: string; x: number; y: number; anchor: string }[] = []
-  let currentOffset = 0
-  let isFirstType = true
-
-  for (const typeStatus of typeStatuses) {
-    const statuses = [
-      { count: typeStatus.up },
-      { count: typeStatus.down },
-      { count: typeStatus.unknown },
-    ].filter((s) => s.count > 0)
-
-    if (statuses.length === 0) continue
-
-    if (!isFirstType && totalTypeGaps > 1) {
-      currentOffset += typePadLength
-    }
-    isFirstType = false
-
-    const typeStartOffset = currentOffset
-
-    // Calculate total length for this type
-    let typeLength = 0
-    let isFirstStatus = true
-    for (const s of statuses) {
-      if (!isFirstStatus) {
-        typeLength += statusPadLength
-      }
-      isFirstStatus = false
-      const ratio = s.count / total
-      typeLength += ratio * availableLength
-    }
-
-    // Center angle for this type (convert arc length to angle)
-    const centerOffset = typeStartOffset + typeLength / 2
-    const angle = (centerOffset / circumference) * 2 * Math.PI - Math.PI / 2 // -90deg to start from top
-
-    // Position on outer circle
-    const x = 18 + labelRadius * Math.cos(angle)
-    const y = 18 + labelRadius * Math.sin(angle)
-
-    // Text anchor based on position
-    const anchor = x > 20 ? 'start' : x < 16 ? 'end' : 'middle'
-
-    labels.push({
-      type: typeStatus.type,
-      displayName: typeStatus.displayName,
-      x,
-      y,
-      anchor,
-    })
-
-    // Update offset for next type
-    currentOffset = typeStartOffset + typeLength
-  }
-
-  return labels
-})
-
-function handleTypeHover(type: string) {
-  if (hoveredType === type || !config.topologyId) return
-  hoveredType = type
-  emitHighlightByAttribute(config.topologyId, 'data-device-type', type, {
-    spotlight: true,
-    sourceWidgetId: id,
-  })
+interface TypeLabel {
+  type: string
+  displayName: string
+  x: number
+  y: number
+  anchor: string
 }
 
-function handleTypeLeave() {
-  if (!hoveredType || !config.topologyId) return
-  hoveredType = null
-  emitClearHighlight(config.topologyId, id)
-}
-
+// --- Helpers ---
 function formatTypeName(type: string): string {
-  // Convert kebab-case to Title Case
-  return type
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+  return type.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')
 }
 
-function getScoreColorClass(score: number): string {
+function scoreColorClass(score: number): string {
   if (score >= 90) return 'text-success'
   if (score >= 50) return 'text-warning'
   return 'text-danger'
 }
 
-async function loadTopologies() {
-  try {
-    topologies = await api.topologies.list()
-  } catch (err) {
-    console.error('Failed to load topologies:', err)
+/** Build stroke-dasharray segments from a list of {count, color, gap} items */
+function buildSegments(
+  items: { count: number; color: string; gap: number; type?: string; status?: string }[],
+  total: number,
+  opacityFn?: (item: { type?: string; status?: string }) => number,
+): Segment[] {
+  const n = items.length
+  if (n === 0 || total === 0) return []
+
+  const totalGap = n > 1 ? items.reduce((s, i) => s + i.gap, 0) : 0
+  const available = CIRC - totalGap
+  const segments: Segment[] = []
+  let offset = 0
+
+  for (const item of items) {
+    const len = (item.count / total) * available
+    segments.push({
+      color: item.color,
+      dashArray: `${len} ${CIRC - len}`,
+      dashOffset: -offset,
+      opacity: opacityFn?.(item) ?? 1,
+      type: item.type,
+      status: item.status,
+    })
+    offset += len + (n > 1 ? item.gap : 0)
   }
+  return segments
+}
+
+/** Compute SVG label positions around the donut */
+function buildTypeLabelPositions(
+  items: { count: number; gap: number; type: string }[],
+  total: number,
+): TypeLabel[] {
+  const n = items.length
+  if (n === 0 || total === 0) return []
+
+  const totalGap = n > 1 ? items.reduce((s, i) => s + i.gap, 0) : 0
+  const available = CIRC - totalGap
+  const labels: TypeLabel[] = []
+  let offset = 0
+  let curType = ''
+  let typeStart = 0
+  const labelR = R + SW / 2 + 4
+
+  function pushLabel(type: string, endOffset: number) {
+    const ts = typeStatuses.find((t) => t.type === type)
+    if (!ts) return
+    const mid = (typeStart + endOffset) / 2
+    const angleRad = (mid / CIRC) * 2 * Math.PI - Math.PI / 2
+    const cos = Math.cos(angleRad)
+    labels.push({
+      type, displayName: ts.displayName,
+      x: CX + labelR * cos,
+      y: CY + labelR * Math.sin(angleRad),
+      anchor: cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle',
+    })
+  }
+
+  for (const item of items) {
+    if (item.type !== curType) {
+      if (curType) pushLabel(curType, offset)
+      curType = item.type
+      typeStart = offset
+    }
+    offset += (item.count / total) * available + (n > 1 ? item.gap : 0)
+  }
+  if (curType) pushLabel(curType, offset)
+  return labels
+}
+
+/** Expand typeStatuses into flat per-status items with gap info */
+function buildDetailItems() {
+  const items: { count: number; color: string; type: string; status: string; gap: number }[] = []
+  for (let ti = 0; ti < typeStatuses.length; ti++) {
+    const ts = typeStatuses[ti]
+    const entries = (['up', 'down', 'unknown'] as const)
+      .filter((s) => ts[s] > 0)
+      .map((s) => ({ status: s, count: ts[s], color: STATUS_COLORS[s] }))
+    for (let i = 0; i < entries.length; i++) {
+      const isTypeBoundary = i === entries.length - 1 && ti < typeStatuses.length - 1
+      items.push({ ...entries[i], type: ts.type, gap: isTypeBoundary ? TYPE_GAP : GAP })
+    }
+  }
+  return items
+}
+
+// --- Derived data ---
+let typeStatuses = $derived.by(() => {
+  if (nodes.length === 0) return [] as TypeStatus[]
+  const groups = new Map<string, { nodes: NetworkNode[]; up: number; down: number; unknown: number }>()
+  for (const node of nodes) {
+    const type = node.type || 'unknown'
+    if (!groups.has(type)) groups.set(type, { nodes: [], up: 0, down: 0, unknown: 0 })
+    const g = groups.get(type)!
+    g.nodes.push(node)
+    const s = nodeMetrics[node.id]?.status || 'unknown'
+    if (s === 'up') g.up++; else if (s === 'down') g.down++; else g.unknown++
+  }
+  return [...groups.entries()]
+    .map(([type, g]) => ({
+      type, displayName: formatTypeName(type),
+      total: g.nodes.length, up: g.up, down: g.down, unknown: g.unknown,
+      score: g.nodes.length > 0 ? Math.round((g.up / g.nodes.length) * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+})
+
+let overallStats = $derived.by(() => {
+  let total = 0, up = 0, down = 0, unknown = 0
+  for (const s of typeStatuses) { total += s.total; up += s.up; down += s.down; unknown += s.unknown }
+  return { total, up, down, unknown, score: total > 0 ? Math.round((up / total) * 100) : 0 }
+})
+
+let overviewSegments = $derived.by(() => {
+  const { total, up, down, unknown } = overallStats
+  const items = [
+    { count: up, color: STATUS_COLORS.up, gap: GAP },
+    { count: down, color: STATUS_COLORS.down, gap: GAP },
+    { count: unknown, color: STATUS_COLORS.unknown, gap: GAP },
+  ].filter((s) => s.count > 0)
+  return buildSegments(items, total)
+})
+
+let detailSegments = $derived.by(() => {
+  const items = buildDetailItems()
+  const active = hoveredSegment?.type ?? hoveredType
+  return buildSegments(items, overallStats.total, (item) => {
+    if (!active) return 1
+    if (item.type !== active) return 0.2
+    if (hoveredSegment && hoveredSegment.status !== item.status) return 0.5
+    return 1
+  })
+})
+
+let currentSegments = $derived(isHovered ? detailSegments : overviewSegments)
+
+let typeLabels = $derived.by(() => {
+  const items = buildDetailItems().map(({ count, gap, type }) => ({ count, gap, type }))
+  return buildTypeLabelPositions(items, overallStats.total)
+})
+
+// Dynamically compute viewBox to fit donut + labels
+let viewBox = $derived.by(() => {
+  if (!isHovered || typeLabels.length === 0) return '0 0 36 36'
+
+  // Estimate text width: ~1.8 SVG units per character at font-size 3
+  const charWidth = 1.8
+  let minX = CX - R - SW, maxX = CX + R + SW
+  let minY = CY - R - SW, maxY = CY + R + SW
+
+  for (const label of typeLabels) {
+    const textW = label.displayName.length * charWidth
+    let lx0: number, lx1: number
+    if (label.anchor === 'start') { lx0 = label.x; lx1 = label.x + textW }
+    else if (label.anchor === 'end') { lx0 = label.x - textW; lx1 = label.x }
+    else { lx0 = label.x - textW / 2; lx1 = label.x + textW / 2 }
+    const ly0 = label.y - 2, ly1 = label.y + 2
+
+    minX = Math.min(minX, lx0)
+    maxX = Math.max(maxX, lx1)
+    minY = Math.min(minY, ly0)
+    maxY = Math.max(maxY, ly1)
+  }
+
+  const pad = 2
+  return `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`
+})
+
+let centerLine1 = $derived.by(() => {
+  if (hoveredSegment) {
+    const ts = typeStatuses.find((t) => t.type === hoveredSegment!.type)
+    if (!ts) return ''
+    return String(ts[hoveredSegment.status as 'up' | 'down' | 'unknown'])
+  }
+  if (hoveredType) return String(typeStatuses.find((t) => t.type === hoveredType)?.score ?? 0)
+  return String(overallStats.score)
+})
+
+let centerLine2 = $derived.by(() => {
+  if (hoveredSegment) return hoveredSegment.status
+  if (hoveredType) {
+    const ts = typeStatuses.find((t) => t.type === hoveredType)
+    return `${ts?.up ?? 0}/${ts?.total ?? 0}`
+  }
+  return `${overallStats.up}/${overallStats.total}`
+})
+
+let centerColor = $derived.by(() => {
+  if (hoveredSegment) return ''
+  if (hoveredType) return scoreColorClass(typeStatuses.find((t) => t.type === hoveredType)?.score ?? 0)
+  return scoreColorClass(overallStats.score)
+})
+
+// --- Hover handlers ---
+function handleSegmentHover(type: string, status: string) {
+  hoveredSegment = { type, status }
+  hoveredType = null
+  if (!config.topologyId) return
+  const ids = nodes
+    .filter((n) => (n.type || 'unknown') === type && (nodeMetrics[n.id]?.status || 'unknown') === status)
+    .map((n) => n.id)
+  if (ids.length > 0) emitHighlightNodes(config.topologyId, ids, { spotlight: true, sourceWidgetId: id })
+}
+
+function handleTypeHover(type: string) {
+  hoveredSegment = null
+  hoveredType = type
+  if (!config.topologyId) return
+  emitHighlightByAttribute(config.topologyId, 'data-device-type', type, { spotlight: true, sourceWidgetId: id })
+}
+
+function handleHoverLeave() {
+  hoveredSegment = null
+  hoveredType = null
+  if (config.topologyId) emitClearHighlight(config.topologyId, id)
+}
+
+// --- Data loading ---
+async function loadTopologies() {
+  try { topologies = await api.topologies.list() } catch (err) { console.error('Failed to load topologies:', err) }
 }
 
 async function loadTopologyData() {
-  if (!config.topologyId) {
-    loading = false
-    return
-  }
-
+  if (!config.topologyId) { loading = false; return }
   loading = true
   error = ''
-
   try {
-    // Fetch topology context - includes nodes and metrics
-    const contextRes = await fetch(`/api/topologies/${config.topologyId}/context`)
-    const context = await contextRes.json()
-
-    if (context.error) {
-      throw new Error(context.error)
-    }
-
-    nodes = context.nodes || []
-    // Use metrics directly from context API (not WebSocket)
-    nodeMetrics = context.metrics?.nodes || {}
+    const res = await fetch(`/api/topologies/${config.topologyId}/context`)
+    const ctx = await res.json()
+    if (ctx.error) throw new Error(ctx.error)
+    nodes = ctx.nodes || []
+    nodeMetrics = ctx.metrics?.nodes || {}
   } catch (err) {
     error = err instanceof Error ? err.message : 'Failed to load topology'
   } finally {
@@ -389,36 +331,24 @@ function selectTopology(topologyId: string) {
 
 let lastTopologyId = $state('')
 let pollInterval: ReturnType<typeof setInterval> | null = null
-const POLL_INTERVAL_MS = 10000 // Refresh metrics every 10s
 
-// Refresh only metrics (not nodes)
 async function refreshMetrics() {
   if (!config.topologyId) return
   try {
-    const contextRes = await fetch(`/api/topologies/${config.topologyId}/context`)
-    const context = await contextRes.json()
-    if (!context.error) {
-      nodeMetrics = context.metrics?.nodes || {}
-    }
-  } catch {
-    // Silently ignore refresh errors
-  }
+    const res = await fetch(`/api/topologies/${config.topologyId}/context`)
+    const ctx = await res.json()
+    if (!ctx.error) nodeMetrics = ctx.metrics?.nodes || {}
+  } catch { /* ignore */ }
 }
 
 onMount(() => {
   loadTopologies()
   loadTopologyData()
-  // Start polling for metrics updates
-  pollInterval = setInterval(refreshMetrics, POLL_INTERVAL_MS)
+  pollInterval = setInterval(refreshMetrics, 10000)
 })
 
-onDestroy(() => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-  }
-})
+onDestroy(() => { if (pollInterval) clearInterval(pollInterval) })
 
-// Watch for topology ID changes
 $effect(() => {
   if (config.topologyId && config.topologyId !== lastTopologyId) {
     lastTopologyId = config.topologyId
@@ -426,9 +356,7 @@ $effect(() => {
   }
 })
 
-function handleSettings() {
-  showSelector = !showSelector
-}
+function handleSettings() { showSelector = !showSelector }
 </script>
 
 <WidgetWrapper
@@ -438,10 +366,8 @@ function handleSettings() {
 >
   <div class="h-full w-full relative overflow-hidden">
     {#if showSelector}
-      <!-- Settings panel -->
       <div class="absolute inset-0 bg-theme-bg-elevated z-10 p-4 flex flex-col overflow-auto">
         <div class="text-sm font-medium text-theme-text-emphasis mb-3">Widget Settings</div>
-
         <label class="text-xs text-theme-text-muted mb-1">
           Topology
           <select
@@ -455,7 +381,6 @@ function handleSettings() {
             {/each}
           </select>
         </label>
-
         <label class="text-xs text-theme-text-muted mb-1 mt-4">
           Title
           <input
@@ -466,7 +391,6 @@ function handleSettings() {
             class="mt-1 w-full px-3 py-2 bg-theme-bg-canvas border border-theme-border rounded text-sm text-theme-text"
           />
         </label>
-
         <div class="mt-auto">
           <button
             onclick={() => showSelector = false}
@@ -477,7 +401,6 @@ function handleSettings() {
         </div>
       </div>
     {:else if !config.topologyId}
-      <!-- No topology selected -->
       <div class="h-full flex flex-col items-center justify-center text-theme-text-muted gap-3">
         <Cpu size={32} />
         <span class="text-sm">No topology selected</span>
@@ -495,12 +418,7 @@ function handleSettings() {
     {:else if error}
       <div class="h-full flex flex-col items-center justify-center text-danger gap-2">
         <span class="text-sm">{error}</span>
-        <button
-          onclick={loadTopologyData}
-          class="text-xs text-primary hover:underline"
-        >
-          Retry
-        </button>
+        <button onclick={loadTopologyData} class="text-xs text-primary hover:underline">Retry</button>
       </div>
     {:else if typeStatuses.length === 0}
       <div class="h-full flex flex-col items-center justify-center text-theme-text-muted gap-2">
@@ -508,118 +426,74 @@ function handleSettings() {
         <span class="text-sm">No devices found</span>
       </div>
     {:else}
-      <!-- Lighthouse-style: single circle that expands on hover -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
-        class="h-full flex flex-col items-center justify-center p-2 gap-2"
+        class="h-full w-full flex items-center justify-center p-2"
         onmouseenter={() => isHovered = true}
-        onmouseleave={() => { isHovered = false; handleTypeLeave() }}
+        onmouseleave={() => { isHovered = false; handleHoverLeave() }}
       >
-        <!-- Main circular gauge - responsive size -->
-        <div class="relative flex-1 w-full h-full flex items-center justify-center min-h-0 overflow-visible">
-          <div class="relative w-full h-full">
-            <svg
-              class="w-full h-full transition-all duration-300"
-              viewBox={isHovered ? "-20 -6 76 48" : "0 0 36 36"}
-              preserveAspectRatio="xMidYMid meet"
-            >
-              <!-- Rotate group for pie chart (starts from top) -->
-              <g transform="rotate(-90 18 18)">
-                <!-- Background circle -->
+        <svg class="w-full h-full transition-[viewBox] duration-300" viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
+          <g transform="rotate(-90 {CX} {CY})">
+            <circle
+              cx={CX} cy={CY} r={R}
+              fill="none" stroke="currentColor" stroke-width={SW}
+              class="text-theme-border opacity-20"
+            />
+            {#each currentSegments as seg}
+              {#if isHovered && seg.type}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <circle
-                  cx="18"
-                  cy="18"
-                  r="15.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  class="text-theme-border opacity-30"
+                  cx={CX} cy={CY} r={R} fill="none"
+                  stroke={seg.color} stroke-width={SW}
+                  stroke-dasharray={seg.dashArray} stroke-dashoffset={seg.dashOffset}
+                  opacity={seg.opacity}
+                  class="transition-opacity duration-200 cursor-pointer"
+                  onmouseenter={() => handleSegmentHover(seg.type!, seg.status!)}
+                  onmouseleave={() => { hoveredSegment = null; if (hoveredType) handleTypeHover(hoveredType) }}
                 />
-
-                {#if isHovered}
-                  <!-- Hover: Pie segments by device type -->
-                  {#each typeSegments as seg}
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="15.5"
-                      fill="none"
-                      stroke={seg.color}
-                      stroke-width={hoveredType === seg.type ? "5" : "4"}
-                      stroke-dasharray={seg.dashArray}
-                      stroke-dashoffset={seg.dashOffset}
-                      class="transition-all duration-300 cursor-pointer"
-                      onmouseenter={() => handleTypeHover(seg.type)}
-                      onmouseleave={handleTypeLeave}
-                    />
-                  {/each}
-                {:else}
-                  <!-- Normal: Pie segments by up/down/unknown -->
-                  {#each statusSegments as seg}
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="15.5"
-                      fill="none"
-                      stroke={seg.color}
-                      stroke-width="3"
-                      stroke-dasharray={seg.dashArray}
-                      stroke-dashoffset={seg.dashOffset}
-                      class="transition-all duration-300"
-                    />
-                  {/each}
-                {/if}
-              </g>
-
-              <!-- Center content (inside SVG for proper scaling) -->
-              <text
-                x="18"
-                y="15"
-                text-anchor="middle"
-                dominant-baseline="middle"
-                class="fill-current {getScoreColorClass(overallStats.score)}"
-                font-size={isHovered ? "9" : "12"}
-                font-weight="700"
-              >
-                {overallStats.score}
-              </text>
-              <text
-                x="18"
-                y={isHovered ? "22" : "24"}
-                text-anchor="middle"
-                dominant-baseline="middle"
-                class="fill-current text-theme-text-muted"
-                font-size={isHovered ? "3" : "4"}
-              >
-                {overallStats.up}/{overallStats.total}
-              </text>
-
-              <!-- Labels (not rotated) -->
-              {#if isHovered}
-                {#each typeLabels as label}
-                  <!-- svelte-ignore a11y_no_static_element_interactions -->
-                  <text
-                    x={label.x}
-                    y={label.y}
-                    text-anchor={label.anchor}
-                    dominant-baseline="middle"
-                    class="fill-current cursor-pointer {hoveredType === label.type ? 'text-theme-text-emphasis' : 'text-theme-text-emphasis'}"
-                    font-size="4.5"
-                    font-weight={hoveredType === label.type ? "700" : "600"}
-                    onmouseenter={() => handleTypeHover(label.type)}
-                    onmouseleave={handleTypeLeave}
-                  >
-                    {label.displayName}
-                  </text>
-                {/each}
+              {:else}
+                <circle
+                  cx={CX} cy={CY} r={R} fill="none"
+                  stroke={seg.color} stroke-width={SW}
+                  stroke-dasharray={seg.dashArray} stroke-dashoffset={seg.dashOffset}
+                  opacity={seg.opacity}
+                  class="transition-opacity duration-200"
+                />
               {/if}
-            </svg>
-          </div>
-        </div>
+            {/each}
+          </g>
 
+          <!-- Center text -->
+          <text
+            x={CX} y={CY - 2}
+            text-anchor="middle" dominant-baseline="middle"
+            class="fill-current {centerColor || 'text-theme-text-emphasis'}"
+            font-size="9" font-weight="700"
+          >{centerLine1}</text>
+          <text
+            x={CX} y={CY + 4}
+            text-anchor="middle" dominant-baseline="middle"
+            class="fill-current text-theme-text-muted"
+            font-size="3.5"
+          >{centerLine2}</text>
+
+          <!-- Type labels around donut (hover) -->
+          {#if isHovered}
+            {#each typeLabels as label}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <text
+                x={label.x} y={label.y}
+                text-anchor={label.anchor} dominant-baseline="middle"
+                font-size="3"
+                class="cursor-pointer fill-current transition-colors duration-150
+                  {hoveredType === label.type || hoveredSegment?.type === label.type ? 'text-theme-text-emphasis font-semibold' : 'text-theme-text-muted'}"
+                onmouseenter={() => handleTypeHover(label.type)}
+                onmouseleave={() => { hoveredType = null; handleHoverLeave() }}
+              >{label.displayName}</text>
+            {/each}
+          {/if}
+        </svg>
       </div>
     {/if}
   </div>
 </WidgetWrapper>
-
