@@ -166,23 +166,6 @@ function wasDrag(e: MouseEvent): boolean {
 let hoveredNodeId: string | null = null
 let selectedNodeId: string | null = null
 
-// Utilization color scale (weathermap style)
-const utilizationColors = [
-  { max: 0, color: '#6b7280' },
-  { max: 1, color: '#22c55e' },
-  { max: 25, color: '#84cc16' },
-  { max: 50, color: '#eab308' },
-  { max: 75, color: '#f97316' },
-  { max: 90, color: '#ef4444' },
-  { max: 100, color: '#dc2626' },
-]
-
-function getUtilizationColor(utilization: number): string {
-  for (const t of utilizationColors) {
-    if (utilization <= t.max) return t.color
-  }
-  return '#dc2626'
-}
 
 // Inject CSS into document head
 function injectCSS(css: string) {
@@ -265,8 +248,9 @@ async function initializeCurrentSheet() {
     initPanZoom()
     // Setup interactivity
     setupInteractivity()
-    // Clear original styles cache when switching sheets
-    originalLinkStyles.clear()
+    // Reset weathermap state when switching sheets
+    weathermap?.destroy()
+    weathermap = null
   }
 }
 
@@ -749,30 +733,9 @@ function hideTooltip() {
   hoveredSubgraphInfo = null
 }
 
-// Store original link styles for restoration
-const originalLinkStyles = new Map<
-  string,
-  Map<SVGPathElement, { stroke: string; strokeDasharray: string }>
->()
-
-function saveOriginalLinkStyles() {
-  if (!svgElement) return
-
-  const linkGroups = svgElement.querySelectorAll('g.link-group')
-  linkGroups.forEach((linkGroup) => {
-    const linkId = linkGroup.getAttribute('data-link-id') || ''
-    const paths = linkGroup.querySelectorAll('path.link') as NodeListOf<SVGPathElement>
-
-    const pathStyles = new Map<SVGPathElement, { stroke: string; strokeDasharray: string }>()
-    paths.forEach((path) => {
-      pathStyles.set(path, {
-        stroke: path.getAttribute('stroke') || '',
-        strokeDasharray: path.style.strokeDasharray || '',
-      })
-    })
-    originalLinkStyles.set(linkId, pathStyles)
-  })
-}
+// Weathermap controller for in/out dual-path rendering
+import { WeathermapController, getUtilizationColor } from '$lib/weathermap'
+let weathermap: WeathermapController | null = null
 
 function applyMetrics(
   metrics: typeof $metricsData,
@@ -781,59 +744,9 @@ function applyMetrics(
 ) {
   if (!svgElement || !metrics) return
 
-  if (originalLinkStyles.size === 0) {
-    saveOriginalLinkStyles()
-  }
-
-  if (applyTrafficFlow && metrics.links) {
-    for (const [linkId, linkMetrics] of Object.entries(metrics.links)) {
-      const linkGroup = svgElement.querySelector(`g.link-group[data-link-id="${linkId}"]`)
-      if (!linkGroup) continue
-
-      const paths = Array.from(linkGroup.querySelectorAll('path.link')) as SVGPathElement[]
-      if (paths.length === 0) continue
-
-      const inUtil = linkMetrics.inUtilization ?? linkMetrics.utilization ?? 0
-      const outUtil = linkMetrics.outUtilization ?? linkMetrics.utilization ?? 0
-      // Use actual traffic values to determine if there's traffic
-      const inBps = linkMetrics.inBps ?? 0
-      const outBps = linkMetrics.outBps ?? 0
-      const hasInTraffic = inBps > 0
-      const hasOutTraffic = outBps > 0
-
-      if (linkMetrics.status === 'down') {
-        paths.forEach((path) => {
-          path.setAttribute('stroke', '#ef4444')
-          path.style.strokeDasharray = '8 4'
-          path.style.animation = ''
-        })
-      } else {
-        const midPoint = Math.ceil(paths.length / 2)
-
-        paths.forEach((path, index) => {
-          const isInGroup = index < midPoint
-          const util = isInGroup ? inUtil : outUtil
-          const hasTraffic = isInGroup ? hasInTraffic : hasOutTraffic
-          const bps = isInGroup ? inBps : outBps
-          const color = getUtilizationColor(util)
-          const animName = isInGroup ? 'shumoku-edge-flow-in' : 'shumoku-edge-flow-out'
-
-          path.setAttribute('stroke', color)
-
-          if (hasTraffic) {
-            path.style.strokeDasharray = '16 8'
-            // Animation speed based on traffic: faster = more traffic
-            // Use log scale for better visual differentiation
-            const speedFactor = Math.min(1, Math.log10(bps + 1) / 9) // 0-1 based on bps (up to 1Gbps)
-            const duration = Math.max(0.3, 2 - speedFactor * 1.5)
-            path.style.animation = `${animName} ${duration.toFixed(2)}s linear infinite`
-          } else {
-            path.style.strokeDasharray = ''
-            path.style.animation = ''
-          }
-        })
-      }
-    }
+  if (applyTrafficFlow) {
+    if (!weathermap) weathermap = new WeathermapController(svgElement)
+    weathermap.apply(metrics.links)
   }
 
   if (applyNodeStatus && metrics.nodes) {
@@ -859,15 +772,7 @@ function applyMetrics(
 }
 
 function resetLinkStyles() {
-  if (!svgElement) return
-
-  for (const [, pathStyles] of originalLinkStyles) {
-    for (const [path, styles] of pathStyles) {
-      path.setAttribute('stroke', styles.stroke)
-      path.style.strokeDasharray = styles.strokeDasharray
-      path.style.animation = ''
-    }
-  }
+  weathermap?.reset()
 }
 
 function resetNodeStyles() {
@@ -935,6 +840,8 @@ onDestroy(() => {
   if (!readOnly) {
     metricsStore.unsubscribe()
   }
+  weathermap?.destroy()
+  weathermap = null
   if (panzoomInstance) {
     panzoomInstance.dispose()
   }
