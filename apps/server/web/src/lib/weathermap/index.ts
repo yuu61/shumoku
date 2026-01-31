@@ -216,9 +216,12 @@ export class WeathermapController {
     const clone = original.cloneNode(true) as SVGPathElement
     clone.classList.add('link-clone')
 
+    // Compute both offsets from the original path BEFORE mutating either
     // In (upward flow) = left side, Out (downward flow) = right side
-    original.setAttribute('d', createOffsetPathD(original, OFFSET_PX))
-    clone.setAttribute('d', createOffsetPathD(original, -OFFSET_PX))
+    const inD = createOffsetPathD(original, OFFSET_PX)
+    const outD = createOffsetPathD(original, -OFFSET_PX)
+    original.setAttribute('d', inD)
+    clone.setAttribute('d', outD)
 
     original.parentElement?.insertBefore(clone, original.nextSibling)
     this.clones.set(linkId, [clone])
