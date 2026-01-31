@@ -6,6 +6,7 @@
 import { Hono } from 'hono'
 import { DataSourceService } from '../services/datasource.js'
 import type { DataSourceInput } from '../types.js'
+import type { AlertQueryOptions } from '../plugins/types.js'
 
 /**
  * Mask sensitive fields in config JSON
@@ -62,9 +63,9 @@ export function createDataSourcesApi(): Hono {
 
   // List data sources by capability
   app.get('/by-capability/:capability', (c) => {
-    const capability = c.req.param('capability') as 'topology' | 'metrics'
-    if (capability !== 'topology' && capability !== 'metrics') {
-      return c.json({ error: 'Invalid capability. Must be "topology" or "metrics"' }, 400)
+    const capability = c.req.param('capability') as 'topology' | 'metrics' | 'alerts'
+    if (capability !== 'topology' && capability !== 'metrics' && capability !== 'alerts') {
+      return c.json({ error: 'Invalid capability. Must be "topology", "metrics", or "alerts"' }, 400)
     }
     const dataSources = service.listByCapability(capability)
     const sanitized = dataSources.map((ds) => ({
@@ -216,6 +217,37 @@ export function createDataSourcesApi(): Hono {
         return c.json({ error: 'Filter options not supported for this data source type' }, 400)
       }
       return c.json(options)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return c.json({ error: message }, 500)
+    }
+  })
+
+  // Get alerts from a data source directly
+  app.get('/:id/alerts', async (c) => {
+    const id = c.req.param('id')
+
+    if (!service.hasAlertsCapability(id)) {
+      return c.json({ error: 'Data source does not support alerts' }, 400)
+    }
+
+    const options: AlertQueryOptions = {}
+    const timeRange = c.req.query('timeRange')
+    if (timeRange) {
+      options.timeRange = Number.parseInt(timeRange, 10)
+    }
+    const activeOnly = c.req.query('activeOnly')
+    if (activeOnly === 'true') {
+      options.activeOnly = true
+    }
+    const minSeverity = c.req.query('minSeverity')
+    if (minSeverity) {
+      options.minSeverity = minSeverity as AlertQueryOptions['minSeverity']
+    }
+
+    try {
+      const alerts = await service.getAlerts(id, options)
+      return c.json(alerts)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       return c.json({ error: message }, 500)

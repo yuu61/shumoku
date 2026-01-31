@@ -46,7 +46,7 @@ export interface Config {
 // Database Entity Types
 // ============================================
 
-export type DataSourceType = 'zabbix' | 'netbox' | 'prometheus'
+export type DataSourceType = 'zabbix' | 'netbox' | 'prometheus' | 'grafana'
 export type DataSourceStatus = 'connected' | 'disconnected' | 'unknown'
 
 export interface DataSource {

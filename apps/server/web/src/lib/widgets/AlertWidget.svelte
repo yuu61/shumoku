@@ -1,21 +1,24 @@
 <script lang="ts">
 import { onMount, onDestroy } from 'svelte'
 import { api } from '$lib/api'
-import type { Alert, AlertSeverity, Topology } from '$lib/types'
-import { dashboardStore, dashboardEditMode } from '$lib/stores/dashboards'
-import { emitZoomToNode, emitHighlightNode } from '$lib/stores/widgetEvents'
+import type { Alert, AlertSeverity, DataSource } from '$lib/types'
+import { dashboardStore, currentLayout } from '$lib/stores/dashboards'
+import { emitHighlightNodes, emitClearHighlight } from '$lib/stores/widgetEvents'
+import { get } from 'svelte/store'
 import WidgetWrapper from './WidgetWrapper.svelte'
+import * as Dialog from '$lib/components/ui/dialog'
 import Warning from 'phosphor-svelte/lib/Warning'
 import Fire from 'phosphor-svelte/lib/Fire'
 import Info from 'phosphor-svelte/lib/Info'
 import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
 import Spinner from 'phosphor-svelte/lib/Spinner'
 import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwise'
+import ArrowSquareOut from 'phosphor-svelte/lib/ArrowSquareOut'
 
 interface Props {
   id: string
   config: {
-    topologyId?: string
+    dataSourceId?: string
     title?: string
     maxItems?: number
     autoRefresh?: number
@@ -27,11 +30,12 @@ interface Props {
 let { id, config, onRemove }: Props = $props()
 
 let alerts = $state<Alert[]>([])
-let topologies = $state<Topology[]>([])
-let topology = $state<Topology | null>(null)
+let alertDataSources = $state<DataSource[]>([])
 let loading = $state(true)
 let error = $state<string | null>(null)
 let showSelector = $state(false)
+let selectedAlert = $state<Alert | null>(null)
+let showDetailModal = $state(false)
 let refreshInterval: ReturnType<typeof setInterval> | null = null
 
 // Severity configuration
@@ -104,16 +108,16 @@ function formatTime(timestamp: number): string {
   })
 }
 
-async function loadTopologies() {
+async function loadAlertDataSources() {
   try {
-    topologies = await api.topologies.list()
+    alertDataSources = await api.dataSources.listByCapability('alerts')
   } catch (err) {
-    console.error('Failed to load topologies:', err)
+    console.error('Failed to load alert data sources:', err)
   }
 }
 
 async function loadAlerts() {
-  if (!config.topologyId) {
+  if (!config.dataSourceId) {
     loading = false
     return
   }
@@ -122,11 +126,8 @@ async function loadAlerts() {
   error = null
 
   try {
-    // Load topology info for display
-    topology = await api.topologies.get(config.topologyId)
-
-    // Load alerts
-    const fetchedAlerts = await api.topologies.getAlerts(config.topologyId, {
+    // Load alerts directly from data source
+    const fetchedAlerts = await api.dataSources.getAlerts(config.dataSourceId, {
       activeOnly: !config.showResolved,
     })
 
@@ -143,20 +144,31 @@ async function loadAlerts() {
   }
 }
 
-function selectTopology(topologyId: string) {
-  if (!topologyId) return
-  dashboardStore.updateWidgetConfig(id, { topologyId })
-  config = { ...config, topologyId }
-  showSelector = false
+function selectDataSource(dataSourceId: string) {
+  if (!dataSourceId) return
+  dashboardStore.updateWidgetConfig(id, { dataSourceId })
+  config = { ...config, dataSourceId }
   loadAlerts()
 }
 
-function handleAlertClick(alert: Alert) {
-  if (alert.nodeId && config.topologyId) {
-    // Emit zoom and highlight events
-    emitZoomToNode(config.topologyId, alert.nodeId, id)
-    emitHighlightNode(config.topologyId, alert.nodeId, 3000, id)
+function forEachTopology(fn: (topologyId: string) => void) {
+  const layout = get(currentLayout)
+  if (!layout) return
+  for (const w of layout.widgets) {
+    if (w.type === 'topology' && w.config.topologyId) {
+      fn(w.config.topologyId as string)
+    }
   }
+}
+
+function handleAlertHover(alert: Alert) {
+  if (!alert.host) return
+  forEachTopology((tid) => emitHighlightNodes(tid, [alert.host!], { sourceWidgetId: id }))
+}
+
+function handleAlertLeave() {
+  if (showDetailModal) return
+  forEachTopology((tid) => emitClearHighlight(tid, id))
 }
 
 function handleRefresh() {
@@ -180,7 +192,7 @@ function setupAutoRefresh() {
 }
 
 onMount(() => {
-  loadTopologies()
+  loadAlertDataSources()
   loadAlerts()
   setupAutoRefresh()
 })
@@ -191,6 +203,13 @@ onDestroy(() => {
   }
 })
 
+// Clear highlight when modal closes
+$effect(() => {
+  if (!showDetailModal) {
+    forEachTopology((tid) => emitClearHighlight(tid, id))
+  }
+})
+
 // Re-setup auto refresh when config changes
 $effect(() => {
   if (config.autoRefresh !== undefined) {
@@ -198,7 +217,6 @@ $effect(() => {
   }
 })
 
-let editMode = $derived($dashboardEditMode)
 let displayedAlerts = $derived(alerts.slice(0, config.maxItems || 10))
 let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
 </script>
@@ -215,15 +233,15 @@ let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
         <div class="text-sm font-medium text-theme-text-emphasis">Widget Settings</div>
 
         <div>
-          <label class="text-xs text-theme-text-muted mb-1 block">Topology</label>
+          <label class="text-xs text-theme-text-muted mb-1 block">Data Source</label>
           <select
-            value={config.topologyId || ''}
-            onchange={(e) => selectTopology(e.currentTarget.value)}
+            value={config.dataSourceId || ''}
+            onchange={(e) => selectDataSource(e.currentTarget.value)}
             class="w-full px-3 py-2 bg-theme-bg-canvas border border-theme-border rounded text-sm text-theme-text"
           >
-            <option value="">Select topology...</option>
-            {#each topologies as t}
-              <option value={t.id}>{t.name}</option>
+            <option value="">Select data source...</option>
+            {#each alertDataSources as ds}
+              <option value={ds.id}>{ds.name} ({ds.type})</option>
             {/each}
           </select>
         </div>
@@ -235,11 +253,11 @@ let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
           Done
         </button>
       </div>
-    {:else if !config.topologyId}
-      <!-- No topology selected -->
+    {:else if !config.dataSourceId}
+      <!-- No data source selected -->
       <div class="h-full flex flex-col items-center justify-center text-theme-text-muted gap-3">
         <Warning size={32} />
-        <span class="text-sm">No topology selected</span>
+        <span class="text-sm">No data source selected</span>
         <button
           onclick={() => (showSelector = true)}
           class="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors"
@@ -290,14 +308,13 @@ let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
           {#each displayedAlerts as alert}
             {@const SeverityIcon = getSeverityIcon(alert.severity)}
             <button
-              class="w-full text-left p-2 rounded transition-colors {SEVERITY_BG_COLORS[
+              type="button"
+              class="w-full text-left p-2 rounded transition-colors cursor-pointer hover:brightness-90 {SEVERITY_BG_COLORS[
                 alert.severity
-              ]} hover:brightness-90 {alert.nodeId
-                ? 'cursor-pointer'
-                : 'cursor-default opacity-75'}"
-              onclick={() => handleAlertClick(alert)}
-              disabled={!alert.nodeId}
-              title={alert.nodeId ? 'Click to zoom to node' : 'No node mapping'}
+              ]}"
+              onclick={() => { selectedAlert = alert; showDetailModal = true }}
+              onmouseenter={() => handleAlertHover(alert)}
+              onmouseleave={handleAlertLeave}
             >
               <div class="flex items-start gap-2">
                 <SeverityIcon
@@ -332,3 +349,96 @@ let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
     {/if}
   </div>
 </WidgetWrapper>
+
+<!-- Alert Detail Modal -->
+<Dialog.Root bind:open={showDetailModal}>
+  <Dialog.Content class="sm:max-w-lg">
+    {#if selectedAlert}
+      {@const SeverityIcon = getSeverityIcon(selectedAlert.severity)}
+      <Dialog.Header>
+        <div class="flex items-start gap-3">
+          <div class="p-1.5 rounded {SEVERITY_BG_COLORS[selectedAlert.severity]}">
+            <SeverityIcon
+              size={20}
+              color={SEVERITY_COLORS[selectedAlert.severity]}
+              weight="fill"
+            />
+          </div>
+          <div class="min-w-0">
+            <Dialog.Title class="break-words">{selectedAlert.title}</Dialog.Title>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-xs px-1.5 py-0.5 rounded font-medium {SEVERITY_BG_COLORS[selectedAlert.severity]}" style="color: {SEVERITY_COLORS[selectedAlert.severity]}">
+                {selectedAlert.severity}
+              </span>
+              {#if selectedAlert.status === 'active'}
+                <span class="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-medium">active</span>
+              {:else}
+                <span class="text-xs px-1.5 py-0.5 rounded bg-success/20 text-success font-medium">resolved</span>
+              {/if}
+              <span class="text-xs text-theme-text-muted">{selectedAlert.source}</span>
+            </div>
+          </div>
+        </div>
+      </Dialog.Header>
+
+      <div class="space-y-4 py-2">
+        {#if selectedAlert.description}
+          <div>
+            <div class="text-xs font-medium text-theme-text-muted mb-1">Description</div>
+            <p class="text-sm text-theme-text break-words">{selectedAlert.description}</p>
+          </div>
+        {/if}
+
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          {#if selectedAlert.host}
+            <div>
+              <div class="text-xs font-medium text-theme-text-muted">Host</div>
+              <div class="text-theme-text font-mono">{selectedAlert.host}</div>
+            </div>
+          {/if}
+          <div>
+            <div class="text-xs font-medium text-theme-text-muted">Started</div>
+            <div class="text-theme-text">{new Date(selectedAlert.startTime).toLocaleString()}</div>
+          </div>
+          {#if selectedAlert.endTime}
+            <div>
+              <div class="text-xs font-medium text-theme-text-muted">Ended</div>
+              <div class="text-theme-text">{new Date(selectedAlert.endTime).toLocaleString()}</div>
+            </div>
+          {/if}
+          <div>
+            <div class="text-xs font-medium text-theme-text-muted">Duration</div>
+            <div class="text-theme-text">{formatTime(selectedAlert.startTime)}</div>
+          </div>
+        </div>
+
+        {#if selectedAlert.labels && Object.keys(selectedAlert.labels).length > 0}
+          <div>
+            <div class="text-xs font-medium text-theme-text-muted mb-1.5">Labels</div>
+            <div class="flex flex-wrap gap-1.5">
+              {#each Object.entries(selectedAlert.labels) as [key, value]}
+                <span class="inline-flex items-center text-xs px-2 py-0.5 rounded bg-theme-bg-canvas border border-theme-border text-theme-text">
+                  <span class="text-theme-text-muted">{key}=</span>{value}
+                </span>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      {#if selectedAlert.url}
+        <Dialog.Footer>
+          <a
+            href={selectedAlert.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            Open in {selectedAlert.source}
+            <ArrowSquareOut size={14} />
+          </a>
+        </Dialog.Footer>
+      {/if}
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>

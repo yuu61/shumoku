@@ -209,9 +209,11 @@ export interface Alert {
   /** Current alert status */
   status: AlertStatus
   /** Source system */
-  source: 'zabbix' | 'prometheus'
+  source: 'zabbix' | 'prometheus' | 'grafana'
   /** URL to the alert details in the source system */
   url?: string
+  /** Labels from the source system */
+  labels?: Record<string, string>
 }
 
 /**
@@ -352,4 +354,13 @@ export interface PrometheusLinkMapping {
   capacity?: number
 }
 
-export type PluginConfig = ZabbixPluginConfig | NetBoxPluginConfig | PrometheusPluginConfig
+export interface GrafanaPluginConfig {
+  url: string
+  token: string
+}
+
+export type PluginConfig =
+  | ZabbixPluginConfig
+  | NetBoxPluginConfig
+  | PrometheusPluginConfig
+  | GrafanaPluginConfig

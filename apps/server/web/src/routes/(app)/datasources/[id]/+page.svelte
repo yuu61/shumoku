@@ -180,7 +180,7 @@ async function handleDelete() {
               <input type="url" id="url" class="input" bind:value={formUrl} />
             </div>
 
-            {#if dataSource.type === 'zabbix' || dataSource.type === 'netbox'}
+            {#if dataSource.type === 'zabbix' || dataSource.type === 'netbox' || dataSource.type === 'grafana'}
               <div>
                 <label for="token" class="label">API Token</label>
                 <input

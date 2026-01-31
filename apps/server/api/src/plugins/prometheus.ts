@@ -443,13 +443,13 @@ export class PrometheusPlugin
 
       const alerts: Alert[] = alertmanagerAlerts
         .filter((a) => {
-          // Filter by time range
-          const startTime = new Date(a.startsAt).getTime()
-          if (now - startTime > timeRangeMs) return false
-
-          // Filter by active only
-          if (options?.activeOnly && a.status.state !== 'active') return false
-
+          const isActive = a.status.state === 'active'
+          // Active alerts are always included; resolved alerts are filtered by timeRange
+          if (!isActive) {
+            if (options?.activeOnly) return false
+            const startTime = new Date(a.startsAt).getTime()
+            if (now - startTime > timeRangeMs) return false
+          }
           return true
         })
         .map((a) => {

@@ -104,6 +104,13 @@ function getConfigFromForm(): string {
     })
   }
 
+  if (selectedPlugin.type === 'grafana') {
+    return JSON.stringify({
+      url: formUrl.trim(),
+      token: formToken.trim() || undefined,
+    })
+  }
+
   // Generic config for other types
   return JSON.stringify({
     url: formUrl.trim(),
@@ -411,7 +418,7 @@ function formatLastChecked(timestamp?: number): string {
           />
         </div>
 
-        {#if selectedPlugin.type === 'zabbix' || selectedPlugin.type === 'netbox'}
+        {#if selectedPlugin.type === 'zabbix' || selectedPlugin.type === 'netbox' || selectedPlugin.type === 'grafana'}
           <div>
             <label for="token" class="label">API Token</label>
             <input
@@ -423,6 +430,8 @@ function formatLastChecked(timestamp?: number): string {
             />
             {#if selectedPlugin.type === 'zabbix'}
               <p class="text-xs text-muted-foreground mt-1">Required for API access (Zabbix 5.4+)</p>
+            {:else if selectedPlugin.type === 'grafana'}
+              <p class="text-xs text-muted-foreground mt-1">Service Account Token (Bearer token)</p>
             {/if}
           </div>
         {/if}

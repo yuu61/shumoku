@@ -44,14 +44,6 @@ export interface WidgetEvent {
  */
 type WidgetEventListener = (event: WidgetEvent) => void
 
-/**
- * Internal state for event bus
- */
-interface WidgetEventBusState {
-  lastEvent: WidgetEvent | null
-  listeners: Set<WidgetEventListener>
-}
-
 function createWidgetEventBus() {
   const { subscribe, set, update } = writable<WidgetEvent | null>(null)
 

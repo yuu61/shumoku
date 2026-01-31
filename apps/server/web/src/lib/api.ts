@@ -108,6 +108,22 @@ export const dataSources = {
   discoverMetrics: (id: string, hostId: string) =>
     request<DiscoveredMetric[]>(`/datasources/${id}/hosts/${hostId}/metrics`),
 
+  getAlerts: (id: string, options?: AlertQueryOptions) => {
+    const params = new URLSearchParams()
+    if (options?.timeRange) {
+      params.set('timeRange', options.timeRange.toString())
+    }
+    if (options?.activeOnly) {
+      params.set('activeOnly', 'true')
+    }
+    if (options?.minSeverity) {
+      params.set('minSeverity', options.minSeverity)
+    }
+    const queryString = params.toString()
+    const url = `/datasources/${id}/alerts${queryString ? `?${queryString}` : ''}`
+    return request<Alert[]>(url)
+  },
+
   getFilterOptions: (id: string) =>
     request<{ sites: { slug: string; name: string }[]; tags: { slug: string; name: string }[] }>(
       `/datasources/${id}/filter-options`,
@@ -174,23 +190,6 @@ export const topologies = {
   getContext: (id: string, theme?: 'light' | 'dark') => {
     const params = theme ? `?theme=${theme}` : ''
     return request<TopologyContext>(`/topologies/${id}/context${params}`)
-  },
-
-  // Get alerts for a topology
-  getAlerts: (id: string, options?: AlertQueryOptions) => {
-    const params = new URLSearchParams()
-    if (options?.timeRange) {
-      params.set('timeRange', options.timeRange.toString())
-    }
-    if (options?.activeOnly) {
-      params.set('activeOnly', 'true')
-    }
-    if (options?.minSeverity) {
-      params.set('minSeverity', options.minSeverity)
-    }
-    const queryString = params.toString()
-    const url = `/topologies/${id}/alerts${queryString ? `?${queryString}` : ''}`
-    return request<Alert[]>(url)
   },
 
   // Sharing

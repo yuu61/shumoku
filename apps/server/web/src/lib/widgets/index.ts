@@ -163,10 +163,11 @@ const builtinWidgets: WidgetDefinition[] = [
     minSize: { w: 2, h: 2 },
     configSchema: [
       {
-        name: 'topologyId',
-        label: 'Topology',
-        type: 'topology-select',
+        name: 'dataSourceId',
+        label: 'Data Source',
+        type: 'datasource-select',
         required: true,
+        description: 'Alert-capable data source (Zabbix, Prometheus, Grafana)',
       },
       {
         name: 'title',

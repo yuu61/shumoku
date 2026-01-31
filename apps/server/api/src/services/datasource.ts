@@ -72,7 +72,7 @@ export class DataSourceService {
   /**
    * Get data sources by capability
    */
-  listByCapability(capability: 'topology' | 'metrics'): DataSource[] {
+  listByCapability(capability: 'topology' | 'metrics' | 'alerts'): DataSource[] {
     const all = this.list()
     return all.filter((ds) => {
       const pluginInfo = pluginRegistry.getInfo(ds.type)

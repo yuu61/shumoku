@@ -4,7 +4,7 @@
 
 import type { MetricsData } from './stores/metrics'
 
-export type DataSourceType = 'zabbix' | 'netbox' | 'prometheus'
+export type DataSourceType = 'zabbix' | 'netbox' | 'prometheus' | 'grafana'
 export type DataSourceStatus = 'connected' | 'disconnected' | 'unknown'
 
 export type DataSourceCapability = 'topology' | 'metrics' | 'hosts' | 'auto-mapping' | 'alerts'
@@ -470,8 +470,9 @@ export interface Alert {
   startTime: number
   endTime?: number
   status: AlertStatus
-  source: 'zabbix' | 'prometheus'
+  source: 'zabbix' | 'prometheus' | 'grafana'
   url?: string
+  labels?: Record<string, string>
 }
 
 export interface AlertQueryOptions {
@@ -483,7 +484,7 @@ export interface AlertQueryOptions {
 
 // Alert widget config
 export interface AlertWidgetConfig {
-  topologyId: string
+  dataSourceId: string
   title?: string
   maxItems?: number
   showResolved?: boolean

@@ -9,12 +9,14 @@ export * from './registry.js'
 export { ZabbixPlugin } from './zabbix.js'
 export { NetBoxPlugin } from './netbox.js'
 export { PrometheusPlugin } from './prometheus.js'
+export { GrafanaPlugin } from './grafana.js'
 
 // Register built-in plugins
 import { pluginRegistry } from './registry.js'
 import { ZabbixPlugin } from './zabbix.js'
 import { NetBoxPlugin } from './netbox.js'
 import { PrometheusPlugin } from './prometheus.js'
+import { GrafanaPlugin } from './grafana.js'
 
 export function registerBuiltinPlugins(): void {
   // Zabbix - metrics, hosts, auto-mapping, alerts
@@ -39,6 +41,13 @@ export function registerBuiltinPlugins(): void {
   // Prometheus - metrics, hosts, alerts
   pluginRegistry.register('prometheus', 'Prometheus', ['metrics', 'hosts', 'alerts'], (config) => {
     const plugin = new PrometheusPlugin()
+    plugin.initialize(config)
+    return plugin
+  })
+
+  // Grafana - alerts
+  pluginRegistry.register('grafana', 'Grafana', ['alerts'], (config) => {
+    const plugin = new GrafanaPlugin()
     plugin.initialize(config)
     return plugin
   })
