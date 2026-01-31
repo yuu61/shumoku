@@ -604,8 +604,8 @@ function highlightConnectedLinks(nodeId: string, highlight: boolean) {
   const links = svgElement.querySelectorAll('g.link-group')
   links.forEach((link) => {
     const linkEl = link as SVGGElement
-    const from = linkEl.getAttribute('data-from') || ''
-    const to = linkEl.getAttribute('data-to') || ''
+    const from = (linkEl.getAttribute('data-link-from') || '').split(':')[0]
+    const to = (linkEl.getAttribute('data-link-to') || '').split(':')[0]
 
     if (from === nodeId || to === nodeId) {
       linkEl.classList.toggle('connected', highlight)
@@ -696,9 +696,9 @@ function showLinkTooltip(linkId: string, event: MouseEvent) {
   const link = svgElement.querySelector(`g.link-group[data-link-id="${linkId}"]`)
   if (!link) return
 
-  const from = link.getAttribute('data-from') || ''
-  const to = link.getAttribute('data-to') || ''
-  const bandwidth = link.getAttribute('data-bandwidth') || ''
+  const from = (link.getAttribute('data-link-from') || '').split(':')[0]
+  const to = (link.getAttribute('data-link-to') || '').split(':')[0]
+  const bandwidth = link.getAttribute('data-link-bandwidth') || ''
 
   hoveredType = 'link'
   hoveredLinkId = linkId
