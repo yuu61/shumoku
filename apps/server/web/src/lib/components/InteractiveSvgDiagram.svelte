@@ -80,6 +80,7 @@ let styleElement: HTMLStyleElement | null = null
 let svgWrapper: HTMLDivElement
 let svgElement: SVGSVGElement | null = null
 let panzoomInstance: PanZoom | null = null
+let weathermapInteractionTimer: number | null = null
 let loading = true
 let error = ''
 let scale = 1
@@ -347,6 +348,18 @@ function updateDotGrid() {
   container.style.backgroundPosition = `${x % screenSize}px ${y % screenSize}px`
 }
 
+function markWeathermapInteracting() {
+  if (!weathermap) return
+  weathermap.setInteracting(true)
+  if (weathermapInteractionTimer !== null) {
+    window.clearTimeout(weathermapInteractionTimer)
+  }
+  weathermapInteractionTimer = window.setTimeout(() => {
+    weathermap?.setInteracting(false)
+    weathermapInteractionTimer = null
+  }, 120)
+}
+
 // Initialize panzoom
 function initPanZoom() {
   if (!svgWrapper || !container) return
@@ -363,11 +376,13 @@ function initPanZoom() {
   panzoomInstance.on('zoom', () => {
     scale = panzoomInstance?.getTransform().scale ?? 1
     updateDotGrid()
+    markWeathermapInteracting()
   })
 
   panzoomInstance.on('pan', () => {
     scale = panzoomInstance?.getTransform().scale ?? 1
     updateDotGrid()
+    markWeathermapInteracting()
   })
 
   // Initial fit to view
@@ -872,6 +887,10 @@ onMount(async () => {
 
 onDestroy(() => {
   interactivityAbort?.abort()
+  if (weathermapInteractionTimer !== null) {
+    window.clearTimeout(weathermapInteractionTimer)
+    weathermapInteractionTimer = null
+  }
   if (!readOnly) {
     metricsStore.unsubscribe()
   }
@@ -885,19 +904,6 @@ onDestroy(() => {
   }
 })
 </script>
-
-<svelte:head>
-  <style>
-    @keyframes shumoku-edge-flow-in {
-      from { stroke-dashoffset: 24; }
-      to { stroke-dashoffset: 0; }
-    }
-    @keyframes shumoku-edge-flow-out {
-      from { stroke-dashoffset: 0; }
-      to { stroke-dashoffset: 24; }
-    }
-  </style>
-</svelte:head>
 
 <div class="diagram-container" bind:this={container} on:pointerdown={onPointerDown}>
   {#if loading}
