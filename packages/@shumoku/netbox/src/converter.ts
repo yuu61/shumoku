@@ -309,8 +309,12 @@ function buildDevicesAndConnections(
 
     const nameA = termA.device.name ?? `noname-${termA.device.id}`
     const nameB = termB.device.name ?? `noname-${termB.device.id}`
-    const tagA = deviceTagMap.get(nameA) ?? 'other'
-    const tagB = deviceTagMap.get(nameB) ?? 'other'
+
+    // Skip cables where either device is not in the filtered device list
+    if (!deviceTagMap.has(nameA) || !deviceTagMap.has(nameB)) continue
+
+    const tagA = deviceTagMap.get(nameA)!
+    const tagB = deviceTagMap.get(nameB)!
 
     const infoA = deviceInfoMap.get(nameA)
     const infoB = deviceInfoMap.get(nameB)
@@ -966,6 +970,7 @@ export function convertToHierarchicalYaml(
     getLocationKey,
     portVlanMap,
     portSpeedMap,
+    deviceInfoMap,
   )
 
   // Generate files
@@ -1033,6 +1038,7 @@ function analyzeCables(
   getLocationKey: (name: string) => string,
   portVlanMap: Map<string, Map<string, number[]>>,
   portSpeedMap: Map<string, Map<string, number | null>>,
+  deviceInfoMap: Map<string, DeviceInfo>,
 ) {
   const crossLinks: CrossLocationLink[] = []
   const internalConnections = new Map<string, ConnectionData[]>()
@@ -1048,6 +1054,10 @@ function analyzeCables(
 
     const nameA = termA.device.name ?? `noname-${termA.device.id}`
     const nameB = termB.device.name ?? `noname-${termB.device.id}`
+
+    // Skip cables where either device is not in the filtered device list
+    if (!deviceInfoMap.has(nameA) || !deviceInfoMap.has(nameB)) continue
+
     const locA = getLocationKey(nameA)
     const locB = getLocationKey(nameB)
 
