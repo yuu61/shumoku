@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import { DataSourceService } from '../services/datasource.js'
 import type { DataSourceInput } from '../types.js'
 import type { AlertQueryOptions } from '../plugins/types.js'
+import { getAllPlugins } from '../plugins/loader.js'
 
 /**
  * Mask sensitive fields in config JSON
@@ -41,11 +42,18 @@ export function createDataSourcesApi(): Hono {
   // Get available plugin types
   app.get('/types', (c) => {
     const types = service.getRegisteredTypes()
+    // Get loaded plugin info for configSchema
+    const loadedPlugins = getAllPlugins()
+    const pluginSchemas = new Map(
+      loadedPlugins.map((p) => [p.id, p.configSchema])
+    )
+
     // Only return serializable fields (exclude factory function)
     const serializable = types.map(({ type, displayName, capabilities }) => ({
       type,
       displayName,
       capabilities,
+      configSchema: pluginSchemas.get(type),
     }))
     return c.json(serializable)
   })

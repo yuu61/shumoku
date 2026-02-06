@@ -49,3 +49,4 @@ lerna-debug.log*
 *.tsbuildinfo
 .claude/
 .wrangler/
+apps/server/data/plugins.yaml
