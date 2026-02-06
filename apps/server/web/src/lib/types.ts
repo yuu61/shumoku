@@ -13,6 +13,18 @@ export interface DataSourcePluginInfo {
   type: string
   displayName: string
   capabilities: readonly DataSourceCapability[]
+  configSchema?: {
+    type: 'object'
+    required?: string[]
+    properties: Record<string, {
+      type: string
+      title?: string
+      description?: string
+      format?: string
+      default?: unknown
+      enum?: string[]
+    }>
+  }
 }
 
 export interface DataSource {

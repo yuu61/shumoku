@@ -34,6 +34,8 @@ let formTagFilter = $state('')
 let formPrometheusPreset = $state<'snmp' | 'node_exporter'>('snmp')
 let formError = $state('')
 let formSubmitting = $state(false)
+// Dynamic config values for external plugins
+let dynamicConfig = $state<Record<string, string>>({})
 
 // Plugin type lookup
 let pluginTypeMap = $derived(
@@ -75,11 +77,23 @@ function selectPlugin(plugin: DataSourcePluginInfo) {
   formSiteFilter = ''
   formTagFilter = ''
   formPrometheusPreset = 'snmp'
+  // Initialize dynamic config from schema defaults
+  dynamicConfig = {}
+  if (plugin.configSchema?.properties) {
+    for (const [key, prop] of Object.entries(plugin.configSchema.properties)) {
+      if (prop.default !== undefined) {
+        dynamicConfig[key] = String(prop.default)
+      } else {
+        dynamicConfig[key] = ''
+      }
+    }
+  }
 }
 
 function getConfigFromForm(): string {
   if (!selectedPlugin) return '{}'
 
+  // Builtin plugins with hardcoded config
   if (selectedPlugin.type === 'zabbix') {
     return JSON.stringify({
       url: formUrl.trim(),
@@ -111,6 +125,17 @@ function getConfigFromForm(): string {
     })
   }
 
+  // External plugins with configSchema - use dynamicConfig
+  if (selectedPlugin.configSchema?.properties) {
+    const config: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(dynamicConfig)) {
+      if (value.trim()) {
+        config[key] = value.trim()
+      }
+    }
+    return JSON.stringify(config)
+  }
+
   // Generic config for other types
   return JSON.stringify({
     url: formUrl.trim(),
@@ -130,9 +155,32 @@ async function handleCreate() {
     formError = 'Please select a data source type'
     return
   }
-  if (!formName.trim() || !formUrl.trim()) {
-    formError = 'Name and URL are required'
-    return
+
+  // Validation for builtin plugins
+  if (['zabbix', 'netbox', 'prometheus', 'grafana'].includes(selectedPlugin.type)) {
+    if (!formName.trim() || !formUrl.trim()) {
+      formError = 'Name and URL are required'
+      return
+    }
+  } else if (selectedPlugin.configSchema?.properties) {
+    // Validation for external plugins with configSchema
+    if (!formName.trim()) {
+      formError = 'Name is required'
+      return
+    }
+    const required = selectedPlugin.configSchema.required || []
+    for (const key of required) {
+      if (!dynamicConfig[key]?.trim()) {
+        const prop = selectedPlugin.configSchema.properties[key]
+        formError = `${prop?.title || key} is required`
+        return
+      }
+    }
+  } else {
+    if (!formName.trim() || !formUrl.trim()) {
+      formError = 'Name and URL are required'
+      return
+    }
   }
 
   formSubmitting = true
@@ -410,16 +458,18 @@ function formatLastChecked(timestamp?: number): string {
           />
         </div>
 
-        <div>
-          <label for="url" class="label">URL</label>
-          <input
-            type="url"
-            id="url"
-            class="input"
-            placeholder="https://example.com"
-            bind:value={formUrl}
-          />
-        </div>
+        {#if !selectedPlugin.configSchema?.properties || ['zabbix', 'netbox', 'prometheus', 'grafana'].includes(selectedPlugin.type)}
+          <div>
+            <label for="url" class="label">URL</label>
+            <input
+              type="url"
+              id="url"
+              class="input"
+              placeholder="https://example.com"
+              bind:value={formUrl}
+            />
+          </div>
+        {/if}
 
         {#if selectedPlugin.type === 'zabbix' || selectedPlugin.type === 'netbox' || selectedPlugin.type === 'grafana'}
           <div>
@@ -493,6 +543,42 @@ function formatLastChecked(timestamp?: number): string {
             />
             <p class="text-xs text-muted-foreground mt-1">Filter devices by tag slug</p>
           </div>
+        {/if}
+
+        <!-- Dynamic fields from configSchema (external plugins) -->
+        {#if selectedPlugin.configSchema?.properties && !['zabbix', 'netbox', 'prometheus', 'grafana'].includes(selectedPlugin.type)}
+          {#each Object.entries(selectedPlugin.configSchema.properties) as [key, prop]}
+            <div>
+              <label for="config-{key}" class="label">
+                {prop.title || key}
+                {#if !selectedPlugin.configSchema.required?.includes(key)}
+                  <span class="text-theme-text-muted font-normal">(optional)</span>
+                {/if}
+              </label>
+              {#if prop.enum}
+                <select
+                  id="config-{key}"
+                  class="input"
+                  bind:value={dynamicConfig[key]}
+                >
+                  {#each prop.enum as option}
+                    <option value={option}>{option}</option>
+                  {/each}
+                </select>
+              {:else}
+                <input
+                  type={prop.format === 'password' ? 'password' : prop.type === 'number' ? 'number' : 'text'}
+                  id="config-{key}"
+                  class="input"
+                  placeholder={prop.description || ''}
+                  bind:value={dynamicConfig[key]}
+                />
+              {/if}
+              {#if prop.description}
+                <p class="text-xs text-muted-foreground mt-1">{prop.description}</p>
+              {/if}
+            </div>
+          {/each}
         {/if}
       </form>
 
