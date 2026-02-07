@@ -86,7 +86,7 @@ subgraphs:
 
 ## Documentation
 
-- [YAML Reference](https://shumoku.packof.me/docs/yaml-reference) - Full syntax reference
+- [YAML Reference](https://shumoku.packof.me/docs/npm/yaml-reference) - Full syntax reference
 - [Playground](https://shumoku.packof.me/) - Interactive demo
 
 ## License

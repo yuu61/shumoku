@@ -58,7 +58,7 @@ function CTAButtons({ t, locale }: { t: HeroTranslations; locale: string }) {
         {t.playground}
         <ArrowRightIcon className="w-4 h-4" />
       </Link>
-      <Link href={`/${locale}/docs`} className={cn(...buttonStyles.secondary)}>
+      <Link href={`/${locale}/docs/server`} className={cn(...buttonStyles.secondary)}>
         {t.documentation}
       </Link>
     </div>

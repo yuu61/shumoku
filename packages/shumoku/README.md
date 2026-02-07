@@ -73,7 +73,7 @@ This package bundles:
 ## Documentation
 
 - [Playground](https://shumoku.packof.me/) - Interactive demo
-- [YAML Reference](https://shumoku.packof.me/docs/yaml-reference) - Full syntax reference
+- [YAML Reference](https://shumoku.packof.me/docs/npm/yaml-reference) - Full syntax reference
 - [GitHub](https://github.com/konoe-akitoshi/shumoku)
 
 ## License

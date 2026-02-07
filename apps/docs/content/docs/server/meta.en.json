@@ -1,0 +1,9 @@
+{
+  "root": true,
+  "title": "Server",
+  "description": "Shumoku Server documentation",
+  "icon": "Server",
+  "pages": [
+    "index"
+  ]
+}

@@ -1,33 +1,33 @@
 ---
-title: Custom Integration
-description: Generate network diagrams from custom APIs and other systems
+title: カスタム連携
+description: 独自 API や他システムからネットワーク図を生成する
 ---
 
-Shumoku uses JSON format as an intermediate format, allowing you to generate network diagrams from systems other than NetBox.
+Shumoku は JSON 形式を中間フォーマットとして使用しており、NetBox 以外のシステムからもネットワーク図を生成できます。
 
-## Workflow
+## ワークフロー
 
 ```
-Custom API / CMDB / Monitoring Systems
+独自 API / CMDB / 監視システム
          ↓
-    Generate JSON
+    JSON を生成
          ↓
-    Render with Shumoku
+    Shumoku でレンダリング
          ↓
     SVG / HTML / PNG
 ```
 
-## Basic Flow
+## 基本的な流れ
 
-### 1. Fetch data from data source
+### 1. データソースから情報を取得
 
 ```typescript
-// Example: Fetch device info from custom API
+// 例: 独自 API からデバイス情報を取得
 const devices = await fetch('https://api.example.com/devices').then(r => r.json())
 const connections = await fetch('https://api.example.com/connections').then(r => r.json())
 ```
 
-### 2. Convert to Shumoku JSON format
+### 2. Shumoku 形式の JSON に変換
 
 ```typescript
 const networkGraph = {
@@ -36,7 +36,7 @@ const networkGraph = {
   nodes: devices.map(d => ({
     id: d.hostname,
     label: d.displayName,
-    type: mapDeviceType(d.category),  // Map custom category to Shumoku type
+    type: mapDeviceType(d.category),  // 独自カテゴリを Shumoku タイプに変換
     vendor: d.manufacturer,
     model: d.model,
     parent: d.location,
@@ -58,54 +58,54 @@ const networkGraph = {
 }
 ```
 
-### 3. Render
+### 3. レンダリング
 
 ```typescript
 import { renderGraphToSvg, renderGraphToHtml, renderGraphToPng } from '@shumoku/renderer'
 
-// One-liner API (recommended)
+// ワンライナー API（推奨）
 const svg = await renderGraphToSvg(networkGraph)
 const html = await renderGraphToHtml(networkGraph)
-const pngBuffer = await renderGraphToPng(networkGraph)  // Node.js only
+const pngBuffer = await renderGraphToPng(networkGraph)  // Node.js のみ
 
-// Or use the pipeline API for more control
+// より細かい制御が必要な場合はパイプライン API を使用
 import { prepareRender, renderSvg, renderHtml, renderPng } from '@shumoku/renderer'
 
 const prepared = await prepareRender(networkGraph)
 const svg = await renderSvg(prepared)
 const html = renderHtml(prepared)
-const png = await renderPng(prepared)  // Node.js only
+const png = await renderPng(prepared)  // Node.js のみ
 ```
 
 <Callout type="info">
-The pipeline automatically resolves icon dimensions from CDN for proper aspect ratio rendering.
+パイプラインは CDN からアイコンの寸法を自動的に解決し、適切なアスペクト比でレンダリングします。
 </Callout>
 
-## CLI Workflow
+## CLI でのワークフロー
 
 ```bash
-# 1. Generate JSON with custom script
+# 1. 独自スクリプトで JSON を生成
 node generate-from-api.js > network.json
 
-# 2. Render with Shumoku
+# 2. Shumoku でレンダリング
 npx shumoku render network.json -o diagram.html
 ```
 
-## Merging with NetBox Data
+## NetBox データとのマージ
 
-Example of adding custom information to NetBox data:
+NetBox のデータに独自情報を追加する例：
 
 ```javascript
 // merge-data.js
 import { readFileSync, writeFileSync } from 'fs'
 
-// JSON exported from NetBox
+// NetBox からエクスポートした JSON
 const netbox = JSON.parse(readFileSync('netbox.json', 'utf-8'))
 
-// Status info from monitoring system
+// 監視システムからのステータス情報
 const monitoring = JSON.parse(readFileSync('monitoring.json', 'utf-8'))
 
-// Add status info to nodes
+// ステータス情報をノードに追加
 for (const node of netbox.nodes) {
   const status = monitoring.devices[node.id]
   if (status) {
@@ -115,7 +115,7 @@ for (const node of netbox.nodes) {
       memoryUsage: status.memory,
       lastSeen: status.lastSeen
     }
-    // Change style for down devices
+    // ダウンしているデバイスはスタイルを変更
     if (status.state === 'down') {
       node.style = {
         stroke: '#ef4444',
@@ -125,7 +125,7 @@ for (const node of netbox.nodes) {
   }
 }
 
-// Add cloud resources
+// クラウドリソースを追加
 const cloud = JSON.parse(readFileSync('aws-inventory.json', 'utf-8'))
 netbox.nodes.push(...cloud.instances.map(i => ({
   id: i.instanceId,
@@ -147,21 +147,21 @@ writeFileSync('merged.json', JSON.stringify(netbox, null, 2))
 ```
 
 ```bash
-# Merge and generate diagram
+# マージして図を生成
 node merge-data.js
 npx shumoku render merged.json -f html -o diagram.html
 ```
 
-## JSON Schema
+## JSON スキーマ
 
-See [JSON Schema](/docs/json-reference) for detailed JSON format.
+詳細な JSON 形式は [JSON スキーマ](/docs/npm/json-reference) を参照してください。
 
-## Integration Examples
+## 連携例
 
 ### CMDB
 
 ```typescript
-// Fetch device info from ServiceNow or other CMDB
+// ServiceNow や他の CMDB からデバイス情報を取得
 const cmdbData = await cmdbClient.query('cmdb_ci_netgear')
 
 const nodes = cmdbData.map(ci => ({
@@ -175,10 +175,10 @@ const nodes = cmdbData.map(ci => ({
 }))
 ```
 
-### Monitoring Systems
+### 監視システム
 
 ```typescript
-// From Zabbix, PRTG, Datadog, etc.
+// Zabbix, PRTG, Datadog などから
 const hostGroups = await monitoringClient.getHostGroups()
 
 const subgraphs = hostGroups.map(g => ({
@@ -199,7 +199,7 @@ const nodes = await Promise.all(
 )
 ```
 
-### Cloud APIs
+### クラウド API
 
 ```typescript
 // AWS SDK
@@ -220,16 +220,16 @@ const nodes = Reservations.flatMap(r =>
 )
 ```
 
-## Auto-Update with GitHub Actions
+## GitHub Actions での自動更新
 
-Collect data from multiple sources and update diagrams periodically:
+複数ソースからデータを集めて定期的に図を更新：
 
 ```yaml
 name: Update Network Diagram
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Hourly
+    - cron: '0 * * * *'  # 毎時
   workflow_dispatch:
 
 jobs:
@@ -265,10 +265,10 @@ jobs:
 ## Next Steps
 
 <Cards>
-  <Card title="JSON Schema" href="/docs/json-reference">
-    Detailed JSON format
+  <Card title="JSON スキーマ" href="/docs/npm/json-reference">
+    詳細な JSON 形式
   </Card>
-  <Card title="NetBox Integration" href="/docs/netbox">
-    Integration with NetBox
+  <Card title="NetBox 連携" href="/docs/npm/netbox">
+    NetBox との連携
   </Card>
 </Cards>

@@ -16,7 +16,7 @@ export function baseOptions(locale: string): BaseLayoutProps {
     links: [
       {
         text: 'Docs',
-        url: `/${locale}/docs`,
+        url: `/${locale}/docs/server`,
       },
       {
         text: 'Playground',

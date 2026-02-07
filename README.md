@@ -10,7 +10,7 @@ Define your network infrastructure in YAML, get publication-ready diagrams autom
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/akitoshi)
 
-**[Playground](https://shumoku.packof.me/)** | **[Documentation](https://shumoku.packof.me/docs/yaml-reference)**
+**[Playground](https://shumoku.packof.me/)** | **[Documentation](https://shumoku.packof.me/docs/npm/yaml-reference)**
 
 ## Output Example
 
@@ -159,8 +159,8 @@ links:
 
 ## Documentation
 
-- [YAML Reference](https://shumoku.packof.me/docs/yaml-reference) - Full YAML syntax reference
-- [Vendor Icons](https://shumoku.packof.me/docs/vendor-icons) - Available vendor icons
+- [YAML Reference](https://shumoku.packof.me/docs/npm/yaml-reference) - Full YAML syntax reference
+- [Vendor Icons](https://shumoku.packof.me/docs/npm/vendor-icons) - Available vendor icons
 
 ## Development
 

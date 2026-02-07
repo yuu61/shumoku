@@ -1,15 +1,15 @@
 ---
 title: Examples
-description: 様々なネットワーク構成のサンプル
+description: Sample network configurations
 ---
 
-コピー&ペーストして使えるサンプル集です。
+A collection of copy-paste ready samples.
 
-## シンプルな構成
+## Simple Configurations
 
-### 3層ネットワーク
+### 3-Tier Network
 
-Core / Distribution / Access の基本構成。
+Basic Core / Distribution / Access configuration.
 
 ```yaml
 name: "Simple Network"
@@ -71,11 +71,11 @@ links:
 
 ---
 
-## データセンター構成
+## Data Center Configurations
 
 ### Spine-Leaf
 
-データセンターのスパイン・リーフ構成。
+Data center spine-leaf topology.
 
 ```yaml
 name: "Data Center"
@@ -148,11 +148,11 @@ links:
 
 ---
 
-## ベンダー機器
+## Vendor Devices
 
-### Yamaha 企業ネットワーク
+### Yamaha Enterprise Network
 
-Yamaha 機器を使用した企業ネットワーク。
+Enterprise network using Yamaha devices.
 
 ```yaml
 name: "Enterprise Network"
@@ -229,7 +229,7 @@ links:
     bandwidth: 10G
 ```
 
-### Juniper ネットワーク
+### Juniper Network
 
 ```yaml
 name: "Juniper Network"
@@ -278,7 +278,7 @@ links:
 
 ---
 
-## クラウド構成
+## Cloud Configurations
 
 ### AWS VPC
 
@@ -368,11 +368,11 @@ links:
 
 ---
 
-## 高度な構成
+## Advanced Configurations
 
-### フル機能サンプル
+### Full-Featured Sample
 
-帯域幅、VLAN、HA、凡例などすべての機能を使用した例。
+Example using all features: bandwidth, VLANs, HA, legends, etc.
 
 ```yaml
 name: "Full Featured Network"
@@ -405,7 +405,7 @@ subgraphs:
       stroke: "#E65100"
 
 nodes:
-  # HA ペア
+  # HA Pair
   - id: core-rt-01
     label:
       - "<b>core-rt-01</b>"
@@ -426,7 +426,7 @@ nodes:
     parent: site-datacenter
     rank: 0
 
-  # コアスイッチ
+  # Core Switch
   - id: core-sw-01
     label:
       - "<b>core-sw-01</b>"
@@ -437,7 +437,7 @@ nodes:
     parent: site-datacenter
     rank: 1
 
-  # 物理サーバー
+  # Physical Server
   - id: esxi-01
     label:
       - "<b>esxi-01</b>"
@@ -445,7 +445,7 @@ nodes:
     type: server
     parent: cluster-vmware
 
-  # 仮想マシン
+  # Virtual Machine
   - id: vm-web-01
     label:
       - "<b>vm-web-01</b>"
@@ -456,7 +456,7 @@ nodes:
       strokeDasharray: "4,4"
       opacity: 0.9
 
-  # 計画中デバイス
+  # Planned Device
   - id: new-sw-01
     label:
       - "<b>new-sw-01</b>"
@@ -468,7 +468,7 @@ nodes:
       strokeDasharray: "5,5"
       opacity: 0.7
 
-  # オフィス機器
+  # Office Devices
   - id: office-rt-01
     label:
       - "<b>office-rt-01</b>"
@@ -484,7 +484,7 @@ nodes:
     parent: site-office
 
 links:
-  # HA リンク
+  # HA Link
   - from:
       node: core-rt-01
       port: xe-0/0/0
@@ -497,7 +497,7 @@ links:
     style:
       stroke: "#eab308"
 
-  # コア→スイッチ
+  # Core → Switch
   - from:
       node: core-rt-01
       port: xe-0/0/1
@@ -507,7 +507,7 @@ links:
     bandwidth: 40G
     vlan: [100, 200, 300]
 
-  # スイッチ→サーバー
+  # Switch → Server
   - from:
       node: core-sw-01
       port: ge-0/0/1
@@ -517,14 +517,14 @@ links:
     bandwidth: 25G
     vlan: [200]
 
-  # VM 接続（論理リンク）
+  # VM Connection (logical link)
   - from: esxi-01
     to: vm-web-01
     bandwidth: 10G
     type: dashed
     label: "vSwitch"
 
-  # VPN トンネル
+  # VPN Tunnel
   - from:
       node: core-rt-02
       port: tun0
@@ -534,7 +534,7 @@ links:
     type: dashed
     label: "IPsec VPN"
 
-  # オフィス内
+  # Office Internal
   - from: office-rt-01
     to: office-ap-01
     bandwidth: 1G
@@ -542,6 +542,6 @@ links:
 
 ---
 
-## マルチファイル構成
+## Multi-file Configuration
 
-複数拠点を別ファイルで管理する例は [マルチファイル構成](/docs/multi-file) を参照してください。
+For examples managing multiple sites in separate files, see [Multi-file Configuration](/docs/npm/multi-file).

@@ -71,7 +71,7 @@ nodes:
 
 ## Documentation
 
-- [Vendor Icons Reference](https://shumoku.packof.me/docs/vendor-icons) - Available icons
+- [Vendor Icons Reference](https://shumoku.packof.me/docs/npm/vendor-icons) - Available icons
 - [Playground](https://shumoku.packof.me/) - Interactive demo
 
 ## License

@@ -1,16 +1,16 @@
 ---
 title: Getting Started
-description: Install Shumoku and create your first network diagram
+description: Shumoku のインストールと最初のネットワーク図を作成
 ---
 
-## What is Shumoku
+## Shumoku とは
 
-Shumoku is a library for **creating network diagrams in Markdown**.
+Shumoku は **Markdown でネットワーク構成図を作成**するためのライブラリです。
 
-- Define networks in YAML → Generate SVG/HTML/PNG
-- 900+ vendor icons (Yamaha, Aruba, AWS, Juniper)
-- Interactive HTML output (pan/zoom, tooltips)
-- Integration with NetBox and custom APIs
+- YAML でネットワークを定義 → SVG/HTML/PNG を生成
+- 900 以上のベンダーアイコン（Yamaha, Aruba, AWS, Juniper）
+- インタラクティブな HTML 出力（パン/ズーム、ツールチップ）
+- NetBox や独自 API との連携
 
 ## Installation
 
@@ -39,7 +39,7 @@ Shumoku is a library for **creating network diagrams in Markdown**.
 
 ## Quick Start
 
-### 1. Define your network in YAML
+### 1. YAML でネットワークを定義
 
 ```yaml title="network.yaml"
 name: "My Network"
@@ -67,20 +67,20 @@ links:
     bandwidth: 1G
 ```
 
-### 2. Render with CLI
+### 2. CLI でレンダリング
 
 ```bash
-# SVG output
+# SVG 出力
 npx shumoku render network.yaml -o diagram.svg
 
-# Interactive HTML output
+# インタラクティブ HTML 出力
 npx shumoku render network.yaml -f html -o diagram.html
 
-# PNG output
+# PNG 出力
 npx shumoku render network.yaml -f png -o diagram.png
 ```
 
-### 3. Use vendor icons
+### 3. ベンダーアイコンを使う
 
 ```yaml
 nodes:
@@ -94,16 +94,16 @@ nodes:
 ## Next Steps
 
 <Cards>
-  <Card title="Basic Diagrams" href="/docs/basic-diagram">
-    Nodes, links, and labels basics
+  <Card title="基本的な図の作成" href="/docs/npm/basic-diagram">
+    ノード、リンク、ラベルの基本
   </Card>
-  <Card title="Organizing with Groups" href="/docs/organizing-groups">
-    Group devices with subgraphs
+  <Card title="グループで整理" href="/docs/npm/organizing-groups">
+    サブグラフでデバイスをグループ化
   </Card>
-  <Card title="Styles and Themes" href="/docs/styling-themes">
-    Customize appearance
+  <Card title="スタイルとテーマ" href="/docs/npm/styling-themes">
+    見た目のカスタマイズ
   </Card>
   <Card title="Playground" href="/playground">
-    Try in browser
+    ブラウザで試す
   </Card>
 </Cards>

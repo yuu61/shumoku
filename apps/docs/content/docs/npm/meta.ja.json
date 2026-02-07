@@ -1,4 +1,8 @@
 {
+  "root": true,
+  "title": "npm",
+  "description": "npm で利用するライブラリと CLI のドキュメント",
+  "icon": "Package",
   "pages": [
     "---Getting Started---",
     "index",

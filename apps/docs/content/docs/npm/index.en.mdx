@@ -1,16 +1,16 @@
 ---
 title: Getting Started
-description: Shumoku のインストールと最初のネットワーク図を作成
+description: Install Shumoku and create your first network diagram
 ---
 
-## Shumoku とは
+## What is Shumoku
 
-Shumoku は **Markdown でネットワーク構成図を作成**するためのライブラリです。
+Shumoku is a library for **creating network diagrams in Markdown**.
 
-- YAML でネットワークを定義 → SVG/HTML/PNG を生成
-- 900 以上のベンダーアイコン（Yamaha, Aruba, AWS, Juniper）
-- インタラクティブな HTML 出力（パン/ズーム、ツールチップ）
-- NetBox や独自 API との連携
+- Define networks in YAML → Generate SVG/HTML/PNG
+- 900+ vendor icons (Yamaha, Aruba, AWS, Juniper)
+- Interactive HTML output (pan/zoom, tooltips)
+- Integration with NetBox and custom APIs
 
 ## Installation
 
@@ -39,7 +39,7 @@ Shumoku は **Markdown でネットワーク構成図を作成**するための�
 
 ## Quick Start
 
-### 1. YAML でネットワークを定義
+### 1. Define your network in YAML
 
 ```yaml title="network.yaml"
 name: "My Network"
@@ -67,20 +67,20 @@ links:
     bandwidth: 1G
 ```
 
-### 2. CLI でレンダリング
+### 2. Render with CLI
 
 ```bash
-# SVG 出力
+# SVG output
 npx shumoku render network.yaml -o diagram.svg
 
-# インタラクティブ HTML 出力
+# Interactive HTML output
 npx shumoku render network.yaml -f html -o diagram.html
 
-# PNG 出力
+# PNG output
 npx shumoku render network.yaml -f png -o diagram.png
 ```
 
-### 3. ベンダーアイコンを使う
+### 3. Use vendor icons
 
 ```yaml
 nodes:
@@ -94,16 +94,16 @@ nodes:
 ## Next Steps
 
 <Cards>
-  <Card title="基本的な図の作成" href="/docs/basic-diagram">
-    ノード、リンク、ラベルの基本
+  <Card title="Basic Diagrams" href="/docs/npm/basic-diagram">
+    Nodes, links, and labels basics
   </Card>
-  <Card title="グループで整理" href="/docs/organizing-groups">
-    サブグラフでデバイスをグループ化
+  <Card title="Organizing with Groups" href="/docs/npm/organizing-groups">
+    Group devices with subgraphs
   </Card>
-  <Card title="スタイルとテーマ" href="/docs/styling-themes">
-    見た目のカスタマイズ
+  <Card title="Styles and Themes" href="/docs/npm/styling-themes">
+    Customize appearance
   </Card>
   <Card title="Playground" href="/playground">
-    ブラウザで試す
+    Try in browser
   </Card>
 </Cards>
