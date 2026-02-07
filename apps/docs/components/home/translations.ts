@@ -5,6 +5,8 @@ export type HeroTranslations = {
   description: string
   playground: string
   documentation: string
+  npmDocsPrefix: string
+  npmDocsLink: string
 }
 
 export type FeaturesTranslations = {
@@ -22,13 +24,15 @@ export type CTATranslations = {
 export const homeTranslations = {
   en: {
     hero: {
-      badge: '900+ vendor icons',
-      title1: 'Network diagrams,',
-      title2: 'as code.',
+      badge: '',
+      title1: 'Network diagrams',
+      title2: 'that never go stale.',
       description:
-        'Define your network topology in YAML and auto-generate beautiful SVG diagrams. Version control with Git, integrate with CI/CD.',
+        'Shumoku renders network topology diagrams and overlays real-time metrics from your monitoring stack. Always accurate, zero manual updates.',
       playground: 'Playground',
       documentation: 'Documentation',
+      npmDocsPrefix: 'Prefer npm?',
+      npmDocsLink: 'See npm docs',
     },
     features: {
       title: 'Why Shumoku?',
@@ -71,13 +75,15 @@ export const homeTranslations = {
   },
   ja: {
     hero: {
-      badge: '900+ ベンダーアイコン',
-      title1: 'Network diagrams,',
-      title2: 'as code.',
+      badge: '',
+      title1: 'Network diagrams',
+      title2: 'that never go stale.',
       description:
-        'YAML でネットワーク構成を定義し、美しい SVG ダイアグラムを自動生成。Git でバージョン管理、CI/CD に統合。',
+        'ネットワークトポロジー図を描画し、監視システムのメトリクスをリアルタイムに反映。常に正確な構成図を、手作業なしで維持します。',
       playground: 'Playground',
       documentation: 'Documentation',
+      npmDocsPrefix: 'npm 版はこちら:',
+      npmDocsLink: 'npm ドキュメント',
     },
     features: {
       title: 'Why Shumoku?',
