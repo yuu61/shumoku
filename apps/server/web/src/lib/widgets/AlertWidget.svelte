@@ -38,7 +38,7 @@ let showSelector = $state(false)
 let selectedAlert = $state<Alert | null>(null)
 let showDetailModal = $state(false)
 let refreshInterval: ReturnType<typeof setInterval> | null = null
-let previousAlertIds: Set<string> | null = null
+let previousAlertIds = new Set<string>()
 
 // Severity configuration
 const SEVERITY_COLORS: Record<AlertSeverity, string> = {
@@ -129,34 +129,32 @@ async function loadAlerts() {
       .sort((a, b) => (b.receivedAt ?? b.startTime) - (a.receivedAt ?? a.startTime))
       .slice(0, MAX_ALERTS)
 
-    // Detect new active alerts and flash highlight
+    // Detect new active alerts and highlight on topology
     const currentActiveIds = new Set(
       fetchedAlerts.filter((a) => a.status === 'active').map((a) => a.id),
     )
-    if (previousAlertIds !== null) {
-      // Group new alerts by severity, collect hosts
-      const newAlertsBySeverity = new Map<AlertSeverity, string[]>()
-      for (const a of fetchedAlerts) {
-        if (a.status === 'active' && a.host && !previousAlertIds.has(a.id)) {
-          const hosts = newAlertsBySeverity.get(a.severity) || []
-          hosts.push(a.host)
-          newAlertsBySeverity.set(a.severity, hosts)
+    const severityOrder: AlertSeverity[] = ['disaster', 'high', 'average', 'warning', 'information', 'ok']
+    const newHosts: string[] = []
+    let highestSeverity: AlertSeverity = 'ok'
+    for (const a of fetchedAlerts) {
+      if (a.status === 'active' && a.host && !previousAlertIds.has(a.id)) {
+        newHosts.push(a.host)
+        if (severityOrder.indexOf(a.severity) < severityOrder.indexOf(highestSeverity)) {
+          highestSeverity = a.severity
         }
       }
-      // Clear previous persistent highlight before applying new ones
-      if (config.persistHighlight && newAlertsBySeverity.size > 0) {
-        forEachTopology((tid) => emitClearHighlight(tid, id))
-      }
-      // Emit highlight for each severity group
-      for (const [severity, hosts] of newAlertsBySeverity) {
-        forEachTopology((tid) =>
-          emitHighlightNodes(tid, hosts, {
-            duration: config.persistHighlight ? undefined : 4000,
-            highlightColor: SEVERITY_HIGHLIGHT_COLORS[severity],
-            sourceWidgetId: id,
-          }),
-        )
-      }
+    }
+    if (newHosts.length > 0) {
+      // Clear previous highlight before applying new ones
+      forEachTopology((tid) => emitClearHighlight(tid, id))
+      // Single event with all hosts, colored by highest severity
+      forEachTopology((tid) =>
+        emitHighlightNodes(tid, newHosts, {
+          duration: config.persistHighlight ? undefined : 4000,
+          highlightColor: SEVERITY_HIGHLIGHT_COLORS[highestSeverity],
+          sourceWidgetId: id,
+        }),
+      )
     }
     previousAlertIds = currentActiveIds
   } catch (err) {
@@ -195,6 +193,7 @@ function handleAlertHover(alert: Alert) {
 
 function handleAlertLeave() {
   if (showDetailModal) return
+  if (config.persistHighlight) return
   forEachTopology((tid) => emitClearHighlight(tid, id))
 }
 
@@ -230,9 +229,9 @@ onDestroy(() => {
   }
 })
 
-// Clear highlight when modal closes
+// Clear highlight when modal closes (unless persistent)
 $effect(() => {
-  if (!showDetailModal) {
+  if (!showDetailModal && !config.persistHighlight) {
     forEachTopology((tid) => emitClearHighlight(tid, id))
   }
 })
