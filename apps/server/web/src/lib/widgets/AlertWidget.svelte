@@ -38,7 +38,8 @@ let showSelector = $state(false)
 let selectedAlert = $state<Alert | null>(null)
 let showDetailModal = $state(false)
 let refreshInterval: ReturnType<typeof setInterval> | null = null
-let previousAlertIds = new Set<string>()
+let previousAlertIds: Set<string> | null = null
+let pinnedAlert = $state<Alert | null>(null)
 
 // Severity configuration
 const SEVERITY_COLORS: Record<AlertSeverity, string> = {
@@ -66,6 +67,10 @@ const SEVERITY_BG_COLORS: Record<AlertSeverity, string> = {
   warning: 'bg-sky-500/10',
   information: 'bg-green-500/10',
   ok: 'bg-gray-500/10',
+}
+
+const SEVERITY_RANK: Record<AlertSeverity, number> = {
+  disaster: 0, high: 1, average: 2, warning: 3, information: 4, ok: 5,
 }
 
 function getSeverityIcon(severity: AlertSeverity) {
@@ -129,32 +134,43 @@ async function loadAlerts() {
       .sort((a, b) => (b.receivedAt ?? b.startTime) - (a.receivedAt ?? a.startTime))
       .slice(0, MAX_ALERTS)
 
-    // Detect new active alerts and highlight on topology
+    // Highlight logic
     const currentActiveIds = new Set(
       fetchedAlerts.filter((a) => a.status === 'active').map((a) => a.id),
     )
-    const severityOrder: AlertSeverity[] = ['disaster', 'high', 'average', 'warning', 'information', 'ok']
-    const newHosts: string[] = []
-    let highestSeverity: AlertSeverity = 'ok'
-    for (const a of fetchedAlerts) {
-      if (a.status === 'active' && a.host && !previousAlertIds.has(a.id)) {
-        newHosts.push(a.host)
-        if (severityOrder.indexOf(a.severity) < severityOrder.indexOf(highestSeverity)) {
-          highestSeverity = a.severity
+    // alerts is already sorted by time descending
+    const latestActive = alerts.find((a) => a.status === 'active' && a.host)
+
+    if (config.persistHighlight) {
+      // Persist mode: always pin the latest active alert
+      if (latestActive && latestActive.id !== pinnedAlert?.id) {
+        pinnedAlert = latestActive
+        emitPinnedHighlight()
+      }
+    } else {
+      // Flash mode: highlight new alerts for 4 seconds
+      if (previousAlertIds !== null) {
+        const newHosts: string[] = []
+        let highestSeverity: AlertSeverity = 'ok'
+        for (const a of fetchedAlerts) {
+          if (a.status === 'active' && a.host && !previousAlertIds.has(a.id)) {
+            newHosts.push(a.host)
+            if (SEVERITY_RANK[a.severity] < SEVERITY_RANK[highestSeverity]) {
+              highestSeverity = a.severity
+            }
+          }
+        }
+        if (newHosts.length > 0) {
+          forEachTopology((tid) => emitClearHighlight(tid, id))
+          forEachTopology((tid) =>
+            emitHighlightNodes(tid, newHosts, {
+              duration: 4000,
+              highlightColor: SEVERITY_HIGHLIGHT_COLORS[highestSeverity],
+              sourceWidgetId: id,
+            }),
+          )
         }
       }
-    }
-    if (newHosts.length > 0) {
-      // Clear previous highlight before applying new ones
-      forEachTopology((tid) => emitClearHighlight(tid, id))
-      // Single event with all hosts, colored by highest severity
-      forEachTopology((tid) =>
-        emitHighlightNodes(tid, newHosts, {
-          duration: config.persistHighlight ? undefined : 4000,
-          highlightColor: SEVERITY_HIGHLIGHT_COLORS[highestSeverity],
-          sourceWidgetId: id,
-        }),
-      )
     }
     previousAlertIds = currentActiveIds
   } catch (err) {
@@ -181,6 +197,17 @@ function forEachTopology(fn: (topologyId: string) => void) {
   }
 }
 
+function emitPinnedHighlight() {
+  if (!pinnedAlert?.host) return
+  forEachTopology((tid) => emitClearHighlight(tid, id))
+  forEachTopology((tid) =>
+    emitHighlightNodes(tid, [pinnedAlert!.host!], {
+      highlightColor: SEVERITY_HIGHLIGHT_COLORS[pinnedAlert!.severity],
+      sourceWidgetId: id,
+    }),
+  )
+}
+
 function handleAlertHover(alert: Alert) {
   if (!alert.host) return
   forEachTopology((tid) =>
@@ -193,7 +220,11 @@ function handleAlertHover(alert: Alert) {
 
 function handleAlertLeave() {
   if (showDetailModal) return
-  if (config.persistHighlight) return
+  if (config.persistHighlight) {
+    // Restore pinned alert highlight
+    emitPinnedHighlight()
+    return
+  }
   forEachTopology((tid) => emitClearHighlight(tid, id))
 }
 
@@ -229,10 +260,14 @@ onDestroy(() => {
   }
 })
 
-// Clear highlight when modal closes (unless persistent)
+// When modal closes: restore pinned highlight or clear
 $effect(() => {
-  if (!showDetailModal && !config.persistHighlight) {
-    forEachTopology((tid) => emitClearHighlight(tid, id))
+  if (!showDetailModal) {
+    if (config.persistHighlight) {
+      emitPinnedHighlight()
+    } else {
+      forEachTopology((tid) => emitClearHighlight(tid, id))
+    }
   }
 })
 
