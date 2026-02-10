@@ -86,7 +86,7 @@ export class PrometheusPlugin
     if (this.config.preset === 'custom' && this.config.customMetrics) {
       this.metrics = this.config.customMetrics
     } else {
-      this.metrics = METRIC_PRESETS[this.config.preset] || METRIC_PRESETS.snmp
+      this.metrics = METRIC_PRESETS[this.config.preset] || METRIC_PRESETS.node_exporter
     }
   }
 
