@@ -59,7 +59,7 @@ function formatDate(timestamp: number): string {
     </div>
     <button
       onclick={() => (showCreateModal = true)}
-      class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+      class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-dark transition-colors"
     >
       <Plus size={20} />
       <span>New Dashboard</span>
@@ -89,7 +89,7 @@ function formatDate(timestamp: number): string {
       </p>
       <button
         onclick={() => (showCreateModal = true)}
-        class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+        class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-dark transition-colors"
       >
         <Plus size={20} />
         <span>Create Dashboard</span>
@@ -185,7 +185,7 @@ function formatDate(timestamp: number): string {
           <button
             type="submit"
             disabled={!newDashboardName.trim() || creating}
-            class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {#if creating}
               <Spinner size={16} class="animate-spin" />

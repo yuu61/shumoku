@@ -394,7 +394,7 @@ function handleSettings() { showSelector = !showSelector }
         <div class="mt-auto">
           <button
             onclick={() => showSelector = false}
-            class="w-full px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors"
+            class="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm hover:bg-primary-dark transition-colors"
           >
             Done
           </button>
@@ -406,7 +406,7 @@ function handleSettings() { showSelector = !showSelector }
         <span class="text-sm">No topology selected</span>
         <button
           onclick={() => showSelector = true}
-          class="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors"
+          class="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm hover:bg-primary-dark transition-colors"
         >
           Configure
         </button>

@@ -120,7 +120,7 @@ async function handleSubmit() {
 
         <button
           type="submit"
-          class="w-full py-2 px-4 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+          class="w-full py-2 px-4 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           disabled={loading}
         >
           {#if loading}

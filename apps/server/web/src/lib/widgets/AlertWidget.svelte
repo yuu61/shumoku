@@ -270,7 +270,7 @@ let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
 
         <button
           onclick={() => (showSelector = false)}
-          class="w-full px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors"
+          class="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm hover:bg-primary-dark transition-colors"
         >
           Done
         </button>
@@ -282,7 +282,7 @@ let activeAlerts = $derived(alerts.filter((a) => a.status === 'active'))
         <span class="text-sm">No data source selected</span>
         <button
           onclick={() => (showSelector = true)}
-          class="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors"
+          class="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm hover:bg-primary-dark transition-colors"
         >
           Configure
         </button>

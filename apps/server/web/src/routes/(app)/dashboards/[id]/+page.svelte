@@ -326,7 +326,7 @@ function getWidgetIcon(type: string) {
         <button
           onclick={handleSave}
           disabled={saving}
-          class="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm disabled:opacity-50"
+          class="flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary-dark transition-colors text-sm disabled:opacity-50"
         >
           {#if saving}
             <Spinner size={16} class="animate-spin" />
@@ -383,7 +383,7 @@ function getWidgetIcon(type: string) {
           </p>
           <button
             onclick={() => dashboardStore.setEditMode(true)}
-            class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-dark transition-colors"
           >
             <PencilSimple size={20} />
             <span>Start Editing</span>

@@ -127,7 +127,7 @@ let connectedSources = $derived(dataSources.filter((ds) => ds.status === 'connec
               <div class="text-center py-8">
                 <TreeStructure size={40} class="text-theme-text-muted mx-auto mb-3" />
                 <p class="text-sm text-theme-text-muted mb-3">No topologies yet</p>
-                <a href="/topologies" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors">
+                <a href="/topologies" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm hover:bg-primary-dark transition-colors">
                   <Plus size={14} />
                   Create Topology
                 </a>
@@ -166,7 +166,7 @@ let connectedSources = $derived(dataSources.filter((ds) => ds.status === 'connec
               <div class="text-center py-8">
                 <SquaresFour size={40} class="text-theme-text-muted mx-auto mb-3" />
                 <p class="text-sm text-theme-text-muted mb-3">No dashboards yet</p>
-                <a href="/dashboards" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-dark transition-colors">
+                <a href="/dashboards" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm hover:bg-primary-dark transition-colors">
                   <Plus size={14} />
                   Create Dashboard
                 </a>

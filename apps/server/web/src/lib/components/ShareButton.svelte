@@ -120,7 +120,7 @@ function togglePopover() {
         <button
           onclick={handleShare}
           disabled={loading}
-          class="w-full text-sm px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
+          class="w-full text-sm px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary-dark transition-colors disabled:opacity-50"
         >
           {loading ? 'Creating...' : 'Create share link'}
         </button>

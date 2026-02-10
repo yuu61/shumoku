@@ -290,82 +290,91 @@ function formatLastChecked(timestamp?: number): string {
   {:else}
     <!-- Data Sources Table -->
     <div class="card">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>URL</th>
-            <th>Status</th>
-            <th class="text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each $dataSourcesList as ds}
-            {@const config = parseConfig(ds.configJson)}
-            {@const testResult = testResults[ds.id]}
+      <div class="datasources-table">
+        <table class="table table-auto">
+          <colgroup>
+          <col class="w-[12%]" />
+          <col class="w-[18%]" />
+          <col />
+          <col class="w-[12%]" />
+          <col class="w-[18%]" />
+          </colgroup>
+          <thead>
             <tr>
-              <td>
-                <a href="/datasources/{ds.id}" class="font-medium text-theme-text-emphasis hover:text-primary">
-                  {ds.name}
-                </a>
-              </td>
-              <td>
-                <div class="flex items-center gap-2">
-                  <span class="badge badge-info">{getTypeLabel(ds.type)}</span>
-                  {#if pluginTypeMap[ds.type]}
-                    <div class="flex gap-1">
-                      {#each pluginTypeMap[ds.type].capabilities as cap}
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-theme-bg text-theme-text-muted" title={cap}>
-                          {#if cap === 'metrics'}
-                            <ChartLine size={12} />
-                          {:else if cap === 'topology'}
-                            <TreeStructure size={12} />
-                          {:else}
-                            {cap}
-                          {/if}
-                        </span>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              </td>
-              <td class="text-theme-text-muted text-sm font-mono">{config.url || '-'}</td>
-              <td>
-                <div class="flex flex-col gap-0.5">
-                  {#if ds.status === 'connected'}
-                    <span class="badge badge-success">Connected</span>
-                  {:else if ds.status === 'disconnected'}
-                    <span class="badge badge-danger" title={ds.statusMessage}>Disconnected</span>
-                  {:else}
-                    <span class="badge badge-secondary">Unknown</span>
-                  {/if}
-                  {#if ds.lastCheckedAt}
-                    <span class="text-xs text-theme-text-muted">{formatLastChecked(ds.lastCheckedAt)}</span>
-                  {/if}
-                </div>
-              </td>
-              <td class="text-right">
-                <div class="flex items-center justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={() => handleTest(ds.id)}
-                    disabled={testingId === ds.id}
-                  >
-                    {#if testingId === ds.id}
-                      <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin mr-1"></span>
-                    {/if}
-                    Test
-                  </Button>
-                  <Button variant="outline" size="sm" onclick={() => window.location.href = `/datasources/${ds.id}`}>Edit</Button>
-                  <Button variant="destructive" size="sm" onclick={() => handleDelete(ds)}>Delete</Button>
-                </div>
-              </td>
+              <th>Name</th>
+              <th>Type</th>
+              <th>URL</th>
+              <th>Status</th>
+              <th class="text-right">Actions</th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {#each $dataSourcesList as ds}
+              {@const config = parseConfig(ds.configJson)}
+              {@const testResult = testResults[ds.id]}
+              <tr>
+                <td>
+                  <a href="/datasources/{ds.id}" class="font-medium text-theme-text-emphasis hover:text-primary">
+                    {ds.name}
+                  </a>
+                </td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <span class="badge badge-info">{getTypeLabel(ds.type)}</span>
+                    {#if pluginTypeMap[ds.type]}
+                      <div class="flex gap-1">
+                        {#each pluginTypeMap[ds.type].capabilities as cap}
+                          <span class="text-xs px-1.5 py-0.5 rounded bg-theme-bg text-theme-text-muted" title={cap}>
+                            {#if cap === 'metrics'}
+                              <ChartLine size={12} />
+                            {:else if cap === 'topology'}
+                              <TreeStructure size={12} />
+                            {:else}
+                              {cap}
+                            {/if}
+                          </span>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                </td>
+                <td class="text-theme-text-muted text-sm font-mono truncate">{config.url || '-'}</td>
+                <td class="datasources-status-cell">
+                  <div class="flex flex-col gap-0.5">
+                    {#if ds.status === 'connected'}
+                      <span class="badge badge-success">Connected</span>
+                    {:else if ds.status === 'disconnected'}
+                      <span class="badge badge-danger" title={ds.statusMessage}>Disconnected</span>
+                    {:else}
+                      <span class="badge badge-secondary">Unknown</span>
+                    {/if}
+                    {#if ds.lastCheckedAt}
+                      <span class="text-xs text-theme-text-muted">{formatLastChecked(ds.lastCheckedAt)}</span>
+                    {/if}
+                  </div>
+                </td>
+                <td class="text-right datasources-actions-cell">
+                  <div class="flex items-center justify-end gap-2 datasources-actions">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onclick={() => handleTest(ds.id)}
+                      disabled={testingId === ds.id}
+                    >
+                      {#if testingId === ds.id}
+                        <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin mr-1"></span>
+                      {/if}
+                      Test
+                    </Button>
+                    <Button variant="outline" size="sm" onclick={() => window.location.href = `/datasources/${ds.id}`}>Edit</Button>
+                    <Button variant="destructive" size="sm" onclick={() => handleDelete(ds)}>Delete</Button>
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     </div>
   {/if}
 </div>

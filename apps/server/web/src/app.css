@@ -270,6 +270,28 @@ body {
   background-color: var(--color-bg);
 }
 
+/* Data sources table tweaks */
+.datasources-table {
+  overflow-x: auto;
+}
+
+.datasources-table .table {
+  min-width: 760px;
+}
+
+.datasources-status-cell {
+  white-space: nowrap;
+  min-width: 6.5rem;
+}
+
+.datasources-actions-cell {
+  min-width: 14rem;
+}
+
+.datasources-actions {
+  flex-wrap: nowrap;
+}
+
 /* Badge styles */
 .badge {
   display: inline-flex;
