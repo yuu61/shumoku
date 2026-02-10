@@ -270,6 +270,8 @@ let centerLine2 = $derived.by(() => {
   return `${overallStats.up}/${overallStats.total}`
 })
 
+let centerUnit = $derived(hoveredSegment ? '' : '%')
+
 let centerColor = $derived.by(() => {
   if (hoveredSegment) return ''
   if (hoveredType) return scoreColorClass(typeStatuses.find((t) => t.type === hoveredType)?.score ?? 0)
@@ -483,6 +485,16 @@ function handleSettings() { showSelector = !showSelector }
             class="fill-current {centerColor || 'text-theme-text-emphasis'}"
             font-size="9" font-weight="700"
           >{centerLine1}</text>
+          {#if centerUnit}
+            <text
+              x={CX} y={CY - 2}
+              text-anchor="start" dominant-baseline="middle"
+              class="fill-current text-theme-text-muted"
+              font-size="3.5" font-weight="400"
+              dx={centerLine1.length === 3 ? 8.0 : centerLine1.length === 2 ? 5.8 : 3.2}
+              dy="-1.2"
+            >{centerUnit}</text>
+          {/if}
           <text
             x={CX} y={CY + 4}
             text-anchor="middle" dominant-baseline="middle"
