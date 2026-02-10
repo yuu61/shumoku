@@ -45,9 +45,9 @@ let pinnedAlert = $state<Alert | null>(null)
 const SEVERITY_COLORS: Record<AlertSeverity, string> = {
   disaster: '#dc2626', // red-600
   high: '#ea580c', // orange-600
-  average: '#ca8a04', // yellow-600
-  warning: '#0284c7', // sky-600
-  information: '#16a34a', // green-600
+  average: '#d97706', // amber-600
+  warning: '#ca8a04', // yellow-600
+  information: '#eab308', // yellow-500
   ok: '#6b7280', // gray-500
 }
 
@@ -56,16 +56,16 @@ const SEVERITY_HIGHLIGHT_COLORS: Record<AlertSeverity, string> = {
   high: '#ea580c',
   average: '#d97706',
   warning: '#ca8a04',
-  information: '#2563eb',
+  information: '#eab308',
   ok: '#6b7280',
 }
 
 const SEVERITY_BG_COLORS: Record<AlertSeverity, string> = {
   disaster: 'bg-red-500/10',
   high: 'bg-orange-500/10',
-  average: 'bg-yellow-500/10',
-  warning: 'bg-sky-500/10',
-  information: 'bg-green-500/10',
+  average: 'bg-amber-500/10',
+  warning: 'bg-yellow-500/10',
+  information: 'bg-yellow-400/10',
   ok: 'bg-gray-500/10',
 }
 
