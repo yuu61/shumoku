@@ -152,6 +152,13 @@ function getEdgeSpacing(
   return { edgeNodeSpacing, edgeEdgeSpacing }
 }
 
+/** Resolve rank to a numeric partition value, or undefined if invalid */
+function resolvePartition(rank: number | string | undefined): number | undefined {
+  if (rank === undefined) return undefined
+  const n = typeof rank === 'string' ? parseInt(rank, 10) : rank
+  return Number.isNaN(n) ? undefined : n
+}
+
 /** Collect ports for each node from links */
 function collectNodePorts(graph: NetworkGraph, haPairSet: Set<string>): Map<string, NodePortInfo> {
   const nodePorts = new Map<string, NodePortInfo>()
@@ -412,6 +419,9 @@ export class HierarchicalLayout {
       }
     }
 
+    // Check if any node has a rank value (enables ELK partitioning)
+    const hasRankedNodes = graph.nodes.some((n) => n.rank !== undefined)
+
     // Build HA container map: node ID -> container ID
     const nodeToHAContainer = new Map<string, string>()
     const haPairMap = new Map<string, { nodeA: string; nodeB: string }>()
@@ -434,6 +444,12 @@ export class HierarchicalLayout {
         width,
         height,
         labels: [{ text: Array.isArray(node.label) ? node.label.join('\n') : node.label }],
+      }
+
+      // Assign partition from rank for layer control
+      const partition = resolvePartition(node.rank)
+      if (hasRankedNodes && partition !== undefined) {
+        elkNode.layoutOptions = { 'elk.partitioning.partition': String(partition) }
       }
 
       // Add ports
@@ -513,6 +529,7 @@ export class HierarchicalLayout {
         }
 
         elkNode.layoutOptions = {
+          ...elkNode.layoutOptions,
           'elk.portConstraints': 'FIXED_POS',
           'elk.spacing.portPort': String(spacing.portSpacingMin),
         }
@@ -634,6 +651,7 @@ export class HierarchicalLayout {
         'elk.layered.spacing.edgeEdge': String(edgeEdgeSpacing),
         'elk.layered.spacing.edgeEdgeBetweenLayers': String(edgeEdgeSpacing),
         'elk.edgeRouting': elkEdgeRouting,
+        ...(hasRankedNodes && { 'elk.partitioning.activate': 'true' }),
         // Use ROOT coordinate system for consistent edge/shape positioning
         'org.eclipse.elk.json.edgeCoords': 'ROOT',
         'org.eclipse.elk.json.shapeCoords': 'ROOT',
@@ -817,6 +835,8 @@ export class HierarchicalLayout {
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.edgeRouting': elkEdgeRouting,
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      // Partition nodes by rank when rank values are present
+      ...(hasRankedNodes && { 'elk.partitioning.activate': 'true' }),
       // Use ROOT coordinate system
       'org.eclipse.elk.json.edgeCoords': 'ROOT',
       'org.eclipse.elk.json.shapeCoords': 'ROOT',
