@@ -1,116 +1,61 @@
-# Shumoku — Network Topology Diagram Generator
+# Shumoku
+
+> [!IMPORTANT]
+> 製作者がJANOG57 NOCに参加中です。サーバー系機能のreadmeが全体的に整備されていません。何かあればご連絡ください。
+> 📧 [contact@shumoku.dev](mailto:contact@shumoku.dev) / 𝕏 [@shumoku_dev](https://x.com/shumoku_dev)
 
 <img src="assets/logo-symbol.svg" alt="Shumoku Logo" width="128" height="128">
 
-**Network diagrams, as code.** Generate beautiful network topology diagrams (SVG/HTML) from YAML definitions.
+**Network topology visualization and monitoring platform.** Define your network in YAML, get interactive diagrams with real-time metrics from Zabbix, Prometheus, and more.
 
-Define your network infrastructure in YAML, get publication-ready diagrams automatically.
-
-[![npm version](https://img.shields.io/npm/v/shumoku.svg)](https://www.npmjs.com/package/shumoku)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/shumoku.svg)](https://www.npmjs.com/package/shumoku)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/akitoshi)
 
-**[Playground](https://shumoku.packof.me/)** | **[Documentation](https://shumoku.packof.me/docs/npm/yaml-reference)**
+**[Website](https://www.shumoku.dev/)** | **[Server Documentation](https://www.shumoku.dev/ja/docs/server)**
 
-## Output Example
+<picture>
+  <img src="assets/screenshots/topology.png" alt="Topology viewer with live weathermap">
+</picture>
+<p align="center"><em>Topology viewer — live traffic utilization overlay with vendor icons</em></p>
 
-![Sample network diagram](apps/docs/public/hero-diagram.png)
+<picture>
+  <img src="assets/screenshots/dashboard.png" alt="NOC dashboard at JANOG57">
+</picture>
+<p align="center"><em>Dashboard in production — JANOG57 NOC Live</em></p>
 
 ## Features
 
-- **YAML-based definitions** - Simple, readable network topology definitions
-- **Automatic layout** - Hierarchical layout powered by ELK.js
-- **Vendor icons** - Built-in icons for Yamaha, Aruba, AWS, Juniper (900+ icons)
-- **SVG export** - High-quality vector output
-- **TypeScript** - Full type safety
-- **NetBox integration** - Auto-generate diagrams from NetBox
+- **Live weathermap** — Overlay real-time traffic utilization on links, color-coded by load
+- **Alert visualization** — Show active alerts from Zabbix, Prometheus, and Grafana on topology
+- **Auto-generate from NetBox** — Pull devices and cables from NetBox to build topology automatically
+- **Interactive dashboards** — Pan, zoom, and drill into multi-layer network views in the browser
+- **900+ vendor icons** — Yamaha, Aruba, AWS, Juniper, and more — rendered at correct aspect ratios
+- **Shareable links** — Publish topology views with a share token — no login required
 
-## Installation
+## Getting Started
 
-```bash
-npm install shumoku
-```
+See **[Server Setup Guide](apps/server/README.md)** for Docker, systemd, and manual deployment options.
 
-This includes all core functionality plus 900+ vendor icons (Yamaha, Aruba, AWS, Juniper).
+### What You Can Do
 
-For NetBox integration (optional):
+1. **Create topologies** — Upload YAML files or write them in the built-in editor
+2. **Connect data sources** — Link Zabbix, Prometheus, or NetBox to pull live metrics
+3. **Monitor in real-time** — See node status and link utilization update live on your diagrams
+4. **Build dashboards** — Combine multiple topologies and metric widgets into custom views
+5. **Share** — Generate public links for read-only access without authentication
 
-```bash
-npm install @shumoku/netbox
-```
+## Integrations
 
-## Quick Start
+| | |
+|---|---|
+| **Zabbix** | Pull traffic metrics, host status, and alerts via JSON-RPC API |
+| **Prometheus** | Query SNMP and node exporter metrics for link utilization |
+| **Grafana** | Receive alerts via webhook and display them on topology |
+| **NetBox** | Auto-discover topology from DCIM inventory and IPAM data |
+| **REST API** | Render topologies and fetch metrics programmatically from your own tools |
 
-```typescript
-import { YamlParser, HierarchicalLayoutEngine, SvgRenderer } from 'shumoku'
-
-const yaml = `
-name: "Simple Network"
-
-nodes:
-  - id: router
-    label: "Core Router"
-    type: router
-
-  - id: switch
-    label: "Main Switch"
-    type: l2-switch
-
-links:
-  - from: { node: router }
-    to: { node: switch }
-    bandwidth: 10G
-`
-
-const parser = new YamlParser()
-const graph = parser.parse(yaml)
-
-const engine = new HierarchicalLayoutEngine()
-const layout = await engine.layout(graph)
-
-const renderer = new SvgRenderer()
-const svg = renderer.render(layout)
-```
-
-## CLI Usage
-
-### Render YAML/JSON to Diagram
-
-```bash
-# Install the renderer package
-npm install @shumoku/renderer
-
-# Render YAML to SVG
-npx shumoku render network.yaml -o diagram.svg
-
-# Render to interactive HTML
-npx shumoku render network.yaml -f html -o diagram.html
-
-# Also supports JSON input
-npx shumoku render topology.json -o diagram.svg
-```
-
-### NetBox Integration
-
-```bash
-# Install the NetBox package
-npm install @shumoku/netbox
-
-# Export NetBox topology to SVG
-npx netbox-to-shumoku --url https://netbox.example.com --token YOUR_TOKEN -o network.svg
-
-# Export as JSON for further processing
-npx netbox-to-shumoku -f json -o netbox.json
-
-# Render the JSON (after merging with custom data)
-npx shumoku render merged.json -o diagram.html
-```
-
-## Online Playground
-
-Try Shumoku without installation at [shumoku.packof.me](https://shumoku.packof.me/)
-
-## Example
+## YAML Example
 
 ```yaml
 name: "Simple Network"
@@ -146,49 +91,62 @@ links:
     bandwidth: 10G
 ```
 
-## Packages
+## npm Library
 
-| Package | Description | npm |
-|---------|-------------|-----|
-| [`shumoku`](packages/shumoku) | Main package (all-in-one) | [![npm](https://img.shields.io/npm/v/shumoku.svg)](https://www.npmjs.com/package/shumoku) |
-| [`@shumoku/core`](packages/@shumoku/core) | Core library (models, layout) | [![npm](https://img.shields.io/npm/v/@shumoku/core.svg)](https://www.npmjs.com/package/@shumoku/core) |
-| [`@shumoku/renderer`](packages/@shumoku/renderer) | SVG/HTML renderers + CLI | [![npm](https://img.shields.io/npm/v/@shumoku/renderer.svg)](https://www.npmjs.com/package/@shumoku/renderer) |
-| [`@shumoku/parser-yaml`](packages/@shumoku/parser-yaml) | YAML parser | [![npm](https://img.shields.io/npm/v/@shumoku/parser-yaml.svg)](https://www.npmjs.com/package/@shumoku/parser-yaml) |
-| [`@shumoku/icons`](packages/@shumoku/icons) | Vendor icons (Yamaha, Aruba, AWS, Juniper) | [![npm](https://img.shields.io/npm/v/@shumoku/icons.svg)](https://www.npmjs.com/package/@shumoku/icons) |
-| [`@shumoku/netbox`](packages/@shumoku/netbox) | NetBox API integration | [![npm](https://img.shields.io/npm/v/@shumoku/netbox.svg)](https://www.npmjs.com/package/@shumoku/netbox) |
+The rendering engine is also available as standalone npm packages.
+
+![Sample network diagram](apps/docs/public/hero-diagram.png)
+
+```bash
+npm install shumoku
+```
+
+```typescript
+import { YamlParser, HierarchicalLayoutEngine, SvgRenderer } from 'shumoku'
+
+const graph = new YamlParser().parse(yamlString)
+const layout = await new HierarchicalLayoutEngine().layout(graph)
+const svg = new SvgRenderer().render(layout)
+```
+
+CLI is also available:
+
+```bash
+npx shumoku render network.yaml -o diagram.svg
+npx shumoku render network.yaml -f html -o diagram.html
+```
+
+**[Playground](https://www.shumoku.dev/)** | **[npm Documentation](https://www.shumoku.dev/docs/npm/yaml-reference)**
+
+<details>
+<summary>Packages</summary>
+
+| Package | Description |
+|---------|-------------|
+| [`shumoku`](packages/shumoku) | Main package (all-in-one) |
+| [`@shumoku/core`](packages/@shumoku/core) | Core library (models, layout) |
+| [`@shumoku/renderer`](packages/@shumoku/renderer) | SVG/HTML renderers + CLI |
+| [`@shumoku/parser-yaml`](packages/@shumoku/parser-yaml) | YAML parser |
+| [`@shumoku/icons`](packages/@shumoku/icons) | Vendor icons (Yamaha, Aruba, AWS, Juniper) |
+| [`@shumoku/netbox`](packages/@shumoku/netbox) | NetBox API integration |
+
+</details>
 
 ## Documentation
 
-- [YAML Reference](https://shumoku.packof.me/docs/npm/yaml-reference) - Full YAML syntax reference
-- [Vendor Icons](https://shumoku.packof.me/docs/npm/vendor-icons) - Available vendor icons
+- [Server Guide](https://www.shumoku.dev/ja/docs/server) — Setup, data sources, dashboards
+- [YAML Reference](https://www.shumoku.dev/docs/npm/yaml-reference) — Full YAML syntax
+- [Vendor Icons](https://www.shumoku.dev/docs/npm/vendor-icons) — Available icons
+- [Playground](https://www.shumoku.dev/) — Try without installation
 
 ## Development
 
 ```bash
-# Clone the repository
 git clone https://github.com/konoe-akitoshi/shumoku.git
 cd shumoku
-
-# Install dependencies (requires Bun)
 bun install
-
-# Build all packages
 bun run build
-
-# Run playground
-cd apps/playground && bun run dev
-```
-
-### Commands
-
-```bash
-bun install           # Install dependencies
-bun run build         # Build all packages
-bun run dev           # Run dev server
-bun run typecheck     # Type check
-bun run lint          # Lint
-bun run format        # Format with Biome
-bun run test          # Run tests
+bun run dev
 ```
 
 ## License
