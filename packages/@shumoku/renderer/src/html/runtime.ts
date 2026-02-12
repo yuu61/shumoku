@@ -24,7 +24,7 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   const svg = target.closest('svg') || target.querySelector('svg') || (target as SVGSVGElement)
   if (!(svg instanceof SVGSVGElement)) throw new Error('SVG element not found')
 
-  const panZoomEnabled = options.panZoom?.enabled ?? true
+  const isPanZoomEnabled = options.panZoom?.enabled ?? true
   const minScale = options.panZoom?.minScale ?? 0.1
   const maxScale = options.panZoom?.maxScale ?? 10
 
@@ -35,7 +35,7 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
     setViewBox(svg, originalViewBox, updateHighlightPosition)
   }
 
-  let tooltipActive = false
+  let isTooltipActive = false
   const mouseDrag = {
     active: false,
     startX: 0,
@@ -80,7 +80,7 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   })
 
   const handleTouchStart = (e: TouchEvent) => {
-    if (e.touches.length >= 2 && panZoomEnabled) {
+    if (e.touches.length >= 2 && isPanZoomEnabled) {
       e.preventDefault()
       const dist = getTouchDistance(e.touches)
       const center = getTouchCenter(e.touches)
@@ -94,16 +94,16 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
           centerY: vb.y + vb.height * ((center.y - rect.top) / rect.height),
         }
       }
-      if (tooltipActive) {
+      if (isTooltipActive) {
         hideTooltip()
         highlightElement(null)
-        tooltipActive = false
+        isTooltipActive = false
       }
     }
   }
 
   const handleTouchMove = (e: TouchEvent) => {
-    if (e.touches.length >= 2 && pinchState && panZoomEnabled) {
+    if (e.touches.length >= 2 && pinchState && isPanZoomEnabled) {
       e.preventDefault()
 
       const dist = getTouchDistance(e.touches)
@@ -147,7 +147,7 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   // ============================================
 
   const handleMouseDown = (e: MouseEvent) => {
-    if (e.button !== 0 || !panZoomEnabled) return
+    if (e.button !== 0 || !isPanZoomEnabled) return
 
     const vb = parseViewBox(svg)
     if (!vb) return
@@ -158,15 +158,15 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
     mouseDrag.startViewBox = cloneViewBox(vb)
     svg.style.cursor = 'grabbing'
 
-    if (tooltipActive) {
+    if (isTooltipActive) {
       hideTooltip()
       highlightElement(null)
-      tooltipActive = false
+      isTooltipActive = false
     }
   }
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (mouseDrag.active && mouseDrag.startViewBox && panZoomEnabled) {
+    if (mouseDrag.active && mouseDrag.startViewBox && isPanZoomEnabled) {
       const dx = e.clientX - mouseDrag.startX
       const dy = e.clientY - mouseDrag.startY
       const rect = svg.getBoundingClientRect()
@@ -203,14 +203,14 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   }
 
   const handleMouseLeave = () => {
-    if (!mouseDrag.active && !tooltipActive) {
+    if (!mouseDrag.active && !isTooltipActive) {
       hideTooltip()
       highlightElement(null)
     }
   }
 
   const handleWheel = (e: WheelEvent) => {
-    if (!panZoomEnabled) return
+    if (!isPanZoomEnabled) return
     e.preventDefault()
 
     const vb = parseViewBox(svg)
@@ -341,11 +341,11 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
         if (info) {
           showTooltip(info.text, touch.clientX, touch.clientY)
           highlightElement(info.element)
-          tooltipActive = true
-        } else if (tooltipActive) {
+          isTooltipActive = true
+        } else if (isTooltipActive) {
           hideTooltip()
           highlightElement(null)
-          tooltipActive = false
+          isTooltipActive = false
         }
       }
     }
@@ -429,7 +429,7 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
     hideTooltip: () => {
       hideTooltip()
       highlightElement(null)
-      tooltipActive = false
+      isTooltipActive = false
     },
     resetView,
     getScale,

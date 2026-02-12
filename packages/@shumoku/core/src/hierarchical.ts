@@ -273,8 +273,10 @@ function generateExportConnectors(
 
     // Export links (one per connection)
     for (let i = 0; i < exportPoint.connections.length; i++) {
-      const conn = exportPoint.connections[i]
-      const deviceEndpoint = conn.port ? { node: conn.device, port: conn.port } : conn.device
+      const connection = exportPoint.connections[i]
+      const deviceEndpoint = connection.port
+        ? { node: connection.device, port: connection.port }
+        : connection.device
 
       exportLinks.push({
         id: `${EXPORT_LINK_PREFIX}${exportId}_${i}`,
@@ -284,8 +286,8 @@ function generateExportConnectors(
         arrow: 'forward',
         metadata: {
           _destSubgraphLabel: exportPoint.destSubgraphLabel,
-          _destDevice: conn.destDevice,
-          _destPort: conn.destPort,
+          _destDevice: connection.destDevice,
+          _destPort: connection.destPort,
         },
       })
     }

@@ -3,11 +3,9 @@
  * Generates CDN URLs for vendor icons
  */
 
-/** Icon dimensions */
-export interface IconDimensions {
-  width: number
-  height: number
-}
+import type { IconDimensions } from '@shumoku/core/models'
+
+export type { IconDimensions }
 
 /** CDN configuration */
 export interface CDNConfig {
@@ -112,9 +110,12 @@ export async function fetchCDNIcon(url: string, timeout: number = 3000): Promise
 
     const contentType = response.headers.get('content-type') || 'image/png'
     const arrayBuffer = await response.arrayBuffer()
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''),
-    )
+    const bytes = new Uint8Array(arrayBuffer)
+    const chunks: string[] = []
+    for (let i = 0; i < bytes.length; i += 8192) {
+      chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)))
+    }
+    const base64 = btoa(chunks.join(''))
     const dataUrl = `data:${contentType};base64,${base64}`
 
     iconCache.set(url, dataUrl)

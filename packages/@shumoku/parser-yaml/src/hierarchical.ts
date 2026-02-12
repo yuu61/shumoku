@@ -3,6 +3,7 @@
  * Resolves file references and builds a complete hierarchical graph
  */
 
+import path from 'node:path'
 import type {
   HierarchicalNetworkGraph,
   Link,
@@ -10,7 +11,10 @@ import type {
   Node,
   Subgraph,
 } from '@shumoku/core/models'
+import { isExportLink, isExportNode } from '@shumoku/core'
 import { type ParseResult, type ParseWarning, YamlParser } from './parser.js'
+
+export { isExportNode, isExportLink }
 
 // ============================================
 // Constants
@@ -20,24 +24,6 @@ import { type ParseResult, type ParseWarning, YamlParser } from './parser.js'
 const EXPORT_NODE_PREFIX = '__export_'
 /** Prefix for virtual export connector links */
 const EXPORT_LINK_PREFIX = '__export_link_'
-
-// ============================================
-// Type Guards
-// ============================================
-
-/**
- * Check if a node is a virtual export connector
- */
-export function isExportNode(nodeId: string): boolean {
-  return nodeId.startsWith(EXPORT_NODE_PREFIX)
-}
-
-/**
- * Check if a link is a virtual export connector link
- */
-export function isExportLink(linkId: string | undefined): boolean {
-  return linkId?.startsWith(EXPORT_LINK_PREFIX) ?? false
-}
 
 // ============================================
 // Interfaces
@@ -271,7 +257,7 @@ export class HierarchicalParser {
   ): void {
     for (const childLink of childLinks) {
       // Skip virtual export connector links
-      if (isExportLink(childLink.id)) continue
+      if (childLink.id && isExportLink(childLink.id)) continue
 
       graph.links.push({
         ...childLink,
@@ -501,7 +487,6 @@ export function createNodeFileResolver(): FileResolver {
     },
 
     resolve(basePath: string, relativePath: string): string {
-      const path = require('node:path')
       return path.resolve(path.dirname(basePath), relativePath)
     },
   }

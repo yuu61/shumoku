@@ -83,7 +83,7 @@ export function getTooltipInfo(el: Element): TooltipInfo | null {
   if (linkGroup) {
     const from = linkGroup.getAttribute('data-link-from') || ''
     const to = linkGroup.getAttribute('data-link-to') || ''
-    const bw = linkGroup.getAttribute('data-link-bandwidth')
+    const bandwidth = linkGroup.getAttribute('data-link-bandwidth')
     const vlan = linkGroup.getAttribute('data-link-vlan')
 
     // For export links, show device:port ↔ destination device:port
@@ -95,13 +95,13 @@ export function getTooltipInfo(el: Element): TooltipInfo | null {
       const localDevice = fromIsExport ? to : from
       const dest = destPort ? `${destDevice}:${destPort}` : destDevice
       let text = `${localDevice} ↔ ${dest}`
-      if (bw) text += `\n${bw}`
+      if (bandwidth) text += `\n${bandwidth}`
       if (vlan) text += `\nVLAN: ${vlan}`
       return { text, element: linkGroup }
     }
 
     let text = `${from} ↔ ${to}`
-    if (bw) text += `\n${bw}`
+    if (bandwidth) text += `\n${bandwidth}`
     if (vlan) text += `\nVLAN: ${vlan}`
     return { text, element: linkGroup }
   }

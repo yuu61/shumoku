@@ -115,7 +115,6 @@ function lerpViewBox(
  * Uses elementsFromPoint to detect subgraphs even when nodes/links are on top
  */
 export function pickSubgraphTarget(
-  _container: HTMLElement,
   clientX: number,
   clientY: number,
 ): ZoomNavigationTarget | null {
@@ -230,7 +229,7 @@ export function animateZoomToBounds(
     h: targetBounds.height * (1 + padding * 2),
   }
 
-  let sheetSwitched = false
+  let hasSheetSwitched = false
 
   function animate() {
     const elapsed = performance.now() - startTime
@@ -241,8 +240,8 @@ export function animateZoomToBounds(
     onUpdate(current)
 
     // Switch sheet at 80% progress
-    if (!sheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
-      sheetSwitched = true
+    if (!hasSheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
+      hasSheetSwitched = true
       onSheetSwitch()
     }
 
@@ -283,7 +282,7 @@ export function animateZoomOut(
     h: vb.origH,
   }
 
-  let sheetSwitched = false
+  let hasSheetSwitched = false
 
   function animate() {
     const elapsed = performance.now() - startTime
@@ -294,8 +293,8 @@ export function animateZoomOut(
     onUpdate(current)
 
     // Switch sheet at 80% progress
-    if (!sheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
-      sheetSwitched = true
+    if (!hasSheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
+      hasSheetSwitched = true
       onSheetSwitch()
     }
 
@@ -408,7 +407,7 @@ export function setupZoomNavigation(opts: ZoomNavigationOptions): () => void {
     if (!vb) return
 
     const scale = calculateScale(vb)
-    const target = pickSubgraphTarget(opts.container, clientX, clientY)
+    const target = pickSubgraphTarget(clientX, clientY)
 
     if (target && shouldTriggerZoomIn(vb, target.bounds, scale)) {
       pendingTarget = target
@@ -635,7 +634,7 @@ function animateZoomToBounds(vb, targetBounds, onUpdate, onSheetSwitch, onComple
     h: targetBounds.height * (1 + padding * 2)
   };
 
-  var sheetSwitched = false;
+  var hasSheetSwitched = false;
 
   function animate() {
     var elapsed = performance.now() - startTime;
@@ -645,8 +644,8 @@ function animateZoomToBounds(vb, targetBounds, onUpdate, onSheetSwitch, onComple
     var current = lerpViewBox(from, to, easedProgress);
     onUpdate(current);
 
-    if (!sheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
-      sheetSwitched = true;
+    if (!hasSheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
+      hasSheetSwitched = true;
       onSheetSwitch();
     }
 
@@ -671,7 +670,7 @@ function animateZoomOut(vb, onUpdate, onSheetSwitch, onComplete) {
   var from = { x: vb.x, y: vb.y, w: vb.w, h: vb.h };
   var to = { x: vb.origX, y: vb.origY, w: vb.origW, h: vb.origH };
 
-  var sheetSwitched = false;
+  var hasSheetSwitched = false;
 
   function animate() {
     var elapsed = performance.now() - startTime;
@@ -681,8 +680,8 @@ function animateZoomOut(vb, onUpdate, onSheetSwitch, onComplete) {
     var current = lerpViewBox(from, to, easedProgress);
     onUpdate(current);
 
-    if (!sheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
-      sheetSwitched = true;
+    if (!hasSheetSwitched && rawProgress >= SHEET_SWITCH_PROGRESS) {
+      hasSheetSwitched = true;
       onSheetSwitch();
     }
 

@@ -2,38 +2,23 @@
  * YAML parser for network diagrams
  */
 
-import type {
-  ArrowType,
-  CanvasSettings,
-  GraphSettings,
-  Link,
-  LinkType,
-  NetworkGraph,
-  Node,
-  NodeShape,
-  PaperOrientation,
-  PaperSize,
-  Pin,
-  Subgraph,
-  ThemeType,
+import {
+  type ArrowType,
+  type CanvasSettings,
+  DeviceType,
+  type GraphSettings,
+  type Link,
+  type LinkType,
+  type NetworkGraph,
+  type Node,
+  type NodeShape,
+  type PaperOrientation,
+  type PaperSize,
+  type Pin,
+  type Subgraph,
+  type ThemeType,
 } from '@shumoku/core/models'
 import yaml from 'js-yaml'
-
-// Re-define DeviceType enum locally (same as v2.DeviceType)
-enum DeviceType {
-  Router = 'router',
-  L3Switch = 'l3-switch',
-  L2Switch = 'l2-switch',
-  Firewall = 'firewall',
-  LoadBalancer = 'load-balancer',
-  Server = 'server',
-  AccessPoint = 'access-point',
-  Cloud = 'cloud',
-  Internet = 'internet',
-  VPN = 'vpn',
-  Database = 'database',
-  Generic = 'generic',
-}
 
 // ============================================
 // YAML Input Types

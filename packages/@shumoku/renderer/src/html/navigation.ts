@@ -3,6 +3,8 @@
  * Provides breadcrumb, tabs, and back button for sheet navigation
  */
 
+import { escapeHtml } from './utils.js'
+
 /**
  * Navigation state for hierarchical diagrams
  */
@@ -246,11 +248,3 @@ export function getNavigationScript(): string {
   `
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}

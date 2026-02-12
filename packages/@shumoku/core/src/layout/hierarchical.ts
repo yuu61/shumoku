@@ -112,7 +112,11 @@ function getLinkTypeStrokeWidth(type?: string): number {
   }
 }
 
-function getLinkStrokeWidthForLayout(link: { bandwidth?: string; type?: string; style?: { strokeWidth?: number } }): number {
+function getLinkStrokeWidthForLayout(link: {
+  bandwidth?: string
+  type?: string
+  style?: { strokeWidth?: number }
+}): number {
   const styleWidth = link.style?.strokeWidth ?? 0
   const bandwidthWidth = getBandwidthStrokeWidth(link.bandwidth)
   const typeWidth = getLinkTypeStrokeWidth(link.type)
@@ -242,7 +246,7 @@ export interface HierarchicalLayoutOptions {
   elk?: InstanceType<typeof ELK>
 }
 
-const DEFAULT_OPTIONS: Omit<Omit<Required<HierarchicalLayoutOptions>, 'elk'>, 'elk'> = {
+const DEFAULT_OPTIONS: Omit<Required<HierarchicalLayoutOptions>, 'elk'> = {
   direction: 'TB',
   nodeWidth: 180,
   nodeHeight: 60,
@@ -260,7 +264,7 @@ const DEFAULT_OPTIONS: Omit<Omit<Required<HierarchicalLayoutOptions>, 'elk'>, 'e
 // ============================================
 
 export class HierarchicalLayout {
-  private options: Omit<Omit<Required<HierarchicalLayoutOptions>, 'elk'>, 'elk'>
+  private options: Omit<Required<HierarchicalLayoutOptions>, 'elk'>
   private elk: InstanceType<typeof ELK>
 
   constructor(options?: HierarchicalLayoutOptions) {
@@ -344,7 +348,7 @@ export class HierarchicalLayout {
     const nodePorts = collectNodePorts(graph, haPairSet)
 
     // Build ELK graph
-    const elkGraph = this.buildElkGraph(graph, options, nodePorts, haPairs, spacing)
+    const elkGraph = this.buildElkGraph(graph, options, nodePorts, haPairs, haPairSet, spacing)
 
     // Run ELK layout
     const layoutedGraph = await this.runElkLayout(elkGraph)
@@ -407,6 +411,7 @@ export class HierarchicalLayout {
     options: Omit<Required<HierarchicalLayoutOptions>, 'elk'>,
     nodePorts: Map<string, NodePortInfo>,
     haPairs: { nodeA: string; nodeB: string }[],
+    haPairSet: Set<string>,
     spacing: { minEdgeGap: number; maxLinkStrokeWidth: number; portSpacingMin: number },
   ): ElkNode {
     const elkDirection = this.toElkDirection(options.direction)
@@ -740,12 +745,6 @@ export class HierarchicalLayout {
         current = nodeParentMap.get(current)
       }
       return undefined // root
-    }
-
-    // Build HA pair set for quick lookup
-    const haPairSet = new Set<string>()
-    for (const pair of haPairs) {
-      haPairSet.add([pair.nodeA, pair.nodeB].sort().join(':'))
     }
 
     const isHALink = (fromNode: string, toNode: string): boolean => {
@@ -1091,8 +1090,8 @@ export class HierarchicalLayout {
             }
           } else if (!isHAContainer(container.id)) {
             // Check if this is a cross-subgraph edge
-            const fromParent = graph.nodes.find((n) => n.id === fromEndpoint.node)?.parent
-            const toParent = graph.nodes.find((n) => n.id === toEndpoint_.node)?.parent
+            const fromParent = nodeMap.get(fromEndpoint.node)?.parent
+            const toParent = nodeMap.get(toEndpoint_.node)?.parent
             const isCrossSubgraph = fromParent !== toParent
 
             if (elkEdge.sections && elkEdge.sections.length > 0) {
@@ -1325,10 +1324,7 @@ export class HierarchicalLayout {
     return Math.max(this.options.nodeHeight, contentHeight + NODE_VERTICAL_PADDING)
   }
 
-  private calculatePortSpacing(
-    portNames: Set<string> | undefined,
-    minSpacing: number,
-  ): number {
+  private calculatePortSpacing(portNames: Set<string> | undefined, minSpacing: number): number {
     if (!portNames || portNames.size === 0) return minSpacing
 
     let maxLabelLength = 0

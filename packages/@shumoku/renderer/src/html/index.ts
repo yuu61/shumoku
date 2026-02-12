@@ -3,8 +3,15 @@
  * Generates standalone interactive HTML pages from NetworkGraph
  */
 
-import type { HierarchicalNetworkGraph, LayoutResult, NetworkGraph } from '@shumoku/core'
+import {
+  type HierarchicalNetworkGraph,
+  type LayoutResult,
+  lightTheme,
+  darkTheme,
+  type NetworkGraph,
+} from '@shumoku/core'
 import { BRANDING_ICON_SVG } from '../brand.js'
+import { generateThemeVars } from '../theme-vars.js'
 import { SVGRenderer } from '../svg.js'
 import type { HTMLRendererOptions } from '../types.js'
 import {
@@ -14,6 +21,7 @@ import {
   type NavigationState,
   type SheetInfo,
 } from './navigation.js'
+import { escapeHtml } from './utils.js'
 import { getZoomNavigationScript } from './zoom-navigation.js'
 
 export type { InteractiveInstance, InteractiveOptions } from '../types.js'
@@ -91,7 +99,8 @@ export function render(graph: NetworkGraph, layout: LayoutResult, options?: Rend
     navigation = buildNavigationState(graph as HierarchicalNetworkGraph, opts.currentSheet)
   }
 
-  return generateHtml(svg, title, { ...opts, navigation } as Required<RenderOptions>)
+  const themeType = graph.settings?.theme
+  return generateHtml(svg, title, { ...opts, navigation } as Required<RenderOptions>, themeType)
 }
 
 /**
@@ -160,10 +169,11 @@ export function renderHierarchical(
     sheets: sheetInfos,
   }
 
+  const themeType = rootSheet?.graph.settings?.theme
   return generateHierarchicalHtml(sheetSvgs, title, {
     ...opts,
     navigation,
-  } as Required<RenderOptions>)
+  } as Required<RenderOptions>, themeType)
 }
 
 /**
@@ -236,7 +246,9 @@ function buildNavigationState(
   }
 }
 
-function generateHtml(svg: string, title: string, options: Required<RenderOptions>): string {
+function generateHtml(svg: string, title: string, options: Required<RenderOptions>, themeType?: 'light' | 'dark'): string {
+  const theme = themeType === 'dark' ? darkTheme : lightTheme
+  const themeVarsCSS = `:root {\n${generateThemeVars(theme)}\n  }`
   const brandingHtml = options.branding
     ? `<a class="branding" href="https://shumoku.packof.me" target="_blank" rel="noopener">
       ${BRANDING_ICON_SVG}
@@ -280,6 +292,7 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <style>
+    ${themeVarsCSS}
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #fafafa; min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
     .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: white; border-bottom: 1px solid #e5e7eb; }
@@ -544,14 +557,6 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
 </html>`
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 /**
  * Generate HTML with multiple embedded sheets for hierarchical navigation
@@ -560,7 +565,10 @@ function generateHierarchicalHtml(
   sheetSvgs: Map<string, string>,
   title: string,
   options: Required<RenderOptions>,
+  themeType?: 'light' | 'dark',
 ): string {
+  const theme = themeType === 'dark' ? darkTheme : lightTheme
+  const themeVarsCSS = `:root {\n${generateThemeVars(theme)}\n  }`
   const brandingHtml = options.branding
     ? `<a class="branding" href="https://shumoku.packof.me" target="_blank" rel="noopener">
       ${BRANDING_ICON_SVG}
@@ -609,6 +617,7 @@ function generateHierarchicalHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <style>
+    ${themeVarsCSS}
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #fafafa; min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
     .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: white; border-bottom: 1px solid #e5e7eb; }

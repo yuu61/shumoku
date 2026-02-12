@@ -37,6 +37,13 @@ import {
 } from './cdn-icons.js'
 import type { DataAttributeOptions, RenderMode } from './types.js'
 
+/**
+ * Check if an icon URL uses a safe protocol (http, https, or data URI)
+ */
+function isSafeIconUrl(url: string): boolean {
+  return /^(https?:\/\/|data:image\/)/.test(url)
+}
+
 // ============================================
 // Render Colors (derived from Theme)
 // ============================================
@@ -576,7 +583,12 @@ export class SVGRenderer {
     const style = subgraph.style || {}
 
     // Resolve surface colors from token or direct color value
-    const surfaceColors = resolveSurfaceColors(this.theme, style.fill, style.stroke, this.isInteractive)
+    const surfaceColors = resolveSurfaceColors(
+      this.theme,
+      style.fill,
+      style.stroke,
+      this.isInteractive,
+    )
     const fill = surfaceColors.fill
     const stroke = surfaceColors.stroke
     const labelColor = surfaceColors.text
@@ -650,8 +662,9 @@ export class SVGRenderer {
     // Render icon if available (user-specified URL or CDN URL)
     let iconSvg = ''
     if (hasIcon && iconUrl) {
+      const safeIconUrl = isSafeIconUrl(iconUrl) ? iconUrl : ''
       iconSvg = `<g class="subgraph-icon" transform="translate(${iconX}, ${iconY})">
-    <image href="${iconUrl}" width="${iconWidth}" height="${iconHeight}" preserveAspectRatio="xMidYMid meet" />
+    <image href="${safeIconUrl}" width="${iconWidth}" height="${iconHeight}" preserveAspectRatio="xMidYMid meet" />
   </g>`
     }
 
@@ -1025,12 +1038,13 @@ ${fg}
 
     // User-specified icon URL takes highest priority
     if (node.icon) {
+      const safeUrl = isSafeIconUrl(node.icon) ? node.icon : ''
       const dims = this.options.iconDimensions.get(node.icon)
       const { width, height } = this.calculateIconSize(dims, maxIconWidth)
       return {
         width,
         height,
-        svg: `<image href="${node.icon}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
+        svg: `<image href="${safeUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
       }
     }
 
@@ -1045,11 +1059,12 @@ ${fg}
       const cdnUrl = getCDNIconUrl(node.vendor, iconKey)
       const dims = this.options.iconDimensions.get(cdnUrl)
       if (dims) {
+        const safeCdnUrl = isSafeIconUrl(cdnUrl) ? cdnUrl : ''
         const { width, height } = this.calculateIconSize(dims, maxIconWidth)
         return {
           width,
           height,
-          svg: `<image href="${cdnUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
+          svg: `<image href="${safeCdnUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
         }
       }
       // dims not found = icon doesn't exist on CDN, fall through to device type icon
@@ -1149,15 +1164,7 @@ ${fg}
       link.style?.strokeWidth || bandwidthStrokeWidth || this.getLinkStrokeWidth(type)
 
     // Render link line
-    let result = this.renderLinkLine(
-      id,
-      points,
-      stroke,
-      strokeWidth,
-      dasharray,
-      markerEnd,
-      type,
-    )
+    let result = this.renderLinkLine(id, points, stroke, strokeWidth, dasharray, markerEnd, type)
 
     // Center label and VLANs
     const midPoint = this.getMidPoint(points)
@@ -1734,7 +1741,6 @@ ${linePath}
 
     return parts.join(' ')
   }
-
 
   /**
    * Get default link type based on redundancy
