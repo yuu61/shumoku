@@ -4,41 +4,41 @@
  * Data source plugin system for Shumoku.
  */
 
-export * from './types.js'
-export * from './registry.js'
+export { GrafanaPlugin } from './grafana.js'
 export {
-  // Types
-  type PluginEntry,
-  type LoadedPluginInfo,
   type AddPluginResult,
-  // Functions
-  loadPluginsFromConfig,
-  reloadPlugins,
   addPlugin,
-  removePlugin,
-  setPluginEnabled,
-  installPluginFromZip,
-  installPluginFromUrl,
   getAllPlugins,
+  getConfigPath,
   getLoadedPlugins,
   getPluginManifest,
   getPluginsDir,
-  getConfigPath,
-  isExternalPlugin,
+  installPluginFromUrl,
+  installPluginFromZip,
   isBuiltinPlugin,
+  isExternalPlugin,
+  type LoadedPluginInfo,
+  // Functions
+  loadPluginsFromConfig,
   markBuiltinPlugins,
+  // Types
+  type PluginEntry,
+  reloadPlugins,
+  removePlugin,
+  setPluginEnabled,
 } from './loader.js'
-export { ZabbixPlugin } from './zabbix.js'
 export { NetBoxPlugin } from './netbox.js'
 export { PrometheusPlugin } from './prometheus.js'
-export { GrafanaPlugin } from './grafana.js'
+export * from './registry.js'
+export * from './types.js'
+export { ZabbixPlugin } from './zabbix.js'
 
+import { GrafanaPlugin } from './grafana.js'
+import { NetBoxPlugin } from './netbox.js'
+import { PrometheusPlugin } from './prometheus.js'
 // Register built-in plugins
 import { pluginRegistry } from './registry.js'
 import { ZabbixPlugin } from './zabbix.js'
-import { NetBoxPlugin } from './netbox.js'
-import { PrometheusPlugin } from './prometheus.js'
-import { GrafanaPlugin } from './grafana.js'
 
 export function registerBuiltinPlugins(): void {
   // Zabbix - metrics, hosts, auto-mapping, alerts

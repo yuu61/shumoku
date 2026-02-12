@@ -3,9 +3,9 @@
  * Shared state for topology node/link mapping across pages
  */
 
-import { writable, derived, get } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 import { api } from '$lib/api'
-import type { ZabbixMapping, Host, HostItem } from '$lib/types'
+import type { Host, HostItem, ZabbixMapping } from '$lib/types'
 
 interface MappingState {
   topologyId: string | null

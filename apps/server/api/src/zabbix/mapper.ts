@@ -4,10 +4,10 @@
  */
 
 import * as fs from 'node:fs'
-import * as yaml from 'js-yaml'
 import type { Link, NetworkGraph } from '@shumoku/core'
-import type { ZabbixMapping } from '../types.js'
+import * as yaml from 'js-yaml'
 import { getBandwidthCapacity } from '../bandwidth.js'
+import type { ZabbixMapping } from '../types.js'
 import type { ZabbixClient } from './client.js'
 
 /**
@@ -16,7 +16,7 @@ import type { ZabbixClient } from './client.js'
 function parseEndpoint(endpoint: Link['from'] | Link['to']): { node: string; port?: string } {
   if (typeof endpoint === 'string') {
     const parts = endpoint.split(':')
-    return { node: parts[0], port: parts[1] }
+    return { node: parts[0]!, port: parts[1] }
   }
   return { node: endpoint.node, port: endpoint.port }
 }
@@ -89,7 +89,7 @@ export class ZabbixMapper {
       } else {
         // Try to match by node ID or label
         const labelToTry = Array.isArray(node.label) ? node.label[0] : node.label
-        const namesToTry = [node.id, labelToTry].filter(Boolean)
+        const namesToTry = [node.id, labelToTry].filter((n): n is string => Boolean(n))
 
         for (const name of namesToTry) {
           const host = await this.client.getHostByName(name)
@@ -120,7 +120,7 @@ export class ZabbixMapper {
     const result = new Map<string, ResolvedLinkMapping>()
 
     for (let i = 0; i < graph.links.length; i++) {
-      const link = graph.links[i]
+      const link = graph.links[i]!
       const linkId = link.id || `link-${i}`
       const explicit = this.mapping?.links?.[linkId]
 

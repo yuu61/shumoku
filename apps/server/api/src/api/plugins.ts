@@ -5,16 +5,16 @@
 
 import { Hono } from 'hono'
 import {
+  addPlugin,
   getAllPlugins,
   getPluginManifest,
-  addPlugin,
+  getPluginsDir,
+  installPluginFromUrl,
+  installPluginFromZip,
+  isBuiltinPlugin,
+  reloadPlugins,
   removePlugin,
   setPluginEnabled,
-  reloadPlugins,
-  installPluginFromZip,
-  installPluginFromUrl,
-  getPluginsDir,
-  isBuiltinPlugin,
 } from '../plugins/loader.js'
 
 export function createPluginsApi(): Hono {
@@ -48,6 +48,7 @@ export function createPluginsApi(): Hono {
 
     // Handle ZIP upload
     if (contentType.includes('multipart/form-data')) {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.formData() returns a Promise
       const formData = await c.req.formData()
       const file = formData.get('file')
       const subdirectory = formData.get('subdirectory')?.toString()
@@ -61,6 +62,7 @@ export function createPluginsApi(): Hono {
         return c.json({ error: 'Plugins directory not configured' }, 500)
       }
 
+      // biome-ignore lint/nursery/useAwaitThenable: file.arrayBuffer() returns a Promise
       const buffer = Buffer.from(await file.arrayBuffer())
       const result = await installPluginFromZip(buffer, pluginsDir, subdirectory)
 
@@ -72,6 +74,7 @@ export function createPluginsApi(): Hono {
     }
 
     // Handle JSON body with path or url
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     const body = await c.req.json<{ path?: string; url?: string; subdirectory?: string }>()
 
     const pluginsDir = getPluginsDir()
@@ -107,6 +110,7 @@ export function createPluginsApi(): Hono {
   // Enable/disable plugin
   app.patch('/:id', async (c) => {
     const id = c.req.param('id')
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     const body = await c.req.json<{ enabled?: boolean }>()
 
     if (typeof body.enabled !== 'boolean') {

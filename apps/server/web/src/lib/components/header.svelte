@@ -1,9 +1,9 @@
 <script lang="ts">
-import { page } from '$app/stores'
 import CaretRight from 'phosphor-svelte/lib/CaretRight'
 import Moon from 'phosphor-svelte/lib/Moon'
 import Sun from 'phosphor-svelte/lib/Sun'
-import { themeSetting, resolvedTheme } from '$lib/stores/theme'
+import { page } from '$app/stores'
+import { resolvedTheme, themeSetting } from '$lib/stores/theme'
 
 // Generate breadcrumbs from current path
 interface Breadcrumb {

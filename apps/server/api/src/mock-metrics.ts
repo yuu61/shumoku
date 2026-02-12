@@ -4,15 +4,15 @@
  */
 
 import type { Link, NetworkGraph } from '@shumoku/core'
-import type { MetricsData } from './types.js'
 import { getBandwidthCapacity } from './bandwidth.js'
+import type { MetricsData } from './types.js'
 
 /**
  * Extract node ID from a link endpoint (can be string or object)
  */
 function getNodeId(endpoint: Link['from'] | Link['to']): string {
   if (typeof endpoint === 'string') {
-    return endpoint.split(':')[0]
+    return endpoint.split(':')[0]!
   }
   return endpoint.node
 }
@@ -43,7 +43,7 @@ export class MockMetricsProvider {
 
     // Generate link metrics
     for (let i = 0; i < graph.links.length; i++) {
-      const link = graph.links[i]
+      const link = graph.links[i]!
       const linkId = link.id || `link-${i}`
       const fromNode = nodes[getNodeId(link.from)]
       const toNode = nodes[getNodeId(link.to)]

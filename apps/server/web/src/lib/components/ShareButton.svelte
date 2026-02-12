@@ -1,8 +1,8 @@
 <script lang="ts">
-import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork'
-import LinkSimple from 'phosphor-svelte/lib/LinkSimple'
-import X from 'phosphor-svelte/lib/X'
 import Check from 'phosphor-svelte/lib/Check'
+import LinkSimple from 'phosphor-svelte/lib/LinkSimple'
+import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork'
+import X from 'phosphor-svelte/lib/X'
 
 export let shareToken: string | undefined = undefined
 export let shareType: 'topologies' | 'dashboards' = 'topologies'

@@ -380,11 +380,11 @@ body {
 /* Print styles — show only the pure SVG topology */
 @media print {
   html, body {
-    overflow: visible !important;
-    background: white !important;
-    color: black !important;
-    height: auto !important;
-    min-height: 0 !important;
+    overflow: visible;
+    background: white;
+    color: black;
+    height: auto;
+    min-height: 0;
   }
 
   /* Hide everything by default */
@@ -395,52 +395,52 @@ body {
   /* Show only the SVG wrapper and its contents */
   .svg-wrapper,
   .svg-wrapper * {
-    visibility: visible !important;
+    visibility: visible;
   }
 
   /* Hide weathermap overlays — print the clean topology */
   .svg-wrapper .wm-overlay {
-    display: none !important;
+    display: none;
   }
 
   /* Restore original link paths hidden by weathermap */
   .svg-wrapper path.link {
-    opacity: 1 !important;
+    opacity: 1;
   }
 
   .svg-wrapper {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: white !important;
-    transform: none !important;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    transform: none;
   }
 
   .svg-wrapper svg {
-    max-width: 100% !important;
-    max-height: 100% !important;
-    width: auto !important;
-    height: auto !important;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
   }
 
   /* Remove all filters (shadows etc.) for clean vector output */
   .svg-wrapper * {
-    filter: none !important;
+    filter: none;
   }
 
   /* Remove backgrounds */
   * {
-    background-image: none !important;
+    background-image: none;
   }
 
   /* Reset live status indicators */
   .svg-wrapper g.node.status-up .node-bg rect,
   .svg-wrapper g.node.status-down .node-bg rect {
-    stroke: unset !important;
-    stroke-width: unset !important;
+    stroke: unset;
+    stroke-width: unset;
   }
 }

@@ -1,15 +1,15 @@
 <script lang="ts">
-import { onMount } from 'svelte'
-import { page } from '$app/stores'
-import { goto } from '$app/navigation'
-import { api } from '$lib/api'
-import type { DataSource, DataSourceType, ConnectionTestResult } from '$lib/types'
 import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
-import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
-import XCircle from 'phosphor-svelte/lib/XCircle'
-import Warning from 'phosphor-svelte/lib/Warning'
-import Copy from 'phosphor-svelte/lib/Copy'
 import Check from 'phosphor-svelte/lib/Check'
+import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+import Copy from 'phosphor-svelte/lib/Copy'
+import Warning from 'phosphor-svelte/lib/Warning'
+import XCircle from 'phosphor-svelte/lib/XCircle'
+import { onMount } from 'svelte'
+import { goto } from '$app/navigation'
+import { page } from '$app/stores'
+import { api } from '$lib/api'
+import type { ConnectionTestResult, DataSource, DataSourceType } from '$lib/types'
 
 // Get ID from route params (always defined for this route)
 let id = $derived($page.params.id!)
@@ -50,7 +50,7 @@ function parseConfig(configJson: string): ParsedConfig {
   }
 }
 
-function getConfigFromForm(type: DataSourceType, existingConfig?: ParsedConfig): string {
+function getConfigFromForm(type: DataSourceType, _existingConfig?: ParsedConfig): string {
   const config: Record<string, unknown> = {
     url: formUrl.trim(),
   }

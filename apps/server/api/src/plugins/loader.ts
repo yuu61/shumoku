@@ -9,11 +9,11 @@
  * - index.js: Entry point exporting a register(pluginRegistry) function
  */
 
-import { readFile, writeFile, stat, mkdir, rm } from 'node:fs/promises'
-import { join, resolve, isAbsolute, dirname } from 'node:path'
-import { load as parseYaml, dump as dumpYaml } from 'js-yaml'
-import type { PluginManifest } from './types.js'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { dump as dumpYaml, load as parseYaml } from 'js-yaml'
 import { pluginRegistry } from './registry.js'
+import type { PluginManifest } from './types.js'
 
 // ============================================
 // Types
@@ -113,10 +113,12 @@ export function getConfigPath(): string | null {
  */
 async function readConfig(configPath: string): Promise<PluginsConfig> {
   try {
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
     const configStat = await stat(configPath)
     if (!configStat.isFile()) {
       return { plugins: [] }
     }
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises readFile returns a Promise
     const content = await readFile(configPath, 'utf-8')
     return (parseYaml(content) as PluginsConfig) || { plugins: [] }
   } catch {
@@ -129,8 +131,10 @@ async function readConfig(configPath: string): Promise<PluginsConfig> {
  */
 async function writeConfig(configPath: string, config: PluginsConfig): Promise<void> {
   const dir = dirname(configPath)
+  // biome-ignore lint/nursery/useAwaitThenable: fs/promises mkdir returns a Promise
   await mkdir(dir, { recursive: true })
   const content = dumpYaml(config, { indent: 2 })
+  // biome-ignore lint/nursery/useAwaitThenable: fs/promises writeFile returns a Promise
   await writeFile(configPath, content, 'utf-8')
 }
 
@@ -207,6 +211,7 @@ async function loadPluginEntry(entry: PluginEntry, configDir: string): Promise<L
 
   try {
     // Verify directory exists
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
     const pluginStat = await stat(pluginPath)
     if (!pluginStat.isDirectory()) {
       throw new Error(`Plugin path is not a directory: ${pluginPath}`)
@@ -220,6 +225,7 @@ async function loadPluginEntry(entry: PluginEntry, configDir: string): Promise<L
     const modulePath = join(pluginPath, entryFile)
 
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
       await stat(modulePath)
     } catch {
       throw new Error(`Entry point not found: ${modulePath}`)
@@ -271,6 +277,7 @@ async function loadPluginEntry(entry: PluginEntry, configDir: string): Promise<L
  */
 async function readManifest(pluginPath: string): Promise<PluginManifest> {
   const manifestPath = join(pluginPath, 'plugin.json')
+  // biome-ignore lint/nursery/useAwaitThenable: fs/promises readFile returns a Promise
   const manifestJson = await readFile(manifestPath, 'utf-8')
   const manifest = JSON.parse(manifestJson) as PluginManifest
 
@@ -404,6 +411,7 @@ export async function removePlugin(
   // Optionally delete files
   if (deleteFiles && pluginInfo.path) {
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: fs/promises rm returns a Promise
       await rm(pluginInfo.path, { recursive: true })
     } catch (err) {
       console.warn(`[Plugins] Failed to delete plugin files: ${err}`)
@@ -473,6 +481,7 @@ export async function installPluginFromUrl(
       if (!response.ok) {
         return { success: false, error: `Failed to download: HTTP ${response.status}` }
       }
+      // biome-ignore lint/nursery/useAwaitThenable: response.arrayBuffer() returns a Promise
       const buffer = Buffer.from(await response.arrayBuffer())
       return installPluginFromZip(buffer, pluginsDir, subdirectory)
     }
@@ -483,6 +492,7 @@ export async function installPluginFromUrl(
       if (!response.ok) {
         return { success: false, error: `Failed to download: HTTP ${response.status}` }
       }
+      // biome-ignore lint/nursery/useAwaitThenable: response.arrayBuffer() returns a Promise
       const buffer = Buffer.from(await response.arrayBuffer())
       return installPluginFromTarGz(buffer, pluginsDir, subdirectory)
     }
@@ -515,6 +525,7 @@ async function installPluginFromTarGz(
 
     // Create temp directory for extraction
     const tempDir = join(pluginsDir, `.tmp-${Date.now()}`)
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises mkdir returns a Promise
     await mkdir(tempDir, { recursive: true })
 
     try {
@@ -522,10 +533,12 @@ async function installPluginFromTarGz(
       const gunzip = createGunzip()
       const extract = tar.extract({ cwd: tempDir })
 
+      // biome-ignore lint/nursery/useAwaitThenable: stream/promises pipeline returns a Promise
       await pipeline(Readable.from(buffer), gunzip, extract)
 
       // Find plugin.json
       const { findPluginRoot, movePluginToFinal } = await getPluginHelpers()
+      // biome-ignore lint/nursery/useAwaitThenable: async function returns a Promise
       const pluginRoot = await findPluginRoot(tempDir, subdirectory)
 
       if (!pluginRoot) {
@@ -537,6 +550,7 @@ async function installPluginFromTarGz(
       const finalPath = join(pluginsDir, manifest.id)
 
       // Move to final location
+      // biome-ignore lint/nursery/useAwaitThenable: async function returns a Promise
       await movePluginToFinal(pluginRoot, finalPath)
 
       // Add the plugin
@@ -544,6 +558,7 @@ async function installPluginFromTarGz(
     } finally {
       // Cleanup temp directory
       try {
+        // biome-ignore lint/nursery/useAwaitThenable: fs/promises rm returns a Promise
         await rm(tempDir, { recursive: true })
       } catch {
         // Ignore cleanup errors
@@ -568,6 +583,7 @@ async function installPluginFromGit(
 
     // Create temp directory for clone
     const tempDir = join(pluginsDir, `.tmp-git-${Date.now()}`)
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises mkdir returns a Promise
     await mkdir(tempDir, { recursive: true })
 
     try {
@@ -579,6 +595,7 @@ async function installPluginFromGit(
 
       // Find plugin root
       const { findPluginRoot, movePluginToFinal } = await getPluginHelpers()
+      // biome-ignore lint/nursery/useAwaitThenable: async function returns a Promise
       const pluginRoot = await findPluginRoot(tempDir, subdirectory)
 
       if (!pluginRoot) {
@@ -590,6 +607,7 @@ async function installPluginFromGit(
       const finalPath = join(pluginsDir, manifest.id)
 
       // Move to final location
+      // biome-ignore lint/nursery/useAwaitThenable: async function returns a Promise
       await movePluginToFinal(pluginRoot, finalPath)
 
       // Add the plugin
@@ -597,6 +615,7 @@ async function installPluginFromGit(
     } finally {
       // Cleanup temp directory
       try {
+        // biome-ignore lint/nursery/useAwaitThenable: fs/promises rm returns a Promise
         await rm(tempDir, { recursive: true })
       } catch {
         // Ignore cleanup errors
@@ -622,6 +641,7 @@ async function getPluginHelpers() {
     if (subdirectory) {
       const subPath = join(baseDir, subdirectory)
       try {
+        // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
         await stat(join(subPath, 'plugin.json'))
         return subPath
       } catch {
@@ -631,6 +651,7 @@ async function getPluginHelpers() {
 
     // Check base directory
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
       await stat(join(baseDir, 'plugin.json'))
       return baseDir
     } catch {
@@ -638,6 +659,7 @@ async function getPluginHelpers() {
     }
 
     // Search one level deep (common for archives that have a root folder)
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises readdir returns a Promise
     const entries = await readdir(baseDir, { withFileTypes: true })
     for (const entry of entries) {
       if (entry.isDirectory() && !entry.name.startsWith('.')) {
@@ -647,6 +669,7 @@ async function getPluginHelpers() {
         if (subdirectory) {
           const subPath = join(dirPath, subdirectory)
           try {
+            // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
             await stat(join(subPath, 'plugin.json'))
             return subPath
           } catch {
@@ -656,6 +679,7 @@ async function getPluginHelpers() {
 
         // Check this directory directly
         try {
+          // biome-ignore lint/nursery/useAwaitThenable: fs/promises stat returns a Promise
           await stat(join(dirPath, 'plugin.json'))
           return dirPath
         } catch {
@@ -673,12 +697,14 @@ async function getPluginHelpers() {
   async function movePluginToFinal(source: string, destination: string): Promise<void> {
     // Remove existing if present
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: fs/promises rm returns a Promise
       await rm(destination, { recursive: true })
     } catch {
       // Didn't exist
     }
 
     // Copy to final location
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises cp returns a Promise
     await cp(source, destination, { recursive: true })
   }
 
@@ -699,12 +725,12 @@ export async function installPluginFromZip(
     const entries = zip.getEntries()
 
     // Find plugin.json, considering subdirectory if specified
-    let manifestEntry = entries.find((e) => {
+    const manifestEntry = entries.find((e) => {
       if (subdirectory) {
         // Look for plugin.json inside the subdirectory
         return (
-          e.entryName.includes(subdirectory + '/plugin.json') ||
-          e.entryName.includes(subdirectory + '\\plugin.json')
+          e.entryName.includes(`${subdirectory}/plugin.json`) ||
+          e.entryName.includes(`${subdirectory}\\plugin.json`)
         )
       }
       return e.entryName.endsWith('plugin.json')
@@ -713,7 +739,7 @@ export async function installPluginFromZip(
     if (!manifestEntry) {
       return {
         success: false,
-        error: 'ZIP does not contain plugin.json' + (subdirectory ? ` in ${subdirectory}` : ''),
+        error: `ZIP does not contain plugin.json${subdirectory ? ` in ${subdirectory}` : ''}`,
       }
     }
 
@@ -726,6 +752,7 @@ export async function installPluginFromZip(
 
     // Create plugin directory
     const pluginPath = join(pluginsDir, manifest.id)
+    // biome-ignore lint/nursery/useAwaitThenable: fs/promises mkdir returns a Promise
     await mkdir(pluginPath, { recursive: true })
 
     // Determine root directory for extraction
@@ -742,7 +769,9 @@ export async function installPluginFromZip(
       if (!relativePath) continue
 
       const targetPath = join(pluginPath, relativePath)
+      // biome-ignore lint/nursery/useAwaitThenable: fs/promises mkdir returns a Promise
       await mkdir(dirname(targetPath), { recursive: true })
+      // biome-ignore lint/nursery/useAwaitThenable: fs/promises writeFile returns a Promise
       await writeFile(targetPath, entry.getData())
     }
 

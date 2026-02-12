@@ -1,15 +1,15 @@
 <script lang="ts">
-import { onMount, onDestroy, createEventDispatcher } from 'svelte'
+import type { Core, EdgeSingular, EventObject, NodeSingular } from 'cytoscape'
 import cytoscape from 'cytoscape'
-import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape'
-import { metricsStore, metricsData } from '$lib/stores'
+import { createEventDispatcher, onDestroy, onMount } from 'svelte'
+import { convertToCytoscapeElements } from '$lib/cytoscape/converter'
 import {
   createDarkStylesheet,
-  getUtilizationColor,
   formatTraffic,
+  getUtilizationColor,
   statusColors,
 } from '$lib/cytoscape/theme'
-import { convertToCytoscapeElements } from '$lib/cytoscape/converter'
+import { metricsData, metricsStore } from '$lib/stores'
 import type { ParsedTopologyResponse } from '$lib/types'
 
 // Props

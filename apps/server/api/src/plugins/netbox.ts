@@ -5,17 +5,17 @@
  */
 
 import type { NetworkGraph } from '@shumoku/core'
-import { NetBoxClient, convertToNetworkGraph } from '@shumoku/netbox'
+import { convertToNetworkGraph, NetBoxClient } from '@shumoku/netbox'
 import {
   addHttpWarning,
-  type DataSourcePlugin,
-  type DataSourceCapability,
-  type TopologyCapable,
-  type HostsCapable,
   type ConnectionResult,
+  type DataSourceCapability,
+  type DataSourcePlugin,
   type Host,
   type HostItem,
+  type HostsCapable,
   type NetBoxPluginConfig,
+  type TopologyCapable,
 } from './types.js'
 
 export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCapable {
@@ -63,6 +63,7 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
 
     try {
       // Try to fetch devices to test connection
+      // biome-ignore lint/nursery/useAwaitThenable: NetBoxClient method returns a Promise
       const resp = await this.client.fetchDevices()
 
       return addHttpWarning(this.config.url, {
@@ -148,6 +149,7 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
       return []
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: NetBoxClient method returns a Promise
     const deviceResp = await this.client.fetchDevices()
 
     return deviceResp.results.map((device) => ({
@@ -165,8 +167,9 @@ export class NetBoxPlugin implements DataSourcePlugin, TopologyCapable, HostsCap
     }
 
     // Note: device_id is a valid NetBox API parameter but not in QueryParams type
+    // biome-ignore lint/nursery/useAwaitThenable: NetBoxClient method returns a Promise
     const interfaceResp = await this.client.fetchInterfaces({
-      device_id: parseInt(hostId),
+      device_id: parseInt(hostId, 10),
     } as unknown as Parameters<typeof this.client.fetchInterfaces>[0])
 
     return interfaceResp.results.map((iface) => ({

@@ -5,18 +5,18 @@
 
 import type { Context } from 'hono'
 import { Hono } from 'hono'
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import {
-  SESSION_COOKIE,
-  isSetupComplete,
-  setPassword,
-  verifyPassword,
+  checkRateLimit,
+  clearAttempts,
   createSession,
   deleteSession,
-  validateSession,
-  checkRateLimit,
+  isSetupComplete,
   recordFailedAttempt,
-  clearAttempts,
+  SESSION_COOKIE,
+  setPassword,
+  validateSession,
+  verifyPassword,
 } from '../services/auth.js'
 
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 // 7 days in seconds
@@ -54,6 +54,7 @@ export function createAuthApi(): Hono {
       return c.json({ error: 'Setup already completed' }, 400)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     const body = (await c.req.json()) as { password?: string }
     if (!body.password || body.password.length < 8) {
       return c.json({ error: 'Password must be at least 8 characters' }, 400)
@@ -78,6 +79,7 @@ export function createAuthApi(): Hono {
       return c.json({ error: `Too many attempts. Try again in ${lockoutSeconds} seconds.` }, 429)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     const body = (await c.req.json()) as { password?: string }
     if (!body.password) {
       return c.json({ error: 'Password is required' }, 400)
@@ -107,6 +109,7 @@ export function createAuthApi(): Hono {
       return c.json({ error: 'Authentication required' }, 401)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     const body = (await c.req.json()) as {
       currentPassword?: string
       newPassword?: string

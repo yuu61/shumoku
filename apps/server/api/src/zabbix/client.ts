@@ -18,7 +18,7 @@ export class ZabbixClient {
    */
   private async request<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     const id = ++this.requestId
-    const url = this.config.url.replace(/\/$/, '') + '/api_jsonrpc.php'
+    const url = `${this.config.url.replace(/\/$/, '')}/api_jsonrpc.php`
 
     const response = await fetch(url, {
       method: 'POST',
@@ -38,6 +38,7 @@ export class ZabbixClient {
       throw new Error(`Zabbix API request failed: ${response.status} ${response.statusText}`)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
     const result = (await response.json()) as {
       result?: T
       error?: { message: string; data: string }

@@ -1,8 +1,8 @@
 <script lang="ts">
+import { onMount } from 'svelte'
+import { goto } from '$app/navigation'
 import { auth } from '$lib/api'
 import Logo from '$lib/components/Logo.svelte'
-import { goto } from '$app/navigation'
-import { onMount } from 'svelte'
 
 let password = ''
 let confirmPassword = ''
@@ -84,6 +84,7 @@ async function handleSubmit() {
           <input
             id="password"
             type="password"
+            autocomplete={isSetup ? 'new-password' : 'current-password'}
             bind:value={password}
             class="w-full px-3 py-2 bg-theme-bg-canvas border border-theme-border rounded-lg text-theme-text focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
             placeholder={isSetup ? 'Choose a password (min 8 chars)' : 'Enter password'}
@@ -99,6 +100,7 @@ async function handleSubmit() {
             <input
               id="confirm"
               type="password"
+              autocomplete="new-password"
               bind:value={confirmPassword}
               class="w-full px-3 py-2 bg-theme-bg-canvas border border-theme-border rounded-lg text-theme-text focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               placeholder="Confirm password"

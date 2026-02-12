@@ -33,11 +33,11 @@ export class HealthChecker {
     this.isRunning = true
 
     // Run initial check immediately
-    this.checkAll()
+    void this.checkAll()
 
     // Schedule periodic checks
     this.intervalId = setInterval(() => {
-      this.checkAll()
+      void this.checkAll()
     }, this.checkInterval)
   }
 
@@ -117,7 +117,7 @@ export class HealthChecker {
    * Uses exponential backoff: 30s, 60s, 120s, 240s, 300s (max)
    */
   private calculateBackoff(failCount: number): number {
-    const backoff = this.checkInterval * Math.pow(2, Math.min(failCount - 1, 4))
+    const backoff = this.checkInterval * 2 ** Math.min(failCount - 1, 4)
     return Math.min(backoff, MAX_BACKOFF_INTERVAL)
   }
 

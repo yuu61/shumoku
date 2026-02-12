@@ -1,23 +1,23 @@
 <script lang="ts">
-import { api } from '$lib/api'
-import * as Dialog from '$lib/components/ui/dialog'
-import { Button } from '$lib/components/ui/button'
-import { metricsData, mappingStore, mappingHosts } from '$lib/stores'
-import { formatTraffic } from '$lib/utils/format'
-import type { ZabbixMapping, DiscoveredMetric } from '$lib/types'
-import type { NodeSelectEvent } from './InteractiveSvgDiagram.svelte'
-import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
-import Link from 'phosphor-svelte/lib/Link'
-import LinkBreak from 'phosphor-svelte/lib/LinkBreak'
-import Warning from 'phosphor-svelte/lib/Warning'
-import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
-import GearSix from 'phosphor-svelte/lib/GearSix'
 import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
 import ArrowSquareOut from 'phosphor-svelte/lib/ArrowSquareOut'
-import Cube from 'phosphor-svelte/lib/Cube'
-import ChartLine from 'phosphor-svelte/lib/ChartLine'
 import CaretDown from 'phosphor-svelte/lib/CaretDown'
 import CaretRight from 'phosphor-svelte/lib/CaretRight'
+import ChartLine from 'phosphor-svelte/lib/ChartLine'
+import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+import Cube from 'phosphor-svelte/lib/Cube'
+import GearSix from 'phosphor-svelte/lib/GearSix'
+import Link from 'phosphor-svelte/lib/Link'
+import LinkBreak from 'phosphor-svelte/lib/LinkBreak'
+import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
+import Warning from 'phosphor-svelte/lib/Warning'
+import { api } from '$lib/api'
+import { Button } from '$lib/components/ui/button'
+import * as Dialog from '$lib/components/ui/dialog'
+import { mappingHosts, mappingStore, metricsData } from '$lib/stores'
+import type { DiscoveredMetric, ZabbixMapping } from '$lib/types'
+import { formatTraffic } from '$lib/utils/format'
+import type { NodeSelectEvent } from './InteractiveSvgDiagram.svelte'
 
 interface Props {
   open: boolean
@@ -64,8 +64,8 @@ let filteredHosts = $derived(
     ? hosts.filter(
         (h) =>
           h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (h.displayName && h.displayName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (h.ip && h.ip.includes(searchQuery)),
+          h.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          h.ip?.includes(searchQuery),
       )
     : hosts,
 )
@@ -79,7 +79,7 @@ let filteredMetrics = $derived(
     ? discoveredMetrics.filter(
         (m) =>
           m.name.toLowerCase().includes(metricsSearchQuery.toLowerCase()) ||
-          (m.help && m.help.toLowerCase().includes(metricsSearchQuery.toLowerCase())) ||
+          m.help?.toLowerCase().includes(metricsSearchQuery.toLowerCase()) ||
           Object.entries(m.labels).some(
             ([k, v]) =>
               k.toLowerCase().includes(metricsSearchQuery.toLowerCase()) ||

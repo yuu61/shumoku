@@ -1,13 +1,13 @@
 <script lang="ts">
+import ArrowRight from 'phosphor-svelte/lib/ArrowRight'
+import Database from 'phosphor-svelte/lib/Database'
+import Plus from 'phosphor-svelte/lib/Plus'
+import Spinner from 'phosphor-svelte/lib/Spinner'
+import SquaresFour from 'phosphor-svelte/lib/SquaresFour'
+import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
 import { onMount } from 'svelte'
 import { api } from '$lib/api'
-import type { Topology, DataSource, Dashboard } from '$lib/types'
-import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
-import Database from 'phosphor-svelte/lib/Database'
-import SquaresFour from 'phosphor-svelte/lib/SquaresFour'
-import Plus from 'phosphor-svelte/lib/Plus'
-import ArrowRight from 'phosphor-svelte/lib/ArrowRight'
-import Spinner from 'phosphor-svelte/lib/Spinner'
+import type { Dashboard, DataSource, Topology } from '$lib/types'
 
 let topologies: Topology[] = $state([])
 let dataSources: DataSource[] = $state([])

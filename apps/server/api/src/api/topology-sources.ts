@@ -4,9 +4,9 @@
  */
 
 import { Hono } from 'hono'
-import { TopologySourcesService } from '../services/topology-sources.js'
 import { DataSourceService } from '../services/datasource.js'
-import type { TopologyDataSourceInput, SyncMode } from '../types.js'
+import { TopologySourcesService } from '../services/topology-sources.js'
+import type { SyncMode, TopologyDataSourceInput } from '../types.js'
 import { getTopologyService } from './topologies.js'
 
 // Lazy initialization to avoid database access at module load time
@@ -59,6 +59,7 @@ topologySourcesApi.post('/:topologyId/sources', async (c) => {
     return c.json({ error: 'Topology not found' }, 404)
   }
 
+  // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
   const body = await c.req.json<TopologyDataSourceInput>()
 
   // Validate required fields
@@ -107,6 +108,7 @@ topologySourcesApi.put('/:topologyId/sources/:sourceId', async (c) => {
     return c.json({ error: 'Topology data source not found' }, 404)
   }
 
+  // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
   const body = await c.req.json<{ syncMode?: SyncMode; priority?: number; optionsJson?: string }>()
 
   const updated = getTopologySourcesService().update(sourceId, body)
@@ -156,6 +158,7 @@ topologySourcesApi.put('/:topologyId/sources', async (c) => {
     return c.json({ error: 'Topology not found' }, 404)
   }
 
+  // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
   const body = await c.req.json<{ sources: TopologyDataSourceInput[] }>()
 
   if (!Array.isArray(body.sources)) {
@@ -311,7 +314,7 @@ topologySourcesApi.post('/:topologyId/sources/:sourceId/sync', async (c) => {
     // Find base source
     const baseSourceId =
       Array.from(sourceConfigs.entries()).find(([, cfg]) => cfg.isBase)?.[0] ??
-      successfulFetches[0].sourceId
+      successfulFetches[0]!.sourceId
     const baseIndex = successfulFetches.findIndex((f) => f.sourceId === baseSourceId)
 
     console.log('[sync] Base source:', baseSourceId)

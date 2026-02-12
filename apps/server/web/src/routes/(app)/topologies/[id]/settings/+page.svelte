@@ -1,45 +1,45 @@
 <script lang="ts">
+import ArrowDown from 'phosphor-svelte/lib/ArrowDown'
+import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
+import ArrowRight from 'phosphor-svelte/lib/ArrowRight'
+import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwise'
+import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+import Copy from 'phosphor-svelte/lib/Copy'
+import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk'
+import Lightning from 'phosphor-svelte/lib/Lightning'
+import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
+import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+import Plus from 'phosphor-svelte/lib/Plus'
+import Star from 'phosphor-svelte/lib/Star'
+import Trash from 'phosphor-svelte/lib/Trash'
 import { onMount } from 'svelte'
-import { page } from '$app/stores'
 import { goto } from '$app/navigation'
+import { page } from '$app/stores'
 import { api } from '$lib/api'
 import { Button } from '$lib/components/ui/button'
 import {
   displaySettings,
-  metricsConnected,
-  liveUpdatesEnabled,
-  showTrafficFlow,
-  showNodeStatus,
-  mappingStore,
-  mappingLoading,
-  mappingError,
-  nodeMapping,
-  linkMapping,
-  mappingHosts,
   hostInterfaces,
   hostInterfacesLoading,
+  linkMapping,
+  liveUpdatesEnabled,
+  mappingError,
+  mappingHosts,
+  mappingLoading,
+  mappingStore,
+  metricsConnected,
+  nodeMapping,
+  showNodeStatus,
+  showTrafficFlow,
 } from '$lib/stores'
 import type {
+  DataSource,
+  ParsedTopologyResponse,
+  SyncMode,
   Topology,
   TopologyDataSource,
   TopologyDataSourceInput,
-  DataSource,
-  SyncMode,
-  ParsedTopologyResponse,
 } from '$lib/types'
-import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
-import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
-import Trash from 'phosphor-svelte/lib/Trash'
-import Plus from 'phosphor-svelte/lib/Plus'
-import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwise'
-import Copy from 'phosphor-svelte/lib/Copy'
-import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
-import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk'
-import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
-import Lightning from 'phosphor-svelte/lib/Lightning'
-import ArrowRight from 'phosphor-svelte/lib/ArrowRight'
-import Star from 'phosphor-svelte/lib/Star'
-import ArrowDown from 'phosphor-svelte/lib/ArrowDown'
 
 // ============================================
 // State
@@ -220,7 +220,7 @@ async function loadData() {
 
     // Load filter options for NetBox sources
     for (const s of editableSources) {
-      loadFilterOptions(s.dataSourceId)
+      await loadFilterOptions(s.dataSourceId)
     }
 
     // Initialize merge state

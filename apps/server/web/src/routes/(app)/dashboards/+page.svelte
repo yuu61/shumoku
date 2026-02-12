@@ -1,17 +1,17 @@
 <script lang="ts">
+import CaretRight from 'phosphor-svelte/lib/CaretRight'
+import Plus from 'phosphor-svelte/lib/Plus'
+import Spinner from 'phosphor-svelte/lib/Spinner'
+import SquaresFour from 'phosphor-svelte/lib/SquaresFour'
+import Trash from 'phosphor-svelte/lib/Trash'
 import { onMount } from 'svelte'
 import { goto } from '$app/navigation'
 import {
+  dashboardError,
+  dashboardLoading,
   dashboardStore,
   dashboards,
-  dashboardLoading,
-  dashboardError,
 } from '$lib/stores/dashboards'
-import Plus from 'phosphor-svelte/lib/Plus'
-import SquaresFour from 'phosphor-svelte/lib/SquaresFour'
-import Trash from 'phosphor-svelte/lib/Trash'
-import Spinner from 'phosphor-svelte/lib/Spinner'
-import CaretRight from 'phosphor-svelte/lib/CaretRight'
 
 let showCreateModal = $state(false)
 let newDashboardName = $state('')

@@ -7,17 +7,17 @@
  */
 
 import {
-  GrafanaAlertService,
-  mapSeverity,
   buildTitle,
   filterLabels,
+  GrafanaAlertService,
+  mapSeverity,
   SEVERITY_ORDER,
 } from '../services/grafana-alerts.js'
 import {
-  addHttpWarning,
   type Alert,
   type AlertQueryOptions,
   type AlertsCapable,
+  addHttpWarning,
   type ConnectionResult,
   type DataSourceCapability,
   type DataSourcePlugin,
@@ -62,6 +62,7 @@ export class GrafanaPlugin implements DataSourcePlugin, AlertsCapable {
         }
       }
 
+      // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
       const data = (await response.json()) as { version?: string; database?: string }
       return addHttpWarning(this.config.url, {
         success: true,
@@ -117,6 +118,7 @@ export class GrafanaPlugin implements DataSourcePlugin, AlertsCapable {
         generatorURL?: string
       }
 
+      // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
       const alertmanagerAlerts = (await response.json()) as GrafanaAlertmanagerAlert[]
 
       const now = Date.now()

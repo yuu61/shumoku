@@ -5,16 +5,16 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { sampleNetwork, type NetworkGraph } from '@shumoku/core'
-import { BunHierarchicalLayout } from './layout.js'
+import { type NetworkGraph, sampleNetwork } from '@shumoku/core'
 import {
-  HierarchicalParser,
   createMemoryFileResolver,
-  YamlParser,
   type FileResolver,
+  HierarchicalParser,
+  YamlParser,
 } from '@shumoku/parser-yaml'
-import type { Config, MetricsData, TopologyConfig, TopologyInstance } from './types.js'
 import { resolvePath } from './config.js'
+import { BunHierarchicalLayout } from './layout.js'
+import type { Config, MetricsData, TopologyConfig, TopologyInstance } from './types.js'
 
 /**
  * Create a Node.js file resolver for the given base path
@@ -81,6 +81,7 @@ export class TopologyManager {
       // Use hierarchical parser for multi-file diagrams
       const resolver = createFileResolver()
       const hierarchicalParser = new HierarchicalParser(resolver)
+      // biome-ignore lint/nursery/useAwaitThenable: parser.parse returns a Promise
       const result = await hierarchicalParser.parse(content, filePath)
       graph = result.graph
     } else {
@@ -90,6 +91,7 @@ export class TopologyManager {
       graph = result.graph
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: layout.layout may return a Promise
     const layoutResult = await this.layout.layout(graph)
 
     const instance: TopologyInstance = {
@@ -123,9 +125,11 @@ export class TopologyManager {
     // Use memory file resolver to parse the sample network
     const resolver = createMemoryFileResolver(files, '')
     const hierarchicalParser = new HierarchicalParser(resolver)
+    // biome-ignore lint/nursery/useAwaitThenable: parser.parse returns a Promise
     const result = await hierarchicalParser.parse(mainFile.content, 'main.yaml')
     const graph = result.graph
 
+    // biome-ignore lint/nursery/useAwaitThenable: layout.layout may return a Promise
     const layoutResult = await this.layout.layout(graph)
 
     const instance: TopologyInstance = {
@@ -152,7 +156,7 @@ export class TopologyManager {
     }
 
     for (let i = 0; i < graph.links.length; i++) {
-      const linkId = graph.links[i].id || `link-${i}`
+      const linkId = graph.links[i]!.id || `link-${i}`
       links[linkId] = { status: 'unknown' }
     }
 

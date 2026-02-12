@@ -1,9 +1,9 @@
 <script lang="ts">
+import ArrowDown from 'phosphor-svelte/lib/ArrowDown'
+import ArrowUp from 'phosphor-svelte/lib/ArrowUp'
+import ChartLine from 'phosphor-svelte/lib/ChartLine'
 import { metricsData } from '$lib/stores/metrics'
 import WidgetWrapper from './WidgetWrapper.svelte'
-import ChartLine from 'phosphor-svelte/lib/ChartLine'
-import ArrowUp from 'phosphor-svelte/lib/ArrowUp'
-import ArrowDown from 'phosphor-svelte/lib/ArrowDown'
 
 interface Props {
   id: string
@@ -35,10 +35,11 @@ let value = $derived.by(() => {
       return nodeStatuses.filter((n) => n.status === 'down').length
     case 'links-healthy':
       return linkStatuses.filter((l) => l.status === 'up').length
-    case 'utilization':
+    case 'utilization': {
       if (linkStatuses.length === 0) return 0
       const totalUtil = linkStatuses.reduce((sum, l) => sum + (l.utilization || 0), 0)
       return Math.round(totalUtil / linkStatuses.length)
+    }
     default:
       return 0
   }

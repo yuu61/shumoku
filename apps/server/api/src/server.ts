@@ -4,30 +4,28 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { serveStatic } from 'hono/bun'
 import type { Server as BunServer, ServerWebSocket } from 'bun'
-import type { Config, ClientMessage, ClientState, MetricsData } from './types.js'
-import { TopologyManager } from './topology.js'
-import { generateMetricsHtml } from './html-generator.js'
-import { MockMetricsProvider } from './mock-metrics.js'
-import { initDatabase, closeDatabase } from './db/index.js'
+import { Hono } from 'hono'
+import { serveStatic } from 'hono/bun'
+import { cors } from 'hono/cors'
 import { createApiRouter } from './api/index.js'
 import { getTopologyService } from './api/topologies.js'
-import type { TopologyService, ParsedTopology } from './services/topology.js'
-import { TopologySourcesService } from './services/topology-sources.js'
-import { DataSourceService } from './services/datasource.js'
+import { parseBandwidthCapacity } from './bandwidth.js'
+import { closeDatabase, initDatabase } from './db/index.js'
+import { generateMetricsHtml } from './html-generator.js'
+import { MockMetricsProvider } from './mock-metrics.js'
 import {
-  registerBuiltinPlugins,
-  pluginRegistry,
   hasMetricsCapability,
   loadPluginsFromConfig,
+  pluginRegistry,
+  registerBuiltinPlugins,
 } from './plugins/index.js'
+import { DataSourceService } from './services/datasource.js'
 import { startHealthChecker, stopHealthChecker } from './services/health-checker.js'
-import type { ZabbixMapping } from './types.js'
-import { parseBandwidthCapacity } from './bandwidth.js'
+import type { ParsedTopology, TopologyService } from './services/topology.js'
+import { TopologySourcesService } from './services/topology-sources.js'
+import { TopologyManager } from './topology.js'
+import type { ClientMessage, ClientState, Config, MetricsData, ZabbixMapping } from './types.js'
 
 export class Server {
   private app: Hono
@@ -317,6 +315,7 @@ export class Server {
 
     const topologies = this.topologyService.list()
     for (const topology of topologies) {
+      // biome-ignore lint/nursery/useAwaitThenable: getParsed returns a Promise
       const parsed: ParsedTopology | null = await this.topologyService.getParsed(topology.id)
       if (!parsed) continue
 
@@ -325,7 +324,7 @@ export class Server {
       // Try to get metrics from configured data source
       const metricsSources = this.topologySourcesService.listByPurpose(topology.id, 'metrics')
       if (metricsSources.length > 0) {
-        const source = metricsSources[0] // Use first metrics source
+        const source = metricsSources[0]! // Use first metrics source
         const dataSource = this.dataSourceService.get(source.dataSourceId)
 
         if (dataSource) {
@@ -358,6 +357,7 @@ export class Server {
               }
 
               // Poll real metrics
+              // biome-ignore lint/nursery/useAwaitThenable: plugin.pollMetrics returns a Promise
               metrics = await plugin.pollMetrics(mapping)
               console.log(
                 `[Server] Polled real metrics for topology "${topology.name}" from ${dataSource.type}`,
@@ -400,6 +400,7 @@ export class Server {
     this.topologyService = getTopologyService()
     this.topologySourcesService = new TopologySourcesService()
     this.dataSourceService = new DataSourceService()
+    // biome-ignore lint/nursery/useAwaitThenable: initializeSample returns a Promise
     await this.topologyService.initializeSample()
 
     await this.topologyManager.loadAll()

@@ -3,9 +3,9 @@
  * Periodically fetches metrics from Zabbix and updates topology data
  */
 
-import type { ZabbixConfig, MetricsData, TopologyInstance } from '../types.js'
+import type { MetricsData, TopologyInstance, ZabbixConfig } from '../types.js'
 import { ZabbixClient } from './client.js'
-import { ZabbixMapper, type ResolvedNodeMapping, type ResolvedLinkMapping } from './mapper.js'
+import { type ResolvedLinkMapping, type ResolvedNodeMapping, ZabbixMapper } from './mapper.js'
 
 export class ZabbixPoller {
   private client: ZabbixClient
@@ -127,7 +127,7 @@ export class ZabbixPoller {
 
     // Fill in unknown status for unmapped links
     for (let i = 0; i < instance.graph.links.length; i++) {
-      const linkId = instance.graph.links[i].id || `link-${i}`
+      const linkId = instance.graph.links[i]!.id || `link-${i}`
       if (!metrics.links[linkId]) {
         metrics.links[linkId] = { status: 'unknown' }
       }
@@ -166,7 +166,7 @@ export class ZabbixPoller {
     }
 
     // Initial poll
-    pollAll()
+    void pollAll()
 
     // Schedule periodic polling
     this.pollInterval = setInterval(pollAll, this.config.pollInterval)

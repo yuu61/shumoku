@@ -7,6 +7,10 @@
 
 import type { MetricsData, ZabbixMapping } from '../types.js'
 import {
+  type Alert,
+  type AlertQueryOptions,
+  type AlertSeverity,
+  type AlertsCapable,
   addHttpWarning,
   type ConnectionResult,
   type DataSourceCapability,
@@ -16,12 +20,8 @@ import {
   type HostItem,
   type HostsCapable,
   type MetricsCapable,
-  type AlertsCapable,
   type PrometheusCustomMetrics,
   type PrometheusPluginConfig,
-  type Alert,
-  type AlertQueryOptions,
-  type AlertSeverity,
 } from './types.js'
 
 /**
@@ -86,7 +86,7 @@ export class PrometheusPlugin
     if (this.config.preset === 'custom' && this.config.customMetrics) {
       this.metrics = this.config.customMetrics
     } else {
-      this.metrics = METRIC_PRESETS[this.config.preset] || METRIC_PRESETS.snmp
+      this.metrics = METRIC_PRESETS[this.config.preset] ?? METRIC_PRESETS.snmp ?? null
     }
   }
 
@@ -271,6 +271,7 @@ export class PrometheusPlugin
 
       return hosts
     } catch (err) {
+      // biome-ignore lint/security/noSecrets: not a secret, just a log prefix
       console.error('[PrometheusPlugin] Failed to get hosts:', err)
       return []
     }
@@ -315,6 +316,7 @@ export class PrometheusPlugin
 
       return items
     } catch (err) {
+      // biome-ignore lint/security/noSecrets: not a secret, just a log prefix
       console.error('[PrometheusPlugin] Failed to get host items:', err)
       return []
     }
@@ -365,7 +367,7 @@ export class PrometheusPlugin
           await this.apiRequest<Record<string, Array<{ type: string; help: string }>>>(metadataUrl)
         for (const [name, entries] of Object.entries(metadataResponse)) {
           if (entries.length > 0) {
-            metadataMap[name] = entries[0]
+            metadataMap[name] = entries[0]!
           }
         }
       } catch {
@@ -404,6 +406,7 @@ export class PrometheusPlugin
 
       return metrics
     } catch (err) {
+      // biome-ignore lint/security/noSecrets: not a secret, just a log prefix
       console.error('[PrometheusPlugin] Failed to discover metrics:', err)
       return []
     }
@@ -425,6 +428,7 @@ export class PrometheusPlugin
     try {
       const response = await this.fetchAlertmanager(alertmanagerUrl, '/api/v2/alerts')
       if (!response.ok) {
+        // biome-ignore lint/security/noSecrets: not a secret, just a log prefix
         console.error('[PrometheusPlugin] Alertmanager API error:', response.status)
         return []
       }
@@ -439,6 +443,7 @@ export class PrometheusPlugin
         generatorURL?: string
       }
 
+      // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
       const alertmanagerAlerts = (await response.json()) as AlertmanagerAlert[]
 
       const now = Date.now()
@@ -479,6 +484,7 @@ export class PrometheusPlugin
 
       return alerts
     } catch (err) {
+      // biome-ignore lint/security/noSecrets: not a secret, just a log prefix
       console.error('[PrometheusPlugin] Failed to fetch alerts:', err)
       return []
     }
@@ -593,6 +599,7 @@ export class PrometheusPlugin
       throw new Error(`Prometheus API request failed: ${response.status} ${response.statusText}`)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
     const json = (await response.json()) as PrometheusResponse<T>
 
     if (json.status === 'error') {
@@ -612,6 +619,7 @@ export class PrometheusPlugin
       throw new Error(`Prometheus API request failed: ${response.status}`)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
     const json = (await response.json()) as PrometheusResponse<T>
 
     if (json.status === 'error') {
@@ -702,7 +710,7 @@ export class PrometheusPlugin
     try {
       const inResult = await this.instantQuery(inQuery)
       if (inResult.result.length > 0) {
-        inBytesPerSec = parseFloat(inResult.result[0].value[1]) || 0
+        inBytesPerSec = parseFloat(inResult.result[0]!.value[1]!) || 0
       }
     } catch {
       // Ignore errors for individual metrics
@@ -711,7 +719,7 @@ export class PrometheusPlugin
     try {
       const outResult = await this.instantQuery(outQuery)
       if (outResult.result.length > 0) {
-        outBytesPerSec = parseFloat(outResult.result[0].value[1]) || 0
+        outBytesPerSec = parseFloat(outResult.result[0]!.value[1]!) || 0
       }
     } catch {
       // Ignore errors for individual metrics

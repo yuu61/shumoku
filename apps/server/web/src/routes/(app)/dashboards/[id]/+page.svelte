@@ -1,33 +1,32 @@
 <script lang="ts">
-import { onMount, tick } from 'svelte'
-import { page } from '$app/stores'
-import { goto } from '$app/navigation'
-import { browser } from '$app/environment'
-import { mount, unmount } from 'svelte'
-import {
-  dashboardStore,
-  currentDashboard,
-  currentLayout,
-  dashboardLoading,
-  dashboardError,
-  dashboardEditMode,
-} from '$lib/stores/dashboards'
-import { initializeWidgets, getAllWidgets, getWidget } from '$lib/widgets'
-import type { DashboardLayout, WidgetPosition } from '$lib/types'
-import ShareButton from '$lib/components/ShareButton.svelte'
-import { api } from '$lib/api'
-import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+import type { GridStack, GridStackNode, GridStackWidget } from 'gridstack'
+import ChartLine from 'phosphor-svelte/lib/ChartLine'
+import Cpu from 'phosphor-svelte/lib/Cpu'
+import Database from 'phosphor-svelte/lib/Database'
 import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk'
-import X from 'phosphor-svelte/lib/X'
+import Heart from 'phosphor-svelte/lib/Heart'
+import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 import Plus from 'phosphor-svelte/lib/Plus'
 import Spinner from 'phosphor-svelte/lib/Spinner'
 import SquaresFour from 'phosphor-svelte/lib/SquaresFour'
 import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
-import ChartLine from 'phosphor-svelte/lib/ChartLine'
-import Heart from 'phosphor-svelte/lib/Heart'
-import Database from 'phosphor-svelte/lib/Database'
-import Cpu from 'phosphor-svelte/lib/Cpu'
-import type { GridStack, GridStackNode, GridStackWidget } from 'gridstack'
+import X from 'phosphor-svelte/lib/X'
+import { mount, onMount, tick, unmount } from 'svelte'
+import { browser } from '$app/environment'
+import { goto } from '$app/navigation'
+import { page } from '$app/stores'
+import { api } from '$lib/api'
+import ShareButton from '$lib/components/ShareButton.svelte'
+import {
+  currentDashboard,
+  currentLayout,
+  dashboardEditMode,
+  dashboardError,
+  dashboardLoading,
+  dashboardStore,
+} from '$lib/stores/dashboards'
+import type { DashboardLayout, WidgetPosition } from '$lib/types'
+import { getAllWidgets, getWidget, initializeWidgets } from '$lib/widgets'
 
 let id = $derived($page.params.id)
 

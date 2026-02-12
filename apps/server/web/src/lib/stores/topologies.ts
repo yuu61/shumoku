@@ -3,7 +3,7 @@
  * Reactive state management for topologies
  */
 
-import { writable, derived } from 'svelte/store'
+import { derived, writable } from 'svelte/store'
 import { api } from '$lib/api'
 import type { Topology, TopologyInput, ZabbixMapping } from '$lib/types'
 

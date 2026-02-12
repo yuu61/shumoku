@@ -4,15 +4,15 @@
  */
 
 import type { Database } from 'bun:sqlite'
-import { getDatabase, generateId, timestamp } from '../db/index.js'
+import crypto from 'node:crypto'
+import { generateId, getDatabase, timestamp } from '../db/index.js'
 import type {
-  TopologyDataSource,
-  TopologyDataSourceInput,
   DataSource,
   DataSourcePurpose,
   SyncMode,
+  TopologyDataSource,
+  TopologyDataSourceInput,
 } from '../types.js'
-import crypto from 'node:crypto'
 
 interface TopologyDataSourceRow {
   id: string
@@ -206,6 +206,7 @@ export class TopologySourcesService {
    * Add a data source to a topology
    */
   async add(topologyId: string, input: TopologyDataSourceInput): Promise<TopologyDataSource> {
+    // biome-ignore lint/nursery/useAwaitThenable: generateId returns a Promise
     const id = await generateId()
     const now = timestamp()
     const syncMode = input.syncMode || 'manual'

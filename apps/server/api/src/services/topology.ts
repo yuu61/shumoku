@@ -7,13 +7,13 @@
  */
 
 import type { Database } from 'bun:sqlite'
-import type { LayoutResult, NetworkGraph, IconDimensions } from '@shumoku/core'
+import type { IconDimensions, LayoutResult, NetworkGraph } from '@shumoku/core'
 import { sampleNetwork } from '@shumoku/core'
+import { createMemoryFileResolver, HierarchicalParser, YamlParser } from '@shumoku/parser-yaml'
+import { collectIconUrls, resolveIconDimensionsForGraph } from '@shumoku/renderer'
+import { generateId, getDatabase, timestamp } from '../db/index.js'
 import { BunHierarchicalLayout } from '../layout.js'
-import { YamlParser, HierarchicalParser, createMemoryFileResolver } from '@shumoku/parser-yaml'
-import { resolveIconDimensionsForGraph, collectIconUrls } from '@shumoku/renderer'
-import { getDatabase, generateId, timestamp } from '../db/index.js'
-import type { Topology, TopologyInput, MetricsData, ZabbixMapping } from '../types.js'
+import type { MetricsData, Topology, TopologyInput, ZabbixMapping } from '../types.js'
 
 interface TopologyRow {
   id: string
@@ -121,6 +121,7 @@ export async function parseYamlToNetworkGraph(
     const fileMap = new Map<string, string>([['main.yaml', yamlContent], ...additionalFiles])
     const resolver = createMemoryFileResolver(fileMap, '')
     const parser = new HierarchicalParser(resolver)
+    // biome-ignore lint/nursery/useAwaitThenable: parser.parse returns a Promise
     const result = await parser.parse(yamlContent, 'main.yaml')
     return result.graph
   }
@@ -178,6 +179,7 @@ export class TopologyService {
     // Validate content by parsing it
     this.parseContent(input.contentJson)
 
+    // biome-ignore lint/nursery/useAwaitThenable: generateId returns a Promise
     const id = await generateId()
     const now = timestamp()
 
@@ -434,7 +436,7 @@ export class TopologyService {
     }
 
     for (let i = 0; i < graph.links.length; i++) {
-      const linkId = graph.links[i].id || `link-${i}`
+      const linkId = graph.links[i]!.id || `link-${i}`
       links[linkId] = { status: 'unknown' }
     }
 
@@ -532,6 +534,7 @@ export class TopologyService {
     const contentJson = JSON.stringify(graph)
 
     // Insert
+    // biome-ignore lint/nursery/useAwaitThenable: generateId returns a Promise
     const id = await generateId()
     const now = timestamp()
 

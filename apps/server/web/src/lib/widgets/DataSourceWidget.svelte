@@ -1,13 +1,13 @@
 <script lang="ts">
+import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+import Database from 'phosphor-svelte/lib/Database'
+import Question from 'phosphor-svelte/lib/Question'
+import Spinner from 'phosphor-svelte/lib/Spinner'
+import XCircle from 'phosphor-svelte/lib/XCircle'
 import { onMount } from 'svelte'
 import { api } from '$lib/api'
 import type { DataSource } from '$lib/types'
 import WidgetWrapper from './WidgetWrapper.svelte'
-import Database from 'phosphor-svelte/lib/Database'
-import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
-import XCircle from 'phosphor-svelte/lib/XCircle'
-import Question from 'phosphor-svelte/lib/Question'
-import Spinner from 'phosphor-svelte/lib/Spinner'
 
 interface Props {
   id: string

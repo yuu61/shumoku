@@ -1,9 +1,9 @@
 <script lang="ts">
+import FileText from 'phosphor-svelte/lib/FileText'
+import GithubLogo from 'phosphor-svelte/lib/GithubLogo'
 import { onMount } from 'svelte'
 import { api, auth } from '$lib/api'
-import { themeSetting, type ThemeValue } from '$lib/stores'
-import GithubLogo from 'phosphor-svelte/lib/GithubLogo'
-import FileText from 'phosphor-svelte/lib/FileText'
+import { type ThemeValue, themeSetting } from '$lib/stores'
 
 let settings: Record<string, string> = {}
 let loading = true
@@ -171,11 +171,13 @@ async function handleHealthCheck() {
         </div>
         <div class="card-body">
           <form onsubmit={(e) => { e.preventDefault(); handleChangePassword() }} class="max-w-sm space-y-4">
+            <input type="text" autocomplete="username" value="admin" class="hidden" aria-hidden="true" tabindex="-1" />
             <div>
               <label for="currentPassword" class="label">Current Password</label>
               <input
                 id="currentPassword"
                 type="password"
+                autocomplete="current-password"
                 class="input"
                 bind:value={currentPassword}
                 disabled={passwordLoading}
@@ -186,6 +188,7 @@ async function handleHealthCheck() {
               <input
                 id="newPassword"
                 type="password"
+                autocomplete="new-password"
                 class="input"
                 placeholder="Min 8 characters"
                 bind:value={newPassword}
@@ -197,6 +200,7 @@ async function handleHealthCheck() {
               <input
                 id="confirmNewPassword"
                 type="password"
+                autocomplete="new-password"
                 class="input"
                 bind:value={confirmNewPassword}
                 disabled={passwordLoading}

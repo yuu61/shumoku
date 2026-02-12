@@ -50,7 +50,10 @@ export const statusColors = {
 /**
  * Generate Cytoscape stylesheet for dark theme
  */
-export function createDarkStylesheet(): Array<{ selector: string; style: Record<string, unknown> }> {
+export function createDarkStylesheet(): Array<{
+  selector: string
+  style: Record<string, unknown>
+}> {
   return [
     // ========== Base Node Style ==========
     {
@@ -81,7 +84,7 @@ export function createDarkStylesheet(): Array<{ selector: string; style: Record<
       selector: `node[type="${type}"]`,
       style: {
         'border-color': color,
-        'background-color': color + '20', // 20% opacity
+        'background-color': `${color}20`, // 20% opacity
       },
     })),
 

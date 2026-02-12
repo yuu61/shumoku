@@ -4,20 +4,20 @@
  */
 
 import type {
+  Alert,
+  AlertQueryOptions,
+  ConnectionTestResult,
   Dashboard,
   DashboardInput,
   DataSource,
   DataSourceInput,
+  SyncMode,
   Topology,
-  TopologyInput,
   TopologyContext,
-  ZabbixMapping,
-  ConnectionTestResult,
   TopologyDataSource,
   TopologyDataSourceInput,
-  SyncMode,
-  Alert,
-  AlertQueryOptions,
+  TopologyInput,
+  ZabbixMapping,
 } from './types'
 
 const BASE_URL = '/api'
@@ -63,9 +63,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 import type {
   DataSourceCapability,
   DataSourcePluginInfo,
+  DiscoveredMetric,
   Host,
   HostItem,
-  DiscoveredMetric,
 } from './types'
 
 // Data Sources API

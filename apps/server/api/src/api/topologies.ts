@@ -3,15 +3,14 @@
  * CRUD endpoints for topology management
  */
 
-import { Hono } from 'hono'
-import { TopologyService } from '../services/topology.js'
-import { DataSourceService } from '../services/datasource.js'
-import { TopologySourcesService } from '../services/topology-sources.js'
-import type { TopologyInput, ZabbixMapping } from '../types.js'
-import { renderEmbeddable, type EmbeddableRenderOutput } from '@shumoku/renderer'
 import { buildHierarchicalSheets, mergeWithOverlays, type OverlayConfig } from '@shumoku/core'
+import { type EmbeddableRenderOutput, renderEmbeddable } from '@shumoku/renderer'
+import { Hono } from 'hono'
 import { BunHierarchicalLayout } from '../layout.js'
-import type { TopologySourceMergeConfig } from '../types.js'
+import { DataSourceService } from '../services/datasource.js'
+import { TopologyService } from '../services/topology.js'
+import { TopologySourcesService } from '../services/topology-sources.js'
+import type { TopologyInput, TopologySourceMergeConfig, ZabbixMapping } from '../types.js'
 
 /**
  * Build render output from a parsed topology
@@ -245,6 +244,7 @@ export function createTopologiesApi(): Hono {
   // Create new topology
   app.post('/', async (c) => {
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as TopologyInput
       if (!body.name || !body.contentJson) {
         return c.json({ error: 'name and contentJson are required' }, 400)
@@ -262,6 +262,7 @@ export function createTopologiesApi(): Hono {
   app.put('/:id', async (c) => {
     const id = c.req.param('id')
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as Partial<TopologyInput>
       const topology = await service.update(id, body)
       if (!topology) {
@@ -278,6 +279,7 @@ export function createTopologiesApi(): Hono {
   app.put('/:id/mapping', async (c) => {
     const id = c.req.param('id')
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const mapping = (await c.req.json()) as ZabbixMapping
       const topology = service.updateMapping(id, mapping)
       if (!topology) {
@@ -295,6 +297,7 @@ export function createTopologiesApi(): Hono {
     const id = c.req.param('id')
     const nodeId = c.req.param('nodeId')
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const nodeMapping = (await c.req.json()) as { hostId?: string; hostName?: string }
       const topology = service.get(id)
       if (!topology) {
@@ -427,7 +430,7 @@ export function createTopologiesApi(): Hono {
       let mergeInfo: { skippedNodes: number; skippedLinks: number } | undefined
 
       if (successfulFetches.length === 1) {
-        finalGraph = successfulFetches[0].graph
+        finalGraph = successfulFetches[0]!.graph
       } else {
         console.log('[sync-from-source] Merging', successfulFetches.length, 'graphs')
 
@@ -447,7 +450,7 @@ export function createTopologiesApi(): Hono {
         // Find base source (first one marked as isBase, or first source)
         const baseSourceId =
           Array.from(sourceConfigs.entries()).find(([, cfg]) => cfg.isBase)?.[0] ??
-          successfulFetches[0].sourceId
+          successfulFetches[0]!.sourceId
         const baseIndex = successfulFetches.findIndex((f) => f.sourceId === baseSourceId)
 
         // Build overlay configurations

@@ -7,20 +7,20 @@ import type { Database } from 'bun:sqlite'
 import type { NetworkGraph } from '@shumoku/core'
 import { generateId, getDatabase, timestamp } from '../db/index.js'
 import {
+  hasAlertsCapability,
   hasAutoMappingCapability,
   hasHostsCapability,
   hasTopologyCapability,
-  hasAlertsCapability,
   pluginRegistry,
 } from '../plugins/index.js'
 import type {
+  Alert,
+  AlertQueryOptions,
   ConnectionResult,
   DiscoveredMetric,
   Host,
   HostItem,
   MappingHint,
-  Alert,
-  AlertQueryOptions,
 } from '../plugins/types.js'
 import type { DataSource, DataSourceInput, DataSourceStatus, DataSourceType } from '../types.js'
 
@@ -144,6 +144,7 @@ export class DataSourceService {
       }
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: generateId returns a Promise
     const id = await generateId()
     const now = timestamp()
 
@@ -251,6 +252,7 @@ export class DataSourceService {
     const plugin = pluginRegistry.getInstance(id, dataSource.type, config)
 
     // Set dataSourceId for plugins that need it (e.g., GrafanaPlugin for DB-based alerts)
+    // biome-ignore lint/security/noSecrets: not a secret, just a property name check
     if ('setDataSourceId' in plugin && typeof plugin.setDataSourceId === 'function') {
       plugin.setDataSourceId(id)
     }

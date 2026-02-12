@@ -1,6 +1,6 @@
 <script lang="ts">
-import X from 'phosphor-svelte/lib/X'
 import GearSix from 'phosphor-svelte/lib/GearSix'
+import X from 'phosphor-svelte/lib/X'
 import { dashboardEditMode } from '$lib/stores/dashboards'
 
 interface Props {

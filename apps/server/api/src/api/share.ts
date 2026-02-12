@@ -4,8 +4,8 @@
  */
 
 import { Hono } from 'hono'
-import { getTopologyService, buildRenderOutput } from './topologies.js'
 import { getDashboardService } from './dashboards.js'
+import { buildRenderOutput, getTopologyService } from './topologies.js'
 
 export function createShareApi(): Hono {
   const app = new Hono()

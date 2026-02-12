@@ -4,9 +4,9 @@
  */
 
 import { Hono } from 'hono'
-import { TopologySourcesService } from '../services/topology-sources.js'
 import { DataSourceService } from '../services/datasource.js'
 import { GrafanaAlertService, type GrafanaWebhookPayload } from '../services/grafana-alerts.js'
+import { TopologySourcesService } from '../services/topology-sources.js'
 import { getTopologyService } from './topologies.js'
 
 // Lazy initialization to avoid database access at module load time
@@ -65,6 +65,7 @@ webhooksApi.post('/topology/:secret', async (c) => {
   // Parse the webhook body (NetBox sends JSON with event details)
   let body: unknown
   try {
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     body = await c.req.json()
     console.log('[Webhook] Payload:', JSON.stringify(body, null, 2))
   } catch {
@@ -143,6 +144,7 @@ webhooksApi.post('/grafana/:secret', async (c) => {
 
   let body: unknown
   try {
+    // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
     body = await c.req.json()
   } catch {
     return c.json({ error: 'Invalid JSON payload' }, 400)

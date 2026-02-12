@@ -1,19 +1,19 @@
 <script lang="ts">
+import Database from 'phosphor-svelte/lib/Database'
+import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+import Trash from 'phosphor-svelte/lib/Trash'
 import { onMount } from 'svelte'
 import { goto } from '$app/navigation'
 import { api } from '$lib/api'
 import { Button } from '$lib/components/ui/button'
 import {
   displaySettings,
-  metricsConnected,
   liveUpdatesEnabled,
-  showTrafficFlow,
+  metricsConnected,
   showNodeStatus,
+  showTrafficFlow,
 } from '$lib/stores'
-import type { Topology, ZabbixMapping, TopologyDataSource } from '$lib/types'
-import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
-import Trash from 'phosphor-svelte/lib/Trash'
-import Database from 'phosphor-svelte/lib/Database'
+import type { Topology, TopologyDataSource, ZabbixMapping } from '$lib/types'
 
 interface Props {
   topology: Topology

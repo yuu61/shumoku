@@ -13,22 +13,22 @@ import type { MetricsData, ZabbixMapping } from '../types.js'
 
 // These are the types that external plugins need
 export {
-  type DataSourceCapability,
+  type AutoMappingCapable,
+  addHttpWarning,
   type ConnectionResult,
+  type DataSourceCapability,
+  type DataSourcePlugin,
+  type DiscoveredMetric,
   type Host,
   type HostItem,
-  type DiscoveredMetric,
-  type MappingHint,
-  type DataSourcePlugin,
-  type TopologyCapable,
   type HostsCapable,
-  type AutoMappingCapable,
-  type PluginManifest,
-  type PluginConfigProperty,
-  hasTopologyCapability,
-  hasHostsCapability,
   hasAutoMappingCapability,
-  addHttpWarning,
+  hasHostsCapability,
+  hasTopologyCapability,
+  type MappingHint,
+  type PluginConfigProperty,
+  type PluginManifest,
+  type TopologyCapable,
 } from '@shumoku/core'
 
 // Re-export registry types (defined in registry.ts)

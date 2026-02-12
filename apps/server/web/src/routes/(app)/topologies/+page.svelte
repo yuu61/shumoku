@@ -1,12 +1,12 @@
 <script lang="ts">
-import { onMount } from 'svelte'
-import { topologies, topologiesList, topologiesLoading, topologiesError } from '$lib/stores'
 import { YamlParser } from '@shumoku/parser-yaml'
-import * as Dialog from '$lib/components/ui/dialog'
-import { Button } from '$lib/components/ui/button'
+import GearSix from 'phosphor-svelte/lib/GearSix'
 import Plus from 'phosphor-svelte/lib/Plus'
 import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
-import GearSix from 'phosphor-svelte/lib/GearSix'
+import { onMount } from 'svelte'
+import { Button } from '$lib/components/ui/button'
+import * as Dialog from '$lib/components/ui/dialog'
+import { topologies, topologiesError, topologiesList, topologiesLoading } from '$lib/stores'
 
 let showCreateModal = $state(false)
 

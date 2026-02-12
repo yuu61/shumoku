@@ -5,23 +5,23 @@
  */
 
 import type { NetworkGraph } from '@shumoku/core'
-import type { MetricsData, ZabbixMapping, ZabbixHost, ZabbixItem } from '../types.js'
+import type { MetricsData, ZabbixHost, ZabbixItem, ZabbixMapping } from '../types.js'
 import {
-  addHttpWarning,
-  type DataSourcePlugin,
-  type DataSourceCapability,
-  type MetricsCapable,
-  type HostsCapable,
-  type AutoMappingCapable,
-  type AlertsCapable,
-  type ConnectionResult,
-  type Host,
-  type HostItem,
-  type MappingHint,
-  type ZabbixPluginConfig,
   type Alert,
   type AlertQueryOptions,
   type AlertSeverity,
+  type AlertsCapable,
+  type AutoMappingCapable,
+  addHttpWarning,
+  type ConnectionResult,
+  type DataSourceCapability,
+  type DataSourcePlugin,
+  type Host,
+  type HostItem,
+  type HostsCapable,
+  type MappingHint,
+  type MetricsCapable,
+  type ZabbixPluginConfig,
 } from './types.js'
 
 export class ZabbixPlugin
@@ -294,8 +294,8 @@ export class ZabbixPlugin
       title: p.name,
       host: p.hosts?.[0]?.host,
       hostId: p.hosts?.[0]?.hostid,
-      startTime: Number.parseInt(p.clock) * 1000,
-      endTime: p.r_clock && p.r_clock !== '0' ? Number.parseInt(p.r_clock) * 1000 : undefined,
+      startTime: Number.parseInt(p.clock, 10) * 1000,
+      endTime: p.r_clock && p.r_clock !== '0' ? Number.parseInt(p.r_clock, 10) * 1000 : undefined,
       status: p.r_clock && p.r_clock !== '0' ? 'resolved' : 'active',
       source: 'zabbix' as const,
       url: this.config
@@ -343,7 +343,7 @@ export class ZabbixPlugin
 
     const result: number[] = []
     for (let i = minIndex; i < severityOrder.length; i++) {
-      result.push(...severityToZabbix[severityOrder[i]])
+      result.push(...severityToZabbix[severityOrder[i]!])
     }
     return result
   }
@@ -358,7 +358,7 @@ export class ZabbixPlugin
     }
 
     const id = ++this.requestId
-    const url = this.config.url.replace(/\/$/, '') + '/api_jsonrpc.php'
+    const url = `${this.config.url.replace(/\/$/, '')}/api_jsonrpc.php`
 
     const response = await fetch(url, {
       method: 'POST',
@@ -378,6 +378,7 @@ export class ZabbixPlugin
       throw new Error(`Zabbix API request failed: ${response.status} ${response.statusText}`)
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
     const result = (await response.json()) as {
       result?: T
       error?: { message: string; data: string }

@@ -3,7 +3,7 @@
  * WebSocket connection and real-time metrics updates
  */
 
-import { writable, derived, get } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 
 // Types
 export type NodeStatus = 'up' | 'down' | 'unknown' | 'warning'
@@ -178,7 +178,7 @@ function createMetricsStore() {
     }
 
     if (g.reconnectAttempts < maxReconnectAttempts && !g.intentionalDisconnect) {
-      const delay = Math.min(1000 * Math.pow(2, g.reconnectAttempts), 30000)
+      const delay = Math.min(1000 * 2 ** g.reconnectAttempts, 30000)
       g.reconnectAttempts++
       g.reconnectTimeout = setTimeout(connect, delay)
     }

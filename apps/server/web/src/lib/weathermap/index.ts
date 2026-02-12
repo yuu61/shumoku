@@ -351,7 +351,7 @@ export class WeathermapController {
 
   private cancelIdleCallback(handle: number): void {
     if ('cancelIdleCallback' in window) {
-      (window as any).cancelIdleCallback(handle)
+      ;(window as any).cancelIdleCallback(handle)
     } else {
       clearTimeout(handle)
     }

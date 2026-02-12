@@ -1,20 +1,20 @@
 <script lang="ts">
+import ChartLine from 'phosphor-svelte/lib/ChartLine'
+import Cube from 'phosphor-svelte/lib/Cube'
+import Database from 'phosphor-svelte/lib/Database'
+import Plus from 'phosphor-svelte/lib/Plus'
+import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
 import { onMount } from 'svelte'
 import { api } from '$lib/api'
-import { dataSources, dataSourcesList, dataSourcesLoading, dataSourcesError } from '$lib/stores'
-import type {
-  DataSource,
-  DataSourceType,
-  DataSourcePluginInfo,
-  ConnectionTestResult,
-} from '$lib/types'
-import * as Dialog from '$lib/components/ui/dialog'
 import { Button } from '$lib/components/ui/button'
-import Plus from 'phosphor-svelte/lib/Plus'
-import Database from 'phosphor-svelte/lib/Database'
-import ChartLine from 'phosphor-svelte/lib/ChartLine'
-import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
-import Cube from 'phosphor-svelte/lib/Cube'
+import * as Dialog from '$lib/components/ui/dialog'
+import { dataSources, dataSourcesError, dataSourcesList, dataSourcesLoading } from '$lib/stores'
+import type {
+  ConnectionTestResult,
+  DataSource,
+  DataSourcePluginInfo,
+  DataSourceType,
+} from '$lib/types'
 
 let showCreateModal = $state(false)
 let testingId = $state<string | null>(null)

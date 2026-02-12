@@ -41,6 +41,7 @@ export function createSettingsApi(): Hono {
   // Update settings (bulk)
   app.put('/', async (c) => {
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as Record<string, string>
       const db = getDatabase()
       const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
@@ -63,6 +64,7 @@ export function createSettingsApi(): Hono {
   app.put('/:key', async (c) => {
     const key = c.req.param('key')
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as { value: string }
       if (body.value === undefined) {
         return c.json({ error: 'value is required' }, 400)

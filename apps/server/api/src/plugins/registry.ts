@@ -5,7 +5,7 @@
  * Plugins are registered at startup and can be instantiated on demand.
  */
 
-import type { DataSourcePlugin, DataSourceCapability } from './types.js'
+import type { DataSourceCapability, DataSourcePlugin } from './types.js'
 
 /** Factory function to create plugin instances */
 export type PluginFactory = (config: unknown) => DataSourcePlugin

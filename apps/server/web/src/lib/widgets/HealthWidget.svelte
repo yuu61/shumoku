@@ -1,11 +1,11 @@
 <script lang="ts">
+import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+import Heart from 'phosphor-svelte/lib/Heart'
+import Spinner from 'phosphor-svelte/lib/Spinner'
+import XCircle from 'phosphor-svelte/lib/XCircle'
 import { onMount } from 'svelte'
 import { api } from '$lib/api'
 import WidgetWrapper from './WidgetWrapper.svelte'
-import Heart from 'phosphor-svelte/lib/Heart'
-import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
-import XCircle from 'phosphor-svelte/lib/XCircle'
-import Spinner from 'phosphor-svelte/lib/Spinner'
 
 interface Props {
   id: string

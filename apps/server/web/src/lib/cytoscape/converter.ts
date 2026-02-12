@@ -3,8 +3,8 @@
  * Handles hierarchical structures with compound nodes
  */
 
-import type { ElementDefinition, NodeDataDefinition, EdgeDataDefinition } from 'cytoscape'
-import type { NetworkGraph, ParsedTopologyResponse } from '../types'
+import type { EdgeDataDefinition, ElementDefinition, NodeDataDefinition } from 'cytoscape'
+import type { ParsedTopologyResponse } from '../types'
 import { getCDNIconUrl } from './icons'
 import { getUtilizationColor } from './theme'
 

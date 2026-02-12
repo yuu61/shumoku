@@ -1,9 +1,9 @@
 <script lang="ts">
-import * as Dialog from '$lib/components/ui/dialog'
-import { Button } from '$lib/components/ui/button'
-import type { SubgraphSelectEvent } from './InteractiveSvgDiagram.svelte'
-import Graph from 'phosphor-svelte/lib/Graph'
 import ArrowSquareOut from 'phosphor-svelte/lib/ArrowSquareOut'
+import Graph from 'phosphor-svelte/lib/Graph'
+import { Button } from '$lib/components/ui/button'
+import * as Dialog from '$lib/components/ui/dialog'
+import type { SubgraphSelectEvent } from './InteractiveSvgDiagram.svelte'
 
 interface Props {
   open: boolean
