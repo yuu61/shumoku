@@ -21,7 +21,7 @@
     "apps/server/web"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency 11 --filter=!@shumoku/server-api --filter=!@shumoku/server-web",
     "dev:server": "turbo run dev --filter=@shumoku/server",
     "build": "turbo run build --filter='!@shumoku/server'",
     "build:all": "turbo run build",
@@ -34,10 +34,10 @@
     "release": "turbo run build --filter='./packages/**' && changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
+    "@biomejs/biome": "^2.3.14",
     "@changesets/cli": "^2.29.8",
-    "@types/node": "^25.0.7",
-    "turbo": "^2.7.4",
+    "@types/node": "^25.2.3",
+    "turbo": "^2.8.7",
     "typescript": "^5.9.3"
   }
 }
