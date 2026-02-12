@@ -16,7 +16,7 @@ export class ZabbixClient {
   /**
    * Make a Zabbix API request
    */
-  private async request<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  async apiRequest<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     const id = ++this.requestId
     const url = `${this.config.url.replace(/\/$/, '')}/api_jsonrpc.php`
 
@@ -56,14 +56,14 @@ export class ZabbixClient {
    * Get Zabbix API version
    */
   async getApiVersion(): Promise<string> {
-    return this.request<string>('apiinfo.version')
+    return this.apiRequest<string>('apiinfo.version')
   }
 
   /**
    * Get all hosts
    */
   async getHosts(): Promise<ZabbixHost[]> {
-    return this.request<ZabbixHost[]>('host.get', {
+    return this.apiRequest<ZabbixHost[]>('host.get', {
       output: ['hostid', 'host', 'name', 'status'],
     })
   }
@@ -72,7 +72,7 @@ export class ZabbixClient {
    * Get host by name
    */
   async getHostByName(hostName: string): Promise<ZabbixHost | null> {
-    const hosts = await this.request<ZabbixHost[]>('host.get', {
+    const hosts = await this.apiRequest<ZabbixHost[]>('host.get', {
       output: ['hostid', 'host', 'name', 'status'],
       filter: { host: [hostName] },
     })
@@ -83,7 +83,7 @@ export class ZabbixClient {
    * Get host by ID
    */
   async getHostById(hostId: string): Promise<ZabbixHost | null> {
-    const hosts = await this.request<ZabbixHost[]>('host.get', {
+    const hosts = await this.apiRequest<ZabbixHost[]>('host.get', {
       output: ['hostid', 'host', 'name', 'status'],
       hostids: [hostId],
     })
@@ -93,9 +93,15 @@ export class ZabbixClient {
   /**
    * Get items for a host
    */
-  async getHostItems(hostId: string, keys?: string[]): Promise<ZabbixItem[]> {
+  async getHostItems(
+    hostId: string,
+    keys?: string[],
+    extraOutput?: string[],
+  ): Promise<ZabbixItem[]> {
+    const output = ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock']
+    if (extraOutput) output.push(...extraOutput)
     const params: Record<string, unknown> = {
-      output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock'],
+      output,
       hostids: [hostId],
     }
 
@@ -104,14 +110,25 @@ export class ZabbixClient {
       params.searchByAny = true
     }
 
-    return this.request<ZabbixItem[]>('item.get', params)
+    return this.apiRequest<ZabbixItem[]>('item.get', params)
+  }
+
+  /**
+   * Search hosts by name
+   */
+  async searchHosts(query: string): Promise<ZabbixHost[]> {
+    return this.apiRequest<ZabbixHost[]>('host.get', {
+      output: ['hostid', 'host', 'name', 'status'],
+      search: { host: query, name: query },
+      searchByAny: true,
+    })
   }
 
   /**
    * Get specific items by IDs
    */
   async getItemsByIds(itemIds: string[]): Promise<ZabbixItem[]> {
-    return this.request<ZabbixItem[]>('item.get', {
+    return this.apiRequest<ZabbixItem[]>('item.get', {
       output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock'],
       itemids: itemIds,
     })

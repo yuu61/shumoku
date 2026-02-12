@@ -2,11 +2,13 @@
  * Zabbix Data Source Plugin
  *
  * Provides metrics, hosts, and auto-mapping capabilities.
+ * Delegates Zabbix API communication to ZabbixClient.
  */
 
 import type { NetworkGraph } from '@shumoku/core'
 import { DEFAULT_CAPACITY } from '../bandwidth.js'
-import type { MetricsData, ZabbixHost, ZabbixItem, ZabbixMapping } from '../types.js'
+import type { MetricsData, ZabbixHost, ZabbixMapping } from '../types.js'
+import { ZabbixClient } from '../zabbix/client.js'
 import {
   type Alert,
   type AlertQueryOptions,
@@ -38,14 +40,23 @@ export class ZabbixPlugin
   ]
 
   private config: ZabbixPluginConfig | null = null
-  private requestId = 0
+  private client: ZabbixClient | null = null
 
   initialize(config: unknown): void {
     this.config = config as ZabbixPluginConfig
+    this.client = new ZabbixClient(this.config)
   }
 
   dispose(): void {
     this.config = null
+    this.client = null
+  }
+
+  private requireClient(): ZabbixClient {
+    if (!this.client) {
+      throw new Error('Plugin not initialized')
+    }
+    return this.client
   }
 
   // ============================================
@@ -58,7 +69,7 @@ export class ZabbixPlugin
     }
 
     try {
-      const version = await this.apiRequest<string>('apiinfo.version')
+      const version = await this.requireClient().getApiVersion()
       return addHttpWarning(this.config.url, {
         success: true,
         message: `Connected to Zabbix ${version}`,
@@ -77,6 +88,7 @@ export class ZabbixPlugin
   // ============================================
 
   async pollMetrics(mapping: ZabbixMapping): Promise<MetricsData> {
+    const client = this.requireClient()
     const metrics: MetricsData = {
       nodes: {},
       links: {},
@@ -87,7 +99,7 @@ export class ZabbixPlugin
     for (const [nodeId, nodeMapping] of Object.entries(mapping.nodes || {})) {
       if (nodeMapping.hostId) {
         try {
-          const isAvailable = await this.getHostAvailability(nodeMapping.hostId)
+          const isAvailable = await client.getHostAvailability(nodeMapping.hostId)
           metrics.nodes[nodeId] = {
             status: isAvailable ? 'up' : 'down',
             lastSeen: isAvailable ? Date.now() : undefined,
@@ -105,7 +117,7 @@ export class ZabbixPlugin
       if (linkMapping.in || linkMapping.out) {
         try {
           const itemIds = [linkMapping.in, linkMapping.out].filter(Boolean) as string[]
-          const items = await this.getItemsByIds(itemIds)
+          const items = await client.getItemsByIds(itemIds)
 
           let inBps = 0
           let outBps = 0
@@ -148,47 +160,18 @@ export class ZabbixPlugin
   // ============================================
 
   async getHosts(): Promise<Host[]> {
-    const zabbixHosts = await this.apiRequest<ZabbixHost[]>('host.get', {
-      output: ['hostid', 'host', 'name', 'status'],
-    })
-
-    return zabbixHosts.map((h) => ({
-      id: h.hostid,
-      name: h.host,
-      displayName: h.name,
-      status: h.status === '0' ? 'up' : 'down',
-    }))
+    const zabbixHosts = await this.requireClient().getHosts()
+    return zabbixHosts.map((h) => this.toHost(h))
   }
 
   async getHostItems(hostId: string): Promise<HostItem[]> {
-    const items = await this.apiRequest<ZabbixItem[]>('item.get', {
-      output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'units'],
-      hostids: [hostId],
-    })
-
-    return items.map((item) => ({
-      id: item.itemid,
-      hostId: item.hostid,
-      name: item.name,
-      key: item.key_,
-      lastValue: item.lastvalue,
-      unit: (item as ZabbixItem & { units?: string }).units,
-    }))
+    const items = await this.requireClient().getHostItems(hostId, undefined, ['units'])
+    return items.map((item) => this.toHostItem(item))
   }
 
   async searchHosts(query: string): Promise<Host[]> {
-    const zabbixHosts = await this.apiRequest<ZabbixHost[]>('host.get', {
-      output: ['hostid', 'host', 'name', 'status'],
-      search: { host: query, name: query },
-      searchByAny: true,
-    })
-
-    return zabbixHosts.map((h) => ({
-      id: h.hostid,
-      name: h.host,
-      displayName: h.name,
-      status: h.status === '0' ? 'up' : 'down',
-    }))
+    const zabbixHosts = await this.requireClient().searchHosts(query)
+    return zabbixHosts.map((h) => this.toHost(h))
   }
 
   // ============================================
@@ -253,6 +236,8 @@ export class ZabbixPlugin
   // ============================================
 
   async getAlerts(options?: AlertQueryOptions): Promise<Alert[]> {
+    const client = this.requireClient()
+
     // Zabbix severity mapping (Zabbix uses 0-5, we need to filter and map)
     const severityFilter = this.getSeverityFilter(options?.minSeverity)
 
@@ -287,7 +272,7 @@ export class ZabbixPlugin
       params.hostids = options.hostIds
     }
 
-    const problems = await this.apiRequest<ZabbixProblem[]>('problem.get', params)
+    const problems = await client.apiRequest<ZabbixProblem[]>('problem.get', params)
 
     const alerts: Alert[] = problems.map((p) => ({
       id: p.eventid,
@@ -310,6 +295,37 @@ export class ZabbixPlugin
     }
 
     return alerts
+  }
+
+  // ============================================
+  // Private Helpers
+  // ============================================
+
+  private toHost(h: ZabbixHost): Host {
+    return {
+      id: h.hostid,
+      name: h.host,
+      displayName: h.name,
+      status: h.status === '0' ? 'up' : 'down',
+    }
+  }
+
+  private toHostItem(item: {
+    itemid: string
+    hostid: string
+    name: string
+    key_: string
+    lastvalue: string
+    units?: string
+  }): HostItem {
+    return {
+      id: item.itemid,
+      hostId: item.hostid,
+      name: item.name,
+      key: item.key_,
+      lastValue: item.lastvalue,
+      unit: item.units,
+    }
   }
 
   private mapZabbixSeverity(severity: string): AlertSeverity {
@@ -347,117 +363,5 @@ export class ZabbixPlugin
       result.push(...severityToZabbix[severityOrder[i]!])
     }
     return result
-  }
-
-  // ============================================
-  // Internal Zabbix API Methods
-  // ============================================
-
-  private async apiRequest<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
-    if (!this.config) {
-      throw new Error('Plugin not initialized')
-    }
-
-    const id = ++this.requestId
-    const url = `${this.config.url.replace(/\/$/, '')}/api_jsonrpc.php`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      signal: AbortSignal.timeout(10_000),
-      headers: {
-        'Content-Type': 'application/json-rpc',
-        Authorization: `Bearer ${this.config.token}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method,
-        params,
-        id,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Zabbix API request failed: ${response.status} ${response.statusText}`)
-    }
-
-    // biome-ignore lint/nursery/useAwaitThenable: response.json() returns a Promise
-    const result = (await response.json()) as {
-      result?: T
-      error?: { message: string; data: string }
-    }
-
-    if (result.error) {
-      throw new Error(`Zabbix API error: ${result.error.message} - ${result.error.data}`)
-    }
-
-    return result.result as T
-  }
-
-  private async getHostAvailability(hostId: string): Promise<boolean> {
-    const items = await this.apiRequest<ZabbixItem[]>('item.get', {
-      output: ['itemid', 'key_', 'lastvalue'],
-      hostids: [hostId],
-      search: { key_: ['agent.ping', 'icmpping'] },
-      searchByAny: true,
-    })
-
-    for (const item of items) {
-      if (item.lastvalue === '1') {
-        return true
-      }
-    }
-
-    return false
-  }
-
-  private async getItemsByIds(itemIds: string[]): Promise<ZabbixItem[]> {
-    return this.apiRequest<ZabbixItem[]>('item.get', {
-      output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue', 'lastclock'],
-      itemids: itemIds,
-    })
-  }
-
-  /**
-   * Get interface traffic items for a host
-   */
-  async getInterfaceItems(
-    hostId: string,
-    interfaceName?: string,
-  ): Promise<{ in: HostItem | null; out: HostItem | null }> {
-    const keys = interfaceName
-      ? [`net.if.in[${interfaceName}]`, `net.if.out[${interfaceName}]`]
-      : ['net.if.in', 'net.if.out']
-
-    const items = await this.apiRequest<ZabbixItem[]>('item.get', {
-      output: ['itemid', 'hostid', 'name', 'key_', 'lastvalue'],
-      hostids: [hostId],
-      search: { key_: keys },
-      searchByAny: true,
-    })
-
-    let inItem: HostItem | null = null
-    let outItem: HostItem | null = null
-
-    for (const item of items) {
-      const hostItem: HostItem = {
-        id: item.itemid,
-        hostId: item.hostid,
-        name: item.name,
-        key: item.key_,
-        lastValue: item.lastvalue,
-      }
-
-      if (item.key_.startsWith('net.if.in')) {
-        if (!inItem || (interfaceName && item.key_.includes(interfaceName))) {
-          inItem = hostItem
-        }
-      } else if (item.key_.startsWith('net.if.out')) {
-        if (!outItem || (interfaceName && item.key_.includes(interfaceName))) {
-          outItem = hostItem
-        }
-      }
-    }
-
-    return { in: inItem, out: outItem }
   }
 }

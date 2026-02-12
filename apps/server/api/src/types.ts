@@ -17,7 +17,7 @@ export interface ServerConfig {
 export interface ZabbixConfig {
   url: string
   token: string
-  pollInterval: number
+  pollInterval?: number
 }
 
 export interface TopologyConfig {
