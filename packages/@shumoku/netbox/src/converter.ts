@@ -301,8 +301,8 @@ function buildDevicesAndConnections(
   for (const cable of cableResp.results) {
     if (cable.a_terminations.length === 0 || cable.b_terminations.length === 0) continue
 
-    const termA = cable.a_terminations[0].object
-    const termB = cable.b_terminations[0].object
+    const termA = cable.a_terminations[0]!.object
+    const termB = cable.b_terminations[0]!.object
 
     // Skip if termination is not a device interface (e.g., circuit, console port, power port)
     if (!termA.device || !termB.device) continue
@@ -382,7 +382,7 @@ function resolvePrimaryTag(tags: NetBoxTag[]): string {
   for (const priority of TAG_PRIORITY) {
     if (tagSet.has(priority)) return priority
   }
-  return tags.length > 0 ? tags[0].slug : 'other'
+  return tags.length > 0 ? tags[0]!.slug : 'other'
 }
 
 function getLevelByTag(tag: string, mapping: Record<string, TagMapping>): number {
@@ -512,7 +512,7 @@ function buildSubgraphsByPrefix(devices: Map<string, DeviceData>): Subgraph[] {
     if (b === 'unknown') return -1
     const aNum = a.split('.').slice(0, 2).map(Number)
     const bNum = b.split('.').slice(0, 2).map(Number)
-    return aNum[0] - bNum[0] || aNum[1] - bNum[1]
+    return aNum[0]! - bNum[0]! || aNum[1]! - bNum[1]!
   })
 
   const subgraphs: Subgraph[] = []
@@ -1046,8 +1046,8 @@ function analyzeCables(
   for (const cable of cableResp.results) {
     if (cable.a_terminations.length === 0 || cable.b_terminations.length === 0) continue
 
-    const termA = cable.a_terminations[0].object
-    const termB = cable.b_terminations[0].object
+    const termA = cable.a_terminations[0]!.object
+    const termB = cable.b_terminations[0]!.object
 
     // Skip if termination is not a device interface (e.g., circuit, console port, power port)
     if (!termA.device || !termB.device) continue

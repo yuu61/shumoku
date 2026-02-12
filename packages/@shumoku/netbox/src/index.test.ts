@@ -36,6 +36,7 @@ describe('@shumoku/netbox', () => {
     })
   })
 
+  // biome-ignore lint/security/noSecrets: not a secret, just a class name
   describe('NetBoxClient', () => {
     it('should create instance', () => {
       const client = new NetBoxClient({

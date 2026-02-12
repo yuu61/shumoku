@@ -323,7 +323,7 @@ export function mergeNetworkGraphs(
 
   // Process each graph
   for (let graphIndex = 0; graphIndex < graphs.length; graphIndex++) {
-    const graph = graphs[graphIndex]
+    const graph = graphs[graphIndex]!
     const sourceId = opts.sourceIds?.[graphIndex] ?? `source-${graphIndex}`
 
     // Get ID mapping for this source
@@ -388,6 +388,8 @@ export function mergeNetworkGraphs(
             throw new Error(
               `Node ID conflict: "${nodeId}" exists in both ${nodeSourceMap.get(nodeId)} and ${sourceId}`,
             )
+          default:
+            break
         }
       }
 
@@ -401,7 +403,7 @@ export function mergeNetworkGraphs(
 
     // Process links
     for (let linkIndex = 0; linkIndex < graph.links.length; linkIndex++) {
-      const link = graph.links[linkIndex]
+      const link = graph.links[linkIndex]!
 
       // Resolve node IDs through mappings
       const fromNodeId = getEndpointNodeId(link.from)
@@ -543,7 +545,7 @@ export function mergeWithOverlays(
 ): MergeResult {
   const baseIndex = config.baseIndex ?? 0
   const baseGraph = graphs[baseIndex]
-  const baseSourceId = sourceIds[baseIndex]
+  const baseSourceId = sourceIds[baseIndex]!
 
   if (!baseGraph) {
     throw new Error('Base graph not found')
@@ -589,8 +591,8 @@ export function mergeWithOverlays(
   for (let i = 0; i < graphs.length; i++) {
     if (i === baseIndex) continue
 
-    const overlayGraph = graphs[i]
-    const overlaySourceId = sourceIds[i]
+    const overlayGraph = graphs[i]!
+    const overlaySourceId = sourceIds[i]!
     const overlayConfig = config.overlays.find((o) => o.sourceId === overlaySourceId)
 
     if (!overlayConfig) {
@@ -687,7 +689,7 @@ export function mergeWithOverlays(
 
     // Process overlay links
     for (let linkIndex = 0; linkIndex < overlayGraph.links.length; linkIndex++) {
-      const link = overlayGraph.links[linkIndex]
+      const link = overlayGraph.links[linkIndex]!
 
       const fromNodeId = getEndpointNodeId(link.from)
       const toNodeId = getEndpointNodeId(link.to)

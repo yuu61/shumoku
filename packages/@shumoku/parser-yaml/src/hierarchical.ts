@@ -4,6 +4,7 @@
  */
 
 import path from 'node:path'
+import { isExportLink, isExportNode } from '@shumoku/core'
 import type {
   HierarchicalNetworkGraph,
   Link,
@@ -11,7 +12,6 @@ import type {
   Node,
   Subgraph,
 } from '@shumoku/core/models'
-import { isExportLink, isExportNode } from '@shumoku/core'
 import { type ParseResult, type ParseWarning, YamlParser } from './parser.js'
 
 export { isExportNode, isExportLink }
@@ -418,7 +418,7 @@ export class HierarchicalParser {
     const exportNodeId = `${EXPORT_NODE_PREFIX}${exportId}`
 
     for (let i = 0; i < exportPoint.connections.length; i++) {
-      const conn = exportPoint.connections[i]
+      const conn = exportPoint.connections[i]!
       const deviceEndpoint = conn.port ? { node: conn.device, port: conn.port } : conn.device
       const linkId = `${EXPORT_LINK_PREFIX}${exportId}_${i}`
 

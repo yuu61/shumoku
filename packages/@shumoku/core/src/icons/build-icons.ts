@@ -16,7 +16,7 @@ const OUTPUT_FILE = path.join(__dirname, 'generated-icons.ts')
 function extractSvgContent(svgContent: string): string {
   const contentMatch = svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i)
   if (!contentMatch) return ''
-  return contentMatch[1].trim().replace(/\s+/g, ' ')
+  return (contentMatch[1] ?? '').trim().replace(/\s+/g, ' ')
 }
 
 function scanDefaultIconFolder(folderPath: string): Record<string, string> {
@@ -99,6 +99,7 @@ function generateTypeScript(icons: Record<string, string>): string {
   lines.push('  if (!type) return undefined')
   lines.push('  const iconKey = deviceTypeToIcon[type]')
   lines.push('  if (!iconKey) return undefined')
+  // biome-ignore lint/security/noSecrets: codegen output, not a secret
   lines.push('  return defaultIcons[iconKey]')
   lines.push('}')
   lines.push('')
@@ -128,6 +129,7 @@ function generateTypeScript(icons: Record<string, string>): string {
   lines.push('): IconEntry | undefined {')
   lines.push("  if (vendor === 'default' || !vendor) {")
   lines.push(
+    // biome-ignore lint/security/noSecrets: codegen output, not a secret
     '    const content = defaultIcons[service] || (resource ? defaultIcons[resource] : undefined)',
   )
   lines.push('    return content ? { default: content } : undefined')
@@ -136,6 +138,7 @@ function generateTypeScript(icons: Record<string, string>): string {
   lines.push('  const vendorIcons = vendorIconRegistry[vendor]')
   lines.push('  if (!vendorIcons) return undefined')
   lines.push('')
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional template literal in codegen output
   lines.push('  const key = resource ? `${service}/${resource}` : service')
   lines.push('  const entry = vendorIcons[key]')
   lines.push('  if (!entry) {')

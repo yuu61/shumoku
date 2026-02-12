@@ -114,10 +114,7 @@ function lerpViewBox(
  * Find subgraph target under the given client coordinates
  * Uses elementsFromPoint to detect subgraphs even when nodes/links are on top
  */
-export function pickSubgraphTarget(
-  clientX: number,
-  clientY: number,
-): ZoomNavigationTarget | null {
+export function pickSubgraphTarget(clientX: number, clientY: number): ZoomNavigationTarget | null {
   const elements = document.elementsFromPoint(clientX, clientY)
 
   let subgraph: Element | null = null

@@ -497,6 +497,10 @@ export class SVGRenderer {
         legendX = bounds.x + 10
         legendY = bounds.y + bounds.height - legendHeight - 10
         break
+      case 'bottom-right':
+      case undefined:
+        // Default: bottom-right (already set above)
+        break
     }
 
     // Render legend box
@@ -530,7 +534,8 @@ export class SVGRenderer {
     // Interactive mode: let the container control sizing via CSS
     // Static mode: use exact pixel dimensions for standalone SVG
     const sizeAttrs = this.isInteractive
-      ? 'width="100%" height="100%"'
+      ? // biome-ignore lint/security/noSecrets: HTML attributes, not a secret
+        'width="100%" height="100%"'
       : `width="${width}" height="${height}"`
     return `<svg xmlns="http://www.w3.org/2000/svg"
   viewBox="${viewBox}"
@@ -721,29 +726,29 @@ export class SVGRenderer {
           fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />`)
 
         // Port label
-        let labelX = px
-        let labelY = py
+        let portLabelX = px
+        let portLabelY = py
         let anchor = 'middle'
         const labelOffset = 16
 
         switch (port.side) {
           case 'top':
-            labelY = py - labelOffset
+            portLabelY = py - labelOffset
             break
           case 'bottom':
-            labelY = py + labelOffset + 4
+            portLabelY = py + labelOffset + 4
             break
           case 'left':
-            labelX = px - labelOffset
+            portLabelX = px - labelOffset
             anchor = 'end'
             break
           case 'right':
-            labelX = px + labelOffset
+            portLabelX = px + labelOffset
             anchor = 'start'
             break
         }
 
-        portParts.push(`<text x="${labelX}" y="${labelY}" class="port-label" text-anchor="${anchor}"
+        portParts.push(`<text x="${portLabelX}" y="${portLabelY}" class="port-label" text-anchor="${anchor}"
           fill="#3b82f6" font-size="10" font-weight="500">${this.escapeXml(port.label)}</text>`)
       }
       portsSvg = portParts.join('\n  ')
@@ -943,6 +948,7 @@ ${fg}
     const halfW = w / 2
     const halfH = h / 2
 
+    // biome-ignore lint/nursery/noUnnecessaryConditions: switch on union type is intentional
     switch (shape) {
       case 'rect':
         return `<rect x="${x - halfW}" y="${y - halfH}" width="${w}" height="${h}"
@@ -1186,8 +1192,8 @@ ${fg}
     // Get node center positions for label placement
     const fromNode = nodes.get(fromEndpoint.node)
     const toNode = nodes.get(toEndpoint.node)
-    const fromNodeCenterX = fromNode ? fromNode.position.x : points[0].x
-    const toNodeCenterX = toNode ? toNode.position.x : points[points.length - 1].x
+    const fromNodeCenterX = fromNode ? fromNode.position.x : points[0]!.x
+    const toNodeCenterX = toNode ? toNode.position.x : points[points.length - 1]!.x
 
     // Endpoint labels (port/ip at both ends) - positioned along the line
     const fromLabels = this.formatEndpointLabels(fromEndpoint)
@@ -1264,11 +1270,11 @@ ${fg}
   ): { x: number; y: number; anchor: string } {
     // Get the endpoint position (port position)
     const endpointIdx = which === 'start' ? 0 : points.length - 1
-    const endpoint = points[endpointIdx]
+    const endpoint = points[endpointIdx]!
 
     // Get the next/prev point to determine line direction
     const nextIdx = which === 'start' ? 1 : points.length - 2
-    const nextPoint = points[nextIdx]
+    const nextPoint = points[nextIdx]!
 
     // Calculate direction from endpoint toward the line
     const dx = nextPoint.x - endpoint.x
@@ -1376,6 +1382,7 @@ ${fg}
   }
 
   private getLinkStrokeWidth(type: LinkType): number {
+    // biome-ignore lint/nursery/noUnnecessaryConditions: switch on union type is intentional
     switch (type) {
       case 'thick':
         return 3
@@ -1428,7 +1435,7 @@ ${fg}
     let cornerRadius = 8
 
     if (this.edgeStyle === 'straight') {
-      effectivePoints = [points[0], points[points.length - 1]]
+      effectivePoints = [points[0]!, points[points.length - 1]!]
       cornerRadius = 0
     } else if (this.edgeStyle === 'polyline') {
       cornerRadius = 0
@@ -1484,13 +1491,13 @@ ${linePath}
       changed = false
       if (pts.length <= 3) break
 
-      const result: { x: number; y: number }[] = [pts[0]]
+      const result: { x: number; y: number }[] = [pts[0]!]
 
       let i = 1
       while (i < pts.length - 1) {
-        const prev = result[result.length - 1]
-        const curr = pts[i]
-        const next = pts[i + 1]
+        const prev = result[result.length - 1]!
+        const curr = pts[i]!
+        const next = pts[i + 1]!
 
         const distToCurr = Math.hypot(curr.x - prev.x, curr.y - prev.y)
 
@@ -1531,7 +1538,7 @@ ${linePath}
 
       // Add remaining points
       while (i < pts.length) {
-        result.push(pts[i])
+        result.push(pts[i]!)
         i++
       }
 
@@ -1540,11 +1547,11 @@ ${linePath}
 
     // Final pass: remove collinear points
     if (pts.length <= 2) return pts
-    const cleaned: { x: number; y: number }[] = [pts[0]]
+    const cleaned: { x: number; y: number }[] = [pts[0]!]
     for (let i = 1; i < pts.length - 1; i++) {
-      const prev = cleaned[cleaned.length - 1]
-      const curr = pts[i]
-      const next = pts[i + 1]
+      const prev = cleaned[cleaned.length - 1]!
+      const curr = pts[i]!
+      const next = pts[i + 1]!
       // Check if collinear (same direction)
       const dx1 = curr.x - prev.x
       const dy1 = curr.y - prev.y
@@ -1555,7 +1562,7 @@ ${linePath}
         cleaned.push(curr)
       }
     }
-    cleaned.push(pts[pts.length - 1])
+    cleaned.push(pts[pts.length - 1]!)
     return cleaned
   }
 
@@ -1569,19 +1576,19 @@ ${linePath}
   ): CenterlineSegment[] {
     if (points.length < 2) return []
     if (points.length === 2 || cornerRadius < 1) {
-      return [{ type: 'line', from: points[0], to: points[points.length - 1] }]
+      return [{ type: 'line', from: points[0]!, to: points[points.length - 1]! }]
     }
 
     // Simplify micro-jogs that the layout engine creates
     const merged = this.simplifyMicroJogs(points, cornerRadius * 2)
 
     const segments: CenterlineSegment[] = []
-    let prevEnd = merged[0]
+    let prevEnd = merged[0]!
 
     for (let i = 1; i < merged.length - 1; i++) {
-      const prev = merged[i - 1]
-      const curr = merged[i]
-      const next = merged[i + 1]
+      const prev = merged[i - 1]!
+      const curr = merged[i]!
+      const next = merged[i + 1]!
 
       const distPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y)
       const distNext = Math.hypot(next.x - curr.x, next.y - curr.y)
@@ -1657,7 +1664,7 @@ ${linePath}
     }
 
     // Final line segment
-    const last = merged[merged.length - 1]
+    const last = merged[merged.length - 1]!
     segments.push({ type: 'line', from: prevEnd, to: last })
 
     return segments
@@ -1796,7 +1803,7 @@ ${linePath}
 
     if (vlan.length === 1) {
       // Single VLAN: use color based on VLAN ID
-      const colorIndex = vlan[0] % SVGRenderer.VLAN_COLORS.length
+      const colorIndex = vlan[0]! % SVGRenderer.VLAN_COLORS.length
       return SVGRenderer.VLAN_COLORS[colorIndex]
     }
 
@@ -1807,6 +1814,7 @@ ${linePath}
   }
 
   private getLinkDasharray(type: LinkType): string {
+    // biome-ignore lint/nursery/noUnnecessaryConditions: switch on union type is intentional
     switch (type) {
       case 'dashed':
         return '5 3'
@@ -1823,23 +1831,23 @@ ${linePath}
       const t = 0.5
       const mt = 1 - t
       const x =
-        mt * mt * mt * points[0].x +
-        3 * mt * mt * t * points[1].x +
-        3 * mt * t * t * points[2].x +
-        t * t * t * points[3].x
+        mt * mt * mt * points[0]!.x +
+        3 * mt * mt * t * points[1]!.x +
+        3 * mt * t * t * points[2]!.x +
+        t * t * t * points[3]!.x
       const y =
-        mt * mt * mt * points[0].y +
-        3 * mt * mt * t * points[1].y +
-        3 * mt * t * t * points[2].y +
-        t * t * t * points[3].y
+        mt * mt * mt * points[0]!.y +
+        3 * mt * mt * t * points[1]!.y +
+        3 * mt * t * t * points[2]!.y +
+        t * t * t * points[3]!.y
       return { x, y }
     }
 
     if (points.length === 2) {
       // Simple midpoint between two points
       return {
-        x: (points[0].x + points[1].x) / 2,
-        y: (points[0].y + points[1].y) / 2,
+        x: (points[0]!.x + points[1]!.x) / 2,
+        y: (points[0]!.y + points[1]!.y) / 2,
       }
     }
 
@@ -1847,12 +1855,12 @@ ${linePath}
     const midIndex = Math.floor(points.length / 2)
     if (midIndex > 0 && midIndex < points.length) {
       return {
-        x: (points[midIndex - 1].x + points[midIndex].x) / 2,
-        y: (points[midIndex - 1].y + points[midIndex].y) / 2,
+        x: (points[midIndex - 1]!.x + points[midIndex]!.x) / 2,
+        y: (points[midIndex - 1]!.y + points[midIndex]!.y) / 2,
       }
     }
 
-    return points[midIndex] || points[0]
+    return points[midIndex] ?? points[0]!
   }
 
   private escapeXml(str: string): string {

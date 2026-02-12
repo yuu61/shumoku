@@ -155,7 +155,7 @@ async function buildChildSheet(
   // e.g., `perimeter/edge` -> `edge`
   const transformedNodes = childNodes.map((n) => {
     let newParent = n.parent
-    if (newParent && newParent.startsWith(`${subgraph.id}/`)) {
+    if (newParent?.startsWith(`${subgraph.id}/`)) {
       newParent = newParent.slice(subgraph.id.length + 1)
     } else if (newParent === subgraph.id) {
       newParent = undefined
@@ -273,7 +273,7 @@ function generateExportConnectors(
 
     // Export links (one per connection)
     for (let i = 0; i < exportPoint.connections.length; i++) {
-      const connection = exportPoint.connections[i]
+      const connection = exportPoint.connections[i]!
       const deviceEndpoint = connection.port
         ? { node: connection.device, port: connection.port }
         : connection.device

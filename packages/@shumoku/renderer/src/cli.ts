@@ -157,6 +157,7 @@ async function main(): Promise<void> {
     // Layout
     console.log('Generating layout...')
     const layout = new HierarchicalLayout()
+    // biome-ignore lint/nursery/useAwaitThenable: layoutAsync returns Promise<LayoutResult>
     const layoutResult = await layout.layoutAsync(graph)
 
     // Render
@@ -201,4 +202,4 @@ async function main(): Promise<void> {
   }
 }
 
-main()
+void main()

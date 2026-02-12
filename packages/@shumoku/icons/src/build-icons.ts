@@ -40,7 +40,7 @@ function extractSvgContent(svgContent: string): SvgExtractResult {
   let viewBox: string | undefined
 
   if (svgTagMatch) {
-    const viewBoxMatch = svgTagMatch[1].match(/viewBox="([^"]+)"/i)
+    const viewBoxMatch = svgTagMatch[1]!.match(/viewBox="([^"]+)"/i)
     if (viewBoxMatch) {
       viewBox = viewBoxMatch[1]
     }
@@ -49,7 +49,7 @@ function extractSvgContent(svgContent: string): SvgExtractResult {
   const contentMatch = svgContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i)
   if (!contentMatch) return { content: '' }
 
-  const content = contentMatch[1].trim().replace(/\s+/g, ' ')
+  const content = contentMatch[1]!.trim().replace(/\s+/g, ' ')
 
   return { content, viewBox }
 }
@@ -106,15 +106,15 @@ function parseAWSFilename(
 
   const amazonMatch = name.match(/^Amazon-([^_]+)_(.+)$/)
   if (amazonMatch) {
-    const service = normalizeServiceName(amazonMatch[1])
-    const resource = normalizeResourceName(amazonMatch[2])
+    const service = normalizeServiceName(amazonMatch[1]!)
+    const resource = normalizeResourceName(amazonMatch[2]!)
     return { key: `${service}/${resource}`, variant }
   }
 
   const awsMatch = name.match(/^AWS-([^_]+)_(.+)$/)
   if (awsMatch) {
-    const service = normalizeServiceName(awsMatch[1])
-    const resource = normalizeResourceName(awsMatch[2])
+    const service = normalizeServiceName(awsMatch[1]!)
+    const resource = normalizeResourceName(awsMatch[2]!)
     return { key: `${service}/${resource}`, variant }
   }
 
@@ -262,7 +262,7 @@ function generateTypeScript(iconSets: VendorIconSet[]): string {
     lines.push(`const ${varName}: Record<string, VendorIconEntry> = {`)
     const sortedKeys = Object.keys(vendorSet.icons).sort()
     for (const key of sortedKeys) {
-      const entry = vendorSet.icons[key]
+      const entry = vendorSet.icons[key]!
       const escapedDefault = entry.default.replace(/`/g, '\\`')
 
       if (entry.light || entry.dark || entry.viewBox) {

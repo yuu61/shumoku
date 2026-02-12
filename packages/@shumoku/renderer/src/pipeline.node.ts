@@ -50,6 +50,7 @@ export async function renderGraphToPng(
   options?: Parameters<typeof import('./pipeline.js').prepareRender>[1] & PNGRenderOptions,
 ): Promise<Buffer> {
   const { prepareRender } = await import('./pipeline.js')
+  // biome-ignore lint/nursery/useAwaitThenable: prepareRender is async, biome can't infer through dynamic import
   const prepared = await prepareRender(graph, options)
   return renderPng(prepared, options)
 }

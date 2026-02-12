@@ -4,15 +4,15 @@
  */
 
 import {
+  darkTheme,
   type HierarchicalNetworkGraph,
   type LayoutResult,
   lightTheme,
-  darkTheme,
   type NetworkGraph,
 } from '@shumoku/core'
 import { BRANDING_ICON_SVG } from '../brand.js'
-import { generateThemeVars } from '../theme-vars.js'
 import { SVGRenderer } from '../svg.js'
+import { generateThemeVars } from '../theme-vars.js'
 import type { HTMLRendererOptions } from '../types.js'
 import {
   generateNavigationToolbar,
@@ -170,10 +170,15 @@ export function renderHierarchical(
   }
 
   const themeType = rootSheet?.graph.settings?.theme
-  return generateHierarchicalHtml(sheetSvgs, title, {
-    ...opts,
-    navigation,
-  } as Required<RenderOptions>, themeType)
+  return generateHierarchicalHtml(
+    sheetSvgs,
+    title,
+    {
+      ...opts,
+      navigation,
+    } as Required<RenderOptions>,
+    themeType,
+  )
 }
 
 /**
@@ -246,7 +251,12 @@ function buildNavigationState(
   }
 }
 
-function generateHtml(svg: string, title: string, options: Required<RenderOptions>, themeType?: 'light' | 'dark'): string {
+function generateHtml(
+  svg: string,
+  title: string,
+  options: Required<RenderOptions>,
+  themeType?: 'light' | 'dark',
+): string {
   const theme = themeType === 'dark' ? darkTheme : lightTheme
   const themeVarsCSS = `:root {\n${generateThemeVars(theme)}\n  }`
   const brandingHtml = options.branding
@@ -556,7 +566,6 @@ function generateHtml(svg: string, title: string, options: Required<RenderOption
 </body>
 </html>`
 }
-
 
 /**
  * Generate HTML with multiple embedded sheets for hierarchical navigation

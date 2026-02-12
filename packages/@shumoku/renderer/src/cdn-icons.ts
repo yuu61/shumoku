@@ -109,6 +109,7 @@ export async function fetchCDNIcon(url: string, timeout: number = 3000): Promise
     }
 
     const contentType = response.headers.get('content-type') || 'image/png'
+    // biome-ignore lint/nursery/useAwaitThenable: response.arrayBuffer() returns a Promise
     const arrayBuffer = await response.arrayBuffer()
     const bytes = new Uint8Array(arrayBuffer)
     const chunks: string[] = []
@@ -212,6 +213,7 @@ export async function fetchImageDimensions(
       return null
     }
 
+    // biome-ignore lint/nursery/useAwaitThenable: response.arrayBuffer() returns a Promise
     const arrayBuffer = await response.arrayBuffer()
     const dimensions = parseImageDimensions(new Uint8Array(arrayBuffer), url)
 
@@ -230,8 +232,8 @@ export async function fetchImageDimensions(
 function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | null {
   // PNG: dimensions at bytes 16-23
   if (data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) {
-    const width = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19]
-    const height = (data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23]
+    const width = (data[16]! << 24) | (data[17]! << 16) | (data[18]! << 8) | data[19]!
+    const height = (data[20]! << 24) | (data[21]! << 16) | (data[22]! << 8) | data[23]!
     return { width, height }
   }
 
@@ -243,12 +245,12 @@ function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | n
         const marker = data[offset + 1]
         // SOF0, SOF1, SOF2 markers contain dimensions
         if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
-          const height = (data[offset + 5] << 8) | data[offset + 6]
-          const width = (data[offset + 7] << 8) | data[offset + 8]
+          const height = (data[offset + 5]! << 8) | data[offset + 6]!
+          const width = (data[offset + 7]! << 8) | data[offset + 8]!
           return { width, height }
         }
         // Skip to next marker
-        const length = (data[offset + 2] << 8) | data[offset + 3]
+        const length = (data[offset + 2]! << 8) | data[offset + 3]!
         offset += 2 + length
       } else {
         offset++
@@ -258,8 +260,8 @@ function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | n
 
   // GIF: dimensions at bytes 6-9
   if (data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46) {
-    const width = data[6] | (data[7] << 8)
-    const height = data[8] | (data[9] << 8)
+    const width = data[6]! | (data[7]! << 8)
+    const height = data[8]! | (data[9]! << 8)
     return { width, height }
   }
 
@@ -274,9 +276,9 @@ function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | n
     // Try viewBox first
     const viewBoxMatch = text.match(/viewBox=["']([^"']+)["']/)
     if (viewBoxMatch) {
-      const parts = viewBoxMatch[1].trim().split(/\s+/)
+      const parts = viewBoxMatch[1]!.trim().split(/\s+/)
       if (parts.length >= 4) {
-        return { width: parseFloat(parts[2]), height: parseFloat(parts[3]) }
+        return { width: parseFloat(parts[2]!), height: parseFloat(parts[3]!) }
       }
     }
 
@@ -284,7 +286,7 @@ function parseImageDimensions(data: Uint8Array, url: string): IconDimensions | n
     const widthMatch = text.match(/\bwidth=["'](\d+(?:\.\d+)?)(?:px)?["']/)
     const heightMatch = text.match(/\bheight=["'](\d+(?:\.\d+)?)(?:px)?["']/)
     if (widthMatch && heightMatch) {
-      return { width: parseFloat(widthMatch[1]), height: parseFloat(heightMatch[1]) }
+      return { width: parseFloat(widthMatch[1]!), height: parseFloat(heightMatch[1]!) }
     }
   }
 

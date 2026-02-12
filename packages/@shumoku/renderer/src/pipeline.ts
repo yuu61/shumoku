@@ -123,6 +123,7 @@ export async function prepareRender(
       ...options?.layoutOptions,
       iconDimensions: iconDimensions?.byKey,
     })
+    // biome-ignore lint/nursery/useAwaitThenable: layoutAsync returns Promise<LayoutResult>
     layout = await layoutEngine.layoutAsync(graph)
   }
 
@@ -257,6 +258,7 @@ function hasHierarchicalContent(graph: NetworkGraph): boolean {
  * Generate CSS variable definitions for a theme
  */
 import { generateThemeVars } from './theme-vars.js'
+
 // Re-export for consumers that import from pipeline
 export { generateThemeVars } from './theme-vars.js'
 

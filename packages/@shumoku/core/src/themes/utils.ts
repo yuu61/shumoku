@@ -2,8 +2,8 @@
  * Theme utilities
  */
 
-import type { DeepPartial, Theme, ThemeOptions } from './types.js'
 import { lightTheme } from './light.js'
+import type { DeepPartial, Theme, ThemeOptions } from './types.js'
 
 /**
  * Merge theme with overrides
@@ -106,9 +106,9 @@ function hexToRgba(hex: string, alpha = 1): string {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   if (!result) return hex
 
-  const r = Number.parseInt(result[1], 16)
-  const g = Number.parseInt(result[2], 16)
-  const b = Number.parseInt(result[3], 16)
+  const r = Number.parseInt(result[1]!, 16)
+  const g = Number.parseInt(result[2]!, 16)
+  const b = Number.parseInt(result[3]!, 16)
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }

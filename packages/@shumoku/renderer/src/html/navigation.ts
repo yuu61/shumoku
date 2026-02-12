@@ -75,7 +75,7 @@ export function generateTabs(state: NavigationState, siblingIds: string[]): stri
 export function generateBackButton(state: NavigationState): string {
   if (state.breadcrumb.length <= 1) return ''
 
-  const parentId = state.breadcrumb[state.breadcrumb.length - 2]
+  const parentId = state.breadcrumb[state.breadcrumb.length - 2]!
   const parentLabel =
     parentId === 'root' ? 'Overview' : (state.sheets.get(parentId)?.label ?? parentId)
 
@@ -247,4 +247,3 @@ export function getNavigationScript(): string {
     })();
   `
 }
-

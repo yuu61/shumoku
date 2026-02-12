@@ -382,6 +382,7 @@ export class HierarchicalLayout {
    */
   private async runElkLayout(elkGraph: ElkNode): Promise<ElkNode> {
     try {
+      // biome-ignore lint/nursery/useAwaitThenable: elk.layout() returns Promise at runtime
       return await this.elk.layout(elkGraph)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -393,6 +394,7 @@ export class HierarchicalLayout {
         'elk.layered.compaction.postCompaction.strategy',
         'NONE',
       )
+      // biome-ignore lint/nursery/useAwaitThenable: elk.layout() returns Promise at runtime
       return await this.elk.layout(elkGraph)
     }
   }
@@ -481,7 +483,7 @@ export class HierarchicalLayout {
             id: `${node.id}:${portName}`,
             width: PORT_WIDTH,
             height: PORT_HEIGHT,
-            x: topPositions[i] - PORT_WIDTH / 2,
+            x: topPositions[i]! - PORT_WIDTH / 2,
             y: 0,
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'NORTH' },
@@ -496,7 +498,7 @@ export class HierarchicalLayout {
             id: `${node.id}:${portName}`,
             width: PORT_WIDTH,
             height: PORT_HEIGHT,
-            x: bottomPositions[i] - PORT_WIDTH / 2,
+            x: bottomPositions[i]! - PORT_WIDTH / 2,
             y: height - PORT_HEIGHT,
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'SOUTH' },
@@ -512,7 +514,7 @@ export class HierarchicalLayout {
             width: PORT_WIDTH,
             height: PORT_HEIGHT,
             x: 0,
-            y: leftPositions[i] - PORT_HEIGHT / 2,
+            y: leftPositions[i]! - PORT_HEIGHT / 2,
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'WEST' },
           })
@@ -527,7 +529,7 @@ export class HierarchicalLayout {
             width: PORT_WIDTH,
             height: PORT_HEIGHT,
             x: width - PORT_WIDTH,
-            y: rightPositions[i] - PORT_HEIGHT / 2,
+            y: rightPositions[i]! - PORT_HEIGHT / 2,
             labels: [{ text: portName }],
             layoutOptions: { 'elk.port.side': 'EAST' },
           })
@@ -1062,7 +1064,7 @@ export class HierarchicalLayout {
 
           // HA edges inside HA containers: use ELK's edge routing directly
           if (isHAContainer(container.id) && elkEdge.sections && elkEdge.sections.length > 0) {
-            const section = elkEdge.sections[0]
+            const section = elkEdge.sections[0]!
             points.push({ x: section.startPoint.x, y: section.startPoint.y })
             if (section.bendPoints) {
               for (const bp of section.bendPoints) {
@@ -1073,7 +1075,7 @@ export class HierarchicalLayout {
           } else if (isSubgraphEdge) {
             // Subgraph edges: use ELK's coordinates directly
             if (elkEdge.sections && elkEdge.sections.length > 0) {
-              const section = elkEdge.sections[0]
+              const section = elkEdge.sections[0]!
               points.push({ x: section.startPoint.x, y: section.startPoint.y })
               if (section.bendPoints) {
                 for (const bp of section.bendPoints) {
@@ -1095,7 +1097,7 @@ export class HierarchicalLayout {
             const isCrossSubgraph = fromParent !== toParent
 
             if (elkEdge.sections && elkEdge.sections.length > 0) {
-              const section = elkEdge.sections[0]
+              const section = elkEdge.sections[0]!
 
               if (isCrossSubgraph) {
                 // Cross-subgraph edges: use ELK's coordinates directly

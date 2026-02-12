@@ -69,14 +69,14 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
 
   const getTouchDistance = (touches: TouchList): number => {
     if (touches.length < 2) return 0
-    const dx = touches[1].clientX - touches[0].clientX
-    const dy = touches[1].clientY - touches[0].clientY
+    const dx = touches[1]!.clientX - touches[0]!.clientX
+    const dy = touches[1]!.clientY - touches[0]!.clientY
     return Math.hypot(dx, dy)
   }
 
   const getTouchCenter = (touches: TouchList): { x: number; y: number } => ({
-    x: (touches[0].clientX + touches[1].clientX) / 2,
-    y: (touches[0].clientY + touches[1].clientY) / 2,
+    x: (touches[0]!.clientX + touches[1]!.clientX) / 2,
+    y: (touches[0]!.clientY + touches[1]!.clientY) / 2,
   })
 
   const handleTouchStart = (e: TouchEvent) => {
@@ -250,8 +250,8 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   let lastSubgraphClickTarget: Element | null = null
 
   const handleSubgraphClick = (e: MouseEvent) => {
-    const target = e.target as Element
-    const subgraph = target.closest('.subgraph[data-has-sheet]')
+    const eventTarget = e.target as Element
+    const subgraph = eventTarget.closest('.subgraph[data-has-sheet]')
 
     if (subgraph) {
       const now = Date.now()
@@ -292,8 +292,8 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
   const handleTouchStartForTap = (e: TouchEvent) => {
     if (e.touches.length === 1) {
       tapStart = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
+        x: e.touches[0]!.clientX,
+        y: e.touches[0]!.clientY,
         time: Date.now(),
       }
     } else {
@@ -307,7 +307,7 @@ export function initInteractive(options: InteractiveOptions): InteractiveInstanc
       return
     }
 
-    const touch = e.changedTouches[0]
+    const touch = e.changedTouches[0]!
     const dx = touch.clientX - tapStart.x
     const dy = touch.clientY - tapStart.y
     const dt = Date.now() - tapStart.time
