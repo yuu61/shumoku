@@ -7,10 +7,14 @@
  */
 
 import type { Database } from 'bun:sqlite'
-import type { IconDimensions, LayoutResult, NetworkGraph } from '@shumoku/core'
+import type { LayoutResult, NetworkGraph } from '@shumoku/core'
 import { sampleNetwork } from '@shumoku/core'
 import { createMemoryFileResolver, HierarchicalParser, YamlParser } from '@shumoku/parser-yaml'
-import { collectIconUrls, resolveIconDimensionsForGraph } from '@shumoku/renderer'
+import {
+  collectIconUrls,
+  type ResolvedIconDimensions,
+  resolveIconDimensionsForGraph,
+} from '@shumoku/renderer'
 import { generateId, getDatabase, timestamp } from '../db/index.js'
 import { BunHierarchicalLayout } from '../layout.js'
 import type { MetricsData, Topology, TopologyInput, ZabbixMapping } from '../types.js'
@@ -41,13 +45,7 @@ function rowToTopology(row: TopologyRow): Topology {
   }
 }
 
-/**
- * Resolved icon dimensions for rendering
- */
-export interface ResolvedIconDimensions {
-  byUrl: Map<string, IconDimensions>
-  byKey: Map<string, IconDimensions>
-}
+export type { ResolvedIconDimensions }
 
 /**
  * Cached render output for a flat (single-sheet) topology
@@ -143,6 +141,11 @@ export class TopologyService {
     this.layout = new BunHierarchicalLayout()
   }
 
+  private invalidateCache(id: string): void {
+    this.cache.delete(id)
+    this.renderCache.delete(id)
+  }
+
   /**
    * Get all topologies from the database
    */
@@ -199,9 +202,7 @@ export class TopologyService {
         now,
       )
 
-    // Clear cache to force re-parse
-    this.cache.delete(id)
-    this.renderCache.delete(id)
+    this.invalidateCache(id)
 
     return this.get(id)!
   }
@@ -254,9 +255,7 @@ export class TopologyService {
 
     this.db.query(`UPDATE topologies SET ${updates.join(', ')} WHERE id = ?`).run(...values)
 
-    // Clear cache to force re-parse
-    this.cache.delete(id)
-    this.renderCache.delete(id)
+    this.invalidateCache(id)
 
     return this.get(id)
   }
@@ -275,9 +274,7 @@ export class TopologyService {
       .query('UPDATE topologies SET mapping_json = ?, updated_at = ? WHERE id = ?')
       .run(mappingJson, timestamp(), id)
 
-    // Clear cache to force re-parse
-    this.cache.delete(id)
-    this.renderCache.delete(id)
+    this.invalidateCache(id)
 
     return this.get(id)
   }
@@ -287,8 +284,7 @@ export class TopologyService {
    */
   delete(id: string): boolean {
     const result = this.db.query('DELETE FROM topologies WHERE id = ?').run(id)
-    this.cache.delete(id)
-    this.renderCache.delete(id)
+    this.invalidateCache(id)
     return result.changes > 0
   }
 

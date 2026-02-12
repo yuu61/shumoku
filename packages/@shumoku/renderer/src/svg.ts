@@ -21,7 +21,9 @@ import type {
 import {
   DEFAULT_ICON_SIZE,
   darkTheme,
+  getBandwidthStrokeWidth,
   getDeviceIcon,
+  getLinkTypeStrokeWidth,
   ICON_LABEL_GAP,
   LABEL_LINE_HEIGHT,
   lightTheme,
@@ -35,6 +37,7 @@ import {
   type IconDimensions,
   resolveAllIconDimensions,
 } from './cdn-icons.js'
+import { PORT_COLORS, SURFACE_COLOR_TOKENS } from './theme-vars.js'
 import type { DataAttributeOptions, RenderMode } from './types.js'
 
 /**
@@ -42,6 +45,20 @@ import type { DataAttributeOptions, RenderMode } from './types.js'
  */
 function isSafeIconUrl(url: string): boolean {
   return /^(https?:\/\/|data:image\/)/.test(url)
+}
+
+/**
+ * Get the icon key for an entity with optional service/resource/model fields.
+ * AWS uses service/resource format (e.g., ec2/instance).
+ */
+function getIconKey(entity: {
+  service?: string
+  resource?: string
+  model?: string
+}): string | undefined {
+  return entity.service && entity.resource
+    ? `${entity.service}/${entity.resource}`
+    : entity.service || entity.model
 }
 
 // ============================================
@@ -94,10 +111,10 @@ function themeToRenderColors(theme: Theme): RenderColors {
     subgraphFill: defaultSurface.fill,
     subgraphStroke: defaultSurface.stroke,
     subgraphLabelColor: defaultSurface.text,
-    // Ports use darker colors
-    portFill: theme.variant === 'dark' ? '#64748b' : '#334155',
-    portStroke: theme.variant === 'dark' ? '#94a3b8' : '#0f172a',
-    portLabelBg: theme.variant === 'dark' ? '#0f172a' : '#0f172a',
+    // Ports use darker colors (shared with theme-vars.ts)
+    portFill: (theme.variant === 'dark' ? PORT_COLORS.dark : PORT_COLORS.light).fill,
+    portStroke: (theme.variant === 'dark' ? PORT_COLORS.dark : PORT_COLORS.light).stroke,
+    portLabelBg: (theme.variant === 'dark' ? PORT_COLORS.dark : PORT_COLORS.light).labelBg,
     portLabelColor: '#ffffff',
     endpointLabelBg: colors.background,
     endpointLabelStroke: defaultSurface.stroke,
@@ -108,16 +125,7 @@ function themeToRenderColors(theme: Theme): RenderColors {
  * Check if a string is a surface token
  */
 function isSurfaceToken(value: string): value is SurfaceToken {
-  return [
-    'surface-1',
-    'surface-2',
-    'surface-3',
-    'accent-blue',
-    'accent-green',
-    'accent-red',
-    'accent-amber',
-    'accent-purple',
-  ].includes(value)
+  return (SURFACE_COLOR_TOKENS as readonly string[]).includes(value)
 }
 
 /**
@@ -604,11 +612,7 @@ export class SVGRenderer {
     const rx = 12 // Border radius (larger for container/card feel)
 
     // Check if subgraph has icon (user-specified or CDN-supported vendor)
-    // AWS uses service/resource format (e.g., ec2/instance)
-    const iconKey =
-      subgraph.service && subgraph.resource
-        ? `${subgraph.service}/${subgraph.resource}`
-        : subgraph.service || subgraph.model
+    const iconKey = getIconKey(subgraph)
     let hasIcon = false
     const defaultIconSize = 24
     const iconPadding = 8
@@ -622,30 +626,18 @@ export class SVGRenderer {
       hasIcon = true
       iconUrl = subgraph.icon
       const dims = this.options.iconDimensions.get(subgraph.icon)
-      if (dims) {
-        const aspectRatio = dims.width / dims.height
-        if (aspectRatio >= 1) {
-          iconHeight = defaultIconSize
-          iconWidth = Math.round(defaultIconSize * aspectRatio)
-        } else {
-          iconHeight = defaultIconSize
-          iconWidth = Math.round(defaultIconSize * aspectRatio)
-        }
-      }
+      const sized = this.calculateIconSize(dims, Infinity, defaultIconSize)
+      iconWidth = sized.width
+      iconHeight = sized.height
     } else if (subgraph.vendor && iconKey && hasCDNIcons(subgraph.vendor)) {
       const cdnUrl = getCDNIconUrl(subgraph.vendor, iconKey)
       const dims = this.options.iconDimensions.get(cdnUrl)
       if (dims) {
         hasIcon = true
         iconUrl = cdnUrl
-        const aspectRatio = dims.width / dims.height
-        if (aspectRatio >= 1) {
-          iconHeight = defaultIconSize
-          iconWidth = Math.round(defaultIconSize * aspectRatio)
-        } else {
-          iconHeight = defaultIconSize
-          iconWidth = Math.round(defaultIconSize * aspectRatio)
-        }
+        const sized = this.calculateIconSize(dims, Infinity, defaultIconSize)
+        iconWidth = sized.width
+        iconHeight = sized.height
       }
       // dims not found = icon doesn't exist on CDN, skip icon
     }
@@ -1055,11 +1047,7 @@ ${fg}
     }
 
     // Try vendor-specific icon first (service for cloud, model for hardware)
-    // AWS uses service/resource format (e.g., ec2/instance)
-    const iconKey =
-      node.service && node.resource
-        ? `${node.service}/${node.resource}`
-        : node.service || node.model
+    const iconKey = getIconKey(node)
     // Use CDN icons for supported vendors (only if dimensions were resolved, i.e. icon exists)
     if (node.vendor && iconKey && hasCDNIcons(node.vendor)) {
       const cdnUrl = getCDNIconUrl(node.vendor, iconKey)
@@ -1382,40 +1370,11 @@ ${fg}
   }
 
   private getLinkStrokeWidth(type: LinkType): number {
-    // biome-ignore lint/nursery/noUnnecessaryConditions: switch on union type is intentional
-    switch (type) {
-      case 'thick':
-        return 3
-      case 'double':
-        return 2
-      default:
-        return 2
-    }
+    return getLinkTypeStrokeWidth(type)
   }
 
-  /**
-   * Bandwidth rendering configuration - stroke width represents speed
-   * 1G   → 6px
-   * 10G  → 10px
-   * 25G  → 14px
-   * 40G  → 18px
-   * 100G → 24px
-   */
   private getBandwidthStrokeWidth(bandwidth?: string): number {
-    switch (bandwidth) {
-      case '1G':
-        return 6
-      case '10G':
-        return 10
-      case '25G':
-        return 14
-      case '40G':
-        return 18
-      case '100G':
-        return 24
-      default:
-        return 0
-    }
+    return getBandwidthStrokeWidth(bandwidth)
   }
 
   /**
@@ -1907,10 +1866,7 @@ export function collectIconUrls(graph: NetworkGraph): string[] {
     if (node.icon) {
       urls.add(node.icon)
     } else if (node.vendor && hasCDNIcons(node.vendor)) {
-      const iconKey =
-        node.service && node.resource
-          ? `${node.service}/${node.resource}`
-          : node.service || node.model
+      const iconKey = getIconKey(node)
       if (iconKey) {
         urls.add(getCDNIconUrl(node.vendor, iconKey))
       }

@@ -6,7 +6,7 @@
 import { Hono } from 'hono'
 import { DataSourceService } from '../services/datasource.js'
 import { TopologySourcesService } from '../services/topology-sources.js'
-import type { SyncMode, TopologyDataSourceInput } from '../types.js'
+import type { SyncMode, TopologyDataSourceInput, TopologySourceMergeConfig } from '../types.js'
 import { getTopologyService } from './topologies.js'
 
 // Lazy initialization to avoid database access at module load time
@@ -285,15 +285,6 @@ topologySourcesApi.post('/:topologyId/sources/:sourceId/sync', async (c) => {
 
     // Import merge function
     const { mergeWithOverlays } = await import('@shumoku/core')
-    type TopologySourceMergeConfig = {
-      isBase?: boolean
-      match?: 'id' | 'name' | 'attribute' | 'manual'
-      matchAttribute?: string
-      idMapping?: Record<string, string>
-      onMatch?: 'merge-properties' | 'keep-base' | 'keep-overlay'
-      onUnmatched?: 'add-to-root' | 'add-to-subgraph' | 'ignore'
-      subgraphName?: string
-    }
 
     // Parse merge configs from optionsJson
     const sourceConfigs = new Map<string, TopologySourceMergeConfig>()

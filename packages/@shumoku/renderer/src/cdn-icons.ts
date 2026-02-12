@@ -82,7 +82,10 @@ const notFoundCache = new Set<string>()
  * Fetch icon from CDN with timeout and caching
  * Returns base64 data URL or null if fetch failed
  */
-export async function fetchCDNIcon(url: string, timeout: number = 3000): Promise<string | null> {
+export async function fetchCDNIcon(
+  url: string,
+  timeout: number = DEFAULT_CDN_CONFIG.timeout!,
+): Promise<string | null> {
   // Check cache
   if (iconCache.has(url)) {
     return iconCache.get(url) ?? null
@@ -186,7 +189,7 @@ function getImageDimensionsViaBrowser(
  */
 export async function fetchImageDimensions(
   url: string,
-  timeout: number = 3000,
+  timeout: number = DEFAULT_CDN_CONFIG.timeout!,
 ): Promise<IconDimensions | null> {
   // Check cache
   if (dimensionsCache.has(url)) {

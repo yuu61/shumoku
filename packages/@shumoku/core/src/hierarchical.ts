@@ -3,6 +3,7 @@
  * Shared logic for building child sheets with export connectors
  */
 
+import { ROOT_SHEET_ID } from './constants.js'
 import type { LayoutResult, Link, NetworkGraph, Node, Subgraph } from './models/types.js'
 
 // ============================================
@@ -84,7 +85,7 @@ export async function buildHierarchicalSheets(
   const sheets = new Map<string, SheetData>()
 
   // Add root sheet
-  sheets.set('root', { graph, layout: rootLayout })
+  sheets.set(ROOT_SHEET_ID, { graph, layout: rootLayout })
 
   if (!graph.subgraphs || graph.subgraphs.length === 0) {
     return sheets

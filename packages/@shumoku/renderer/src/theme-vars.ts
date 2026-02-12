@@ -4,22 +4,40 @@
 
 import type { SurfaceToken, Theme } from '@shumoku/core'
 
+/** Ordered list of surface tokens used for theme CSS variable generation */
+export const SURFACE_COLOR_TOKENS: SurfaceToken[] = [
+  'surface-1',
+  'surface-2',
+  'surface-3',
+  'accent-blue',
+  'accent-green',
+  'accent-red',
+  'accent-amber',
+  'accent-purple',
+]
+
+/** Port color palette, keyed by theme variant */
+export const PORT_COLORS = {
+  dark: {
+    fill: '#64748b',
+    stroke: '#94a3b8',
+    labelBg: '#0f172a',
+  },
+  light: {
+    fill: '#334155',
+    stroke: '#0f172a',
+    labelBg: '#0f172a',
+  },
+} as const
+
 export function generateThemeVars(theme: Theme): string {
   const rc = theme.colors
   const defaultSurface = rc.surfaces['surface-1']
-  const portFill = theme.variant === 'dark' ? '#64748b' : '#334155'
-  const portStroke = theme.variant === 'dark' ? '#94a3b8' : '#0f172a'
-  const portLabelBg = theme.variant === 'dark' ? '#0f172a' : '#0f172a'
-  const surfaceTokens: SurfaceToken[] = [
-    'surface-1',
-    'surface-2',
-    'surface-3',
-    'accent-blue',
-    'accent-green',
-    'accent-red',
-    'accent-amber',
-    'accent-purple',
-  ]
+  const portColors = theme.variant === 'dark' ? PORT_COLORS.dark : PORT_COLORS.light
+  const portFill = portColors.fill
+  const portStroke = portColors.stroke
+  const portLabelBg = portColors.labelBg
+  const surfaceTokens = SURFACE_COLOR_TOKENS
 
   const lines = [
     `--shumoku-bg: ${rc.background};`,

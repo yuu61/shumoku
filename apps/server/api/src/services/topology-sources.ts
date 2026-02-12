@@ -71,6 +71,19 @@ function rowToTopologyDataSource(row: TopologyDataSourceRow): TopologyDataSource
 
 export class TopologySourcesService {
   private db: Database
+  private readonly baseSelectQuery = `
+    SELECT
+      tds.*,
+      ds.id as ds_id,
+      ds.name as ds_name,
+      ds.type as ds_type,
+      ds.config_json as ds_config_json,
+      ds.status as ds_status,
+      ds.fail_count as ds_fail_count,
+      ds.created_at as ds_created_at,
+      ds.updated_at as ds_updated_at
+    FROM topology_data_sources tds
+    JOIN data_sources ds ON ds.id = tds.data_source_id`
 
   constructor() {
     this.db = getDatabase()
@@ -82,18 +95,7 @@ export class TopologySourcesService {
   listByTopology(topologyId: string): TopologyDataSource[] {
     const rows = this.db
       .query(
-        `SELECT
-          tds.*,
-          ds.id as ds_id,
-          ds.name as ds_name,
-          ds.type as ds_type,
-          ds.config_json as ds_config_json,
-          ds.status as ds_status,
-          ds.fail_count as ds_fail_count,
-          ds.created_at as ds_created_at,
-          ds.updated_at as ds_updated_at
-        FROM topology_data_sources tds
-        JOIN data_sources ds ON ds.id = tds.data_source_id
+        `${this.baseSelectQuery}
         WHERE tds.topology_id = ?
         ORDER BY tds.purpose, tds.priority`,
       )
@@ -107,18 +109,7 @@ export class TopologySourcesService {
   listByPurpose(topologyId: string, purpose: DataSourcePurpose): TopologyDataSource[] {
     const rows = this.db
       .query(
-        `SELECT
-          tds.*,
-          ds.id as ds_id,
-          ds.name as ds_name,
-          ds.type as ds_type,
-          ds.config_json as ds_config_json,
-          ds.status as ds_status,
-          ds.fail_count as ds_fail_count,
-          ds.created_at as ds_created_at,
-          ds.updated_at as ds_updated_at
-        FROM topology_data_sources tds
-        JOIN data_sources ds ON ds.id = tds.data_source_id
+        `${this.baseSelectQuery}
         WHERE tds.topology_id = ? AND tds.purpose = ?
         ORDER BY tds.priority`,
       )
@@ -132,18 +123,7 @@ export class TopologySourcesService {
   get(id: string): TopologyDataSource | null {
     const row = this.db
       .query(
-        `SELECT
-          tds.*,
-          ds.id as ds_id,
-          ds.name as ds_name,
-          ds.type as ds_type,
-          ds.config_json as ds_config_json,
-          ds.status as ds_status,
-          ds.fail_count as ds_fail_count,
-          ds.created_at as ds_created_at,
-          ds.updated_at as ds_updated_at
-        FROM topology_data_sources tds
-        JOIN data_sources ds ON ds.id = tds.data_source_id
+        `${this.baseSelectQuery}
         WHERE tds.id = ?`,
       )
       .get(id) as TopologyDataSourceRow | undefined
@@ -160,18 +140,7 @@ export class TopologySourcesService {
   ): TopologyDataSource | null {
     const row = this.db
       .query(
-        `SELECT
-          tds.*,
-          ds.id as ds_id,
-          ds.name as ds_name,
-          ds.type as ds_type,
-          ds.config_json as ds_config_json,
-          ds.status as ds_status,
-          ds.fail_count as ds_fail_count,
-          ds.created_at as ds_created_at,
-          ds.updated_at as ds_updated_at
-        FROM topology_data_sources tds
-        JOIN data_sources ds ON ds.id = tds.data_source_id
+        `${this.baseSelectQuery}
         WHERE tds.topology_id = ? AND tds.data_source_id = ? AND tds.purpose = ?`,
       )
       .get(topologyId, dataSourceId, purpose) as TopologyDataSourceRow | undefined
@@ -184,18 +153,7 @@ export class TopologySourcesService {
   findByWebhookSecret(secret: string): TopologyDataSource | null {
     const row = this.db
       .query(
-        `SELECT
-          tds.*,
-          ds.id as ds_id,
-          ds.name as ds_name,
-          ds.type as ds_type,
-          ds.config_json as ds_config_json,
-          ds.status as ds_status,
-          ds.fail_count as ds_fail_count,
-          ds.created_at as ds_created_at,
-          ds.updated_at as ds_updated_at
-        FROM topology_data_sources tds
-        JOIN data_sources ds ON ds.id = tds.data_source_id
+        `${this.baseSelectQuery}
         WHERE tds.webhook_secret = ?`,
       )
       .get(secret) as TopologyDataSourceRow | undefined

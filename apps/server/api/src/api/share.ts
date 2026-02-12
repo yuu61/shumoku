@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono'
 import { getDashboardService } from './dashboards.js'
-import { buildRenderOutput, getTopologyService } from './topologies.js'
+import { buildRenderOutput, buildTopologyContext, getTopologyService } from './topologies.js'
 
 export function createShareApi(): Hono {
   const app = new Hono()
@@ -28,20 +28,7 @@ export function createShareApi(): Hono {
       return c.json({
         id: parsed.id,
         name: parsed.name,
-        nodes: parsed.graph.nodes.map((n) => ({
-          id: n.id,
-          label: n.label || n.id,
-          type: n.type,
-        })),
-        edges: parsed.graph.links.map((l, i) => ({
-          id: l.id || `link-${i}`,
-          from:
-            typeof l.from === 'string'
-              ? { nodeId: l.from }
-              : { nodeId: l.from.node, port: l.from.port },
-          to: typeof l.to === 'string' ? { nodeId: l.to } : { nodeId: l.to.node, port: l.to.port },
-          bandwidth: l.bandwidth,
-        })),
+        ...buildTopologyContext(parsed.graph),
         subgraphs: parsed.graph.subgraphs || [],
         metrics: parsed.metrics,
       })

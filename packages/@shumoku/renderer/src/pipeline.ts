@@ -15,6 +15,7 @@ import {
   type NetworkGraph,
 } from '@shumoku/core'
 import { type ResolvedIconDimensions, resolveIconDimensionsForGraph } from './cdn-icons.js'
+import { hasHierarchicalContent } from './graph-utils.js'
 import type { SheetData } from './html/index.js'
 import * as html from './html/index.js'
 import { getNavigationStyles } from './html/navigation.js'
@@ -246,13 +247,8 @@ export function renderEmbeddable(
   }
 }
 
-/**
- * Check if graph has hierarchical content (subgraphs with files)
- */
-function hasHierarchicalContent(graph: NetworkGraph): boolean {
-  if (!graph.subgraphs) return false
-  return graph.subgraphs.some((sg) => 'file' in sg && sg.file)
-}
+// Re-export hasHierarchicalContent for consumers that import from pipeline
+export { hasHierarchicalContent } from './graph-utils.js'
 
 /**
  * Generate CSS variable definitions for a theme

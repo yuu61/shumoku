@@ -33,3 +33,6 @@ export const MAX_ICON_WIDTH_RATIO = 0.6
 
 /** Estimated character width for node label width calculation (larger font) */
 export const ESTIMATED_CHAR_WIDTH = 7
+
+/** Root sheet identifier for hierarchical diagrams */
+export const ROOT_SHEET_ID = 'root'

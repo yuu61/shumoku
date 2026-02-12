@@ -8,6 +8,8 @@
  * - Hysteresis: Different thresholds for zoom-in vs zoom-out to prevent oscillation
  */
 
+import { ROOT_SHEET_ID } from '@shumoku/core'
+
 // ============================================
 // Types
 // ============================================
@@ -181,7 +183,7 @@ export function shouldTriggerZoomIn(vb: SheetViewBox, bounds: Bounds, scale: num
  */
 export function shouldTriggerZoomOut(vb: SheetViewBox, scale: number, sheetId: string): boolean {
   // Never auto-return from root sheet
-  if (sheetId === 'root') return false
+  if (sheetId === ROOT_SHEET_ID) return false
 
   // Check scale threshold
   if (scale > ZOOM_OUT_SCALE_THRESHOLD) return false

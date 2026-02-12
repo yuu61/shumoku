@@ -3,4 +3,8 @@
  */
 
 export type { HierarchicalLayoutOptions } from './hierarchical.js'
-export { HierarchicalLayout } from './hierarchical.js'
+export {
+  getBandwidthStrokeWidth,
+  getLinkTypeStrokeWidth,
+  HierarchicalLayout,
+} from './hierarchical.js'

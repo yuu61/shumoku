@@ -9,6 +9,7 @@ import {
   EXPORT_NODE_PREFIX,
   isExportLink,
   isExportNode,
+  ROOT_SHEET_ID,
 } from '@shumoku/core'
 import type {
   HierarchicalNetworkGraph,
@@ -111,7 +112,7 @@ export class HierarchicalParser {
 
     const graph = result.graph as HierarchicalNetworkGraph
     graph.sheets = sheets
-    graph.breadcrumb = ['root']
+    graph.breadcrumb = [ROOT_SHEET_ID]
 
     // Process subgraphs with file references
     if (graph.subgraphs) {
@@ -455,7 +456,7 @@ export class HierarchicalParser {
 
     const result = await childParser.parse(input, basePath)
     result.graph.parentSheet = parentId
-    result.graph.breadcrumb = ['root', parentId]
+    result.graph.breadcrumb = [ROOT_SHEET_ID, parentId]
 
     return result
   }

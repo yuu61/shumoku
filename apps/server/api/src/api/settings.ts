@@ -6,6 +6,8 @@
 import { Hono } from 'hono'
 import { getDatabase } from '../db/index.js'
 
+const PROTECTED_KEYS = ['auth_password_hash']
+
 interface SettingRow {
   key: string
   value: string
@@ -40,7 +42,6 @@ export function createSettingsApi(): Hono {
 
   // Update settings (bulk)
   app.put('/', async (c) => {
-    const PROTECTED_KEYS = ['auth_password_hash']
     try {
       // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as Record<string, string>
@@ -70,7 +71,6 @@ export function createSettingsApi(): Hono {
 
   // Update single setting
   app.put('/:key', async (c) => {
-    const PROTECTED_KEYS = ['auth_password_hash']
     const key = c.req.param('key')
 
     if (PROTECTED_KEYS.includes(key)) {

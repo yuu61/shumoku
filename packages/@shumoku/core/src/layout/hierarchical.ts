@@ -84,7 +84,7 @@ function toEndpoint(endpoint: string | LinkEndpoint): LinkEndpoint {
   return endpoint
 }
 
-function getBandwidthStrokeWidth(bandwidth?: string): number {
+export function getBandwidthStrokeWidth(bandwidth?: string): number {
   switch (bandwidth) {
     case '1G':
       return 6
@@ -101,7 +101,7 @@ function getBandwidthStrokeWidth(bandwidth?: string): number {
   }
 }
 
-function getLinkTypeStrokeWidth(type?: string): number {
+export function getLinkTypeStrokeWidth(type?: string): number {
   switch (type) {
     case 'thick':
       return 3

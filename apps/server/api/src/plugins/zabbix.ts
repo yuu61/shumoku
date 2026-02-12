@@ -5,6 +5,7 @@
  */
 
 import type { NetworkGraph } from '@shumoku/core'
+import { DEFAULT_CAPACITY } from '../bandwidth.js'
 import type { MetricsData, ZabbixHost, ZabbixItem, ZabbixMapping } from '../types.js'
 import {
   type Alert,
@@ -118,7 +119,7 @@ export class ZabbixPlugin
             }
           }
 
-          const capacity = linkMapping.capacity || 1_000_000_000
+          const capacity = linkMapping.capacity || DEFAULT_CAPACITY
           const inUtil = (inBps / capacity) * 100
           const outUtil = (outBps / capacity) * 100
           const maxUtil = Math.max(inUtil, outUtil)

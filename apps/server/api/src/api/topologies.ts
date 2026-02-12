@@ -3,7 +3,12 @@
  * CRUD endpoints for topology management
  */
 
-import { buildHierarchicalSheets, mergeWithOverlays, type OverlayConfig } from '@shumoku/core'
+import {
+  buildHierarchicalSheets,
+  mergeWithOverlays,
+  type NetworkGraph,
+  type OverlayConfig,
+} from '@shumoku/core'
 import { type EmbeddableRenderOutput, renderEmbeddable } from '@shumoku/renderer'
 import { Hono } from 'hono'
 import { BunHierarchicalLayout } from '../layout.js'
@@ -11,6 +16,29 @@ import { DataSourceService } from '../services/datasource.js'
 import { TopologyService } from '../services/topology.js'
 import { TopologySourcesService } from '../services/topology-sources.js'
 import type { TopologyInput, TopologySourceMergeConfig, ZabbixMapping } from '../types.js'
+
+/**
+ * Build topology context (nodes/edges) from a parsed graph
+ * Shared between authenticated and public (share) endpoints
+ */
+export function buildTopologyContext(graph: NetworkGraph) {
+  return {
+    nodes: graph.nodes.map((n) => ({
+      id: n.id,
+      label: n.label || n.id,
+      type: n.type,
+    })),
+    edges: graph.links.map((l, i) => ({
+      id: l.id || `link-${i}`,
+      from:
+        typeof l.from === 'string'
+          ? { nodeId: l.from }
+          : { nodeId: l.from.node, port: l.from.port },
+      to: typeof l.to === 'string' ? { nodeId: l.to } : { nodeId: l.to.node, port: l.to.port },
+      bandwidth: l.bandwidth,
+    })),
+  }
+}
 
 /**
  * Build render output from a parsed topology
@@ -205,20 +233,7 @@ export function createTopologiesApi(): Hono {
       return c.json({
         id: parsed.id,
         name: parsed.name,
-        nodes: parsed.graph.nodes.map((n) => ({
-          id: n.id,
-          label: n.label || n.id,
-          type: n.type,
-        })),
-        edges: parsed.graph.links.map((l, i) => ({
-          id: l.id || `link-${i}`,
-          from:
-            typeof l.from === 'string'
-              ? { nodeId: l.from }
-              : { nodeId: l.from.node, port: l.from.port },
-          to: typeof l.to === 'string' ? { nodeId: l.to } : { nodeId: l.to.node, port: l.to.port },
-          bandwidth: l.bandwidth,
-        })),
+        ...buildTopologyContext(parsed.graph),
         subgraphs: parsed.graph.subgraphs || [],
         metrics: parsed.metrics,
         topologySourceId: parsed.topologySourceId,
