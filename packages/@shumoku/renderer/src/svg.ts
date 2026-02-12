@@ -1887,7 +1887,7 @@ ${linePath}
 }
 
 // Namespace-style API
-export interface RenderOptions extends SVGRendererOptions {}
+export type RenderOptions = SVGRendererOptions
 
 /**
  * Render NetworkGraph to SVG string (sync)

@@ -6,14 +6,12 @@
 import { Hono } from 'hono'
 import { getAllPlugins } from '../plugins/loader.js'
 import type { AlertQueryOptions } from '../plugins/types.js'
-import { DataSourceService } from '../services/datasource.js'
+import { DataSourceService, SECRET_KEYS } from '../services/datasource.js'
 import type { DataSourceInput } from '../types.js'
 
 /**
  * Mask sensitive fields in config JSON
  */
-const SECRET_KEYS = new Set(['token', 'password', 'secret', 'apikey', 'apiKey'])
-
 function maskConfigSecrets(configJson: string): string {
   try {
     const config = JSON.parse(configJson)
@@ -122,8 +120,8 @@ export function createDataSourcesApi(): Hono {
         201,
       )
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[DataSources] Error creating data source:', err)
+      return c.json({ error: 'Internal server error' }, 400)
     }
   })
 
@@ -152,8 +150,8 @@ export function createDataSourcesApi(): Hono {
         configJson: maskConfigSecrets(dataSource.configJson),
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[DataSources] Error updating data source:', err)
+      return c.json({ error: 'Internal server error' }, 400)
     }
   })
 
@@ -188,8 +186,8 @@ export function createDataSourcesApi(): Hono {
       const hosts = await service.getHosts(id)
       return c.json(hosts)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[DataSources] Error getting hosts:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -201,8 +199,8 @@ export function createDataSourcesApi(): Hono {
       const items = await service.getHostItems(id, hostId)
       return c.json(items)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[DataSources] Error getting host items:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -214,8 +212,8 @@ export function createDataSourcesApi(): Hono {
       const metrics = await service.discoverMetrics(id, hostId)
       return c.json(metrics)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[DataSources] Error discovering metrics:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -229,8 +227,8 @@ export function createDataSourcesApi(): Hono {
       }
       return c.json(options)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[DataSources] Error getting filter options:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -281,6 +279,13 @@ export function createDataSourcesApi(): Hono {
       options.activeOnly = true
     }
     const minSeverity = c.req.query('minSeverity')
+    const VALID_SEVERITIES = ['critical', 'high', 'warning', 'info'] as const
+    if (
+      minSeverity &&
+      !VALID_SEVERITIES.includes(minSeverity as (typeof VALID_SEVERITIES)[number])
+    ) {
+      return c.json({ error: 'Invalid minSeverity value' }, 400)
+    }
     if (minSeverity) {
       options.minSeverity = minSeverity as AlertQueryOptions['minSeverity']
     }
@@ -289,8 +294,8 @@ export function createDataSourcesApi(): Hono {
       const alerts = await service.getAlerts(id, options)
       return c.json(alerts)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[DataSources] Error getting alerts:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 

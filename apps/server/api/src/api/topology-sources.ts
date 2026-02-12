@@ -83,10 +83,8 @@ topologySourcesApi.post('/:topologyId/sources', async (c) => {
     const source = await getTopologySourcesService().add(topologyId, body)
     return c.json(source, 201)
   } catch (error) {
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to add data source' },
-      500,
-    )
+    console.error('[TopologySources] Error adding data source:', error)
+    return c.json({ error: 'Internal server error' }, 500)
   }
 })
 
@@ -180,10 +178,8 @@ topologySourcesApi.put('/:topologyId/sources', async (c) => {
     const sources = await getTopologySourcesService().replaceAll(topologyId, body.sources)
     return c.json(sources)
   } catch (error) {
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to update sources' },
-      500,
-    )
+    console.error('[TopologySources] Error updating sources:', error)
+    return c.json({ error: 'Internal server error' }, 500)
   }
 })
 
@@ -305,8 +301,8 @@ topologySourcesApi.post('/:topologyId/sources/:sourceId/sync', async (c) => {
       if (fetch.optionsJson) {
         try {
           sourceConfigs.set(fetch.sourceId, JSON.parse(fetch.optionsJson))
-        } catch {
-          // Ignore parse errors
+        } catch (err) {
+          console.warn('[TopologySources] Failed to parse optionsJson:', err)
         }
       }
     }
@@ -381,9 +377,6 @@ topologySourcesApi.post('/:topologyId/sources/:sourceId/sync', async (c) => {
     })
   } catch (error) {
     console.error('[sync] Error:', error)
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to sync from source' },
-      500,
-    )
+    return c.json({ error: 'Internal server error' }, 500)
   }
 })

@@ -69,8 +69,7 @@ webhooksApi.post('/topology/:secret', async (c) => {
     body = await c.req.json()
     console.log('[Webhook] Payload:', JSON.stringify(body, null, 2))
   } catch {
-    // Body might be empty for some webhook types
-    body = {}
+    return c.json({ error: 'Invalid JSON payload' }, 400)
   }
 
   try {
@@ -118,10 +117,7 @@ webhooksApi.post('/topology/:secret', async (c) => {
     })
   } catch (error) {
     console.error('[Webhook] Error processing webhook:', error)
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to process webhook' },
-      500,
-    )
+    return c.json({ error: 'Internal server error' }, 500)
   }
 })
 
@@ -159,10 +155,7 @@ webhooksApi.post('/grafana/:secret', async (c) => {
     return c.json({ success: true, alertCount: count })
   } catch (error) {
     console.error('[Webhook/Grafana] Error processing webhook:', error)
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Failed to process webhook' },
-      500,
-    )
+    return c.json({ error: 'Internal server error' }, 500)
   }
 })
 

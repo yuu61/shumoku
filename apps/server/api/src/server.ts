@@ -148,6 +148,10 @@ export class Server {
   private handleClientMessage(ws: ServerWebSocket<ClientState>, data: string): void {
     try {
       const message: ClientMessage = JSON.parse(data)
+      if (!message || typeof message !== 'object' || typeof message.type !== 'string') {
+        ws.send(JSON.stringify({ error: 'Invalid message format' }))
+        return
+      }
       const state = this.clients.get(ws)
       if (!state) return
 

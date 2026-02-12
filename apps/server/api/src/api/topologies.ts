@@ -165,8 +165,8 @@ export function createTopologiesApi(): Hono {
         mapping: parsed.mapping,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[Topologies] Error:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -187,8 +187,8 @@ export function createTopologiesApi(): Hono {
       service.setRenderCache(id, output)
       return c.json(output)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[Topologies] Error:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -226,8 +226,8 @@ export function createTopologiesApi(): Hono {
         mapping: parsed.mapping,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[Topologies] Error:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -253,8 +253,8 @@ export function createTopologiesApi(): Hono {
       const topology = await service.create(body)
       return c.json(topology, 201)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[Topologies] Error creating topology:', err)
+      return c.json({ error: 'Invalid topology content' }, 400)
     }
   })
 
@@ -270,8 +270,8 @@ export function createTopologiesApi(): Hono {
       }
       return c.json(topology)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[Topologies] Error updating topology:', err)
+      return c.json({ error: 'Invalid topology content' }, 400)
     }
   })
 
@@ -287,8 +287,8 @@ export function createTopologiesApi(): Hono {
       }
       return c.json(topology)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[Topologies] Error updating mapping:', err)
+      return c.json({ error: 'Invalid topology content' }, 400)
     }
   })
 
@@ -309,8 +309,8 @@ export function createTopologiesApi(): Hono {
       if (topology.mappingJson) {
         try {
           mapping = JSON.parse(topology.mappingJson) as ZabbixMapping
-        } catch {
-          // Invalid JSON, start fresh
+        } catch (err) {
+          console.warn('[Topologies] Failed to parse mapping JSON:', err)
         }
       }
 
@@ -338,8 +338,8 @@ export function createTopologiesApi(): Hono {
         nodeMapping: mapping.nodes[nodeId] || null,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[Topologies] Error updating node mapping:', err)
+      return c.json({ error: 'Invalid topology content' }, 400)
     }
   })
 
@@ -536,8 +536,7 @@ export function createTopologiesApi(): Hono {
       })
     } catch (err) {
       console.error('[sync-from-source] Error:', err)
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -557,8 +556,8 @@ export function createTopologiesApi(): Hono {
       const hints = await dataSourceService.getMappingHints(parsed.metricsSourceId, parsed.graph)
       return c.json(hints)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[Topologies] Error getting mapping hints:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 

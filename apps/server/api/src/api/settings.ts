@@ -40,19 +40,27 @@ export function createSettingsApi(): Hono {
 
   // Update settings (bulk)
   app.put('/', async (c) => {
+    const PROTECTED_KEYS = ['auth_password_hash']
     try {
       // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as Record<string, string>
       const db = getDatabase()
       const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
 
-      const updateMany = db.transaction((entries: [string, string][]) => {
-        for (const [key, value] of entries) {
+      const updateMany = db.transaction((items: [string, string][]) => {
+        for (const [key, value] of items) {
           upsert.run(key, value)
         }
       })
 
-      updateMany(Object.entries(body))
+      const entries = Object.entries(body)
+      for (const [key] of entries) {
+        if (PROTECTED_KEYS.includes(key)) {
+          return c.json({ error: 'Cannot modify protected setting' }, 403)
+        }
+      }
+
+      updateMany(entries)
       return c.json({ success: true })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -62,7 +70,13 @@ export function createSettingsApi(): Hono {
 
   // Update single setting
   app.put('/:key', async (c) => {
+    const PROTECTED_KEYS = ['auth_password_hash']
     const key = c.req.param('key')
+
+    if (PROTECTED_KEYS.includes(key)) {
+      return c.json({ error: 'Cannot modify protected setting' }, 403)
+    }
+
     try {
       // biome-ignore lint/nursery/useAwaitThenable: c.req.json() returns a Promise
       const body = (await c.req.json()) as { value: string }

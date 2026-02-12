@@ -166,8 +166,4 @@ export class ZabbixMapper {
     console.log(`[Mapper] Resolved ${result.size}/${graph.links.length} link mappings`)
     return result
   }
-
-  /**
-   * Get bandwidth capacity in bps
-   */
 }

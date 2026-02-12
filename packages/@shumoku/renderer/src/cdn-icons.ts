@@ -121,8 +121,8 @@ export async function fetchCDNIcon(url: string, timeout: number = 3000): Promise
 
     iconCache.set(url, dataUrl)
     return dataUrl
-  } catch {
-    // Timeout or network error
+  } catch (err) {
+    console.warn('[CDN Icons] Failed to fetch icon:', err)
     iconCache.set(url, null)
     return null
   }
@@ -219,7 +219,8 @@ export async function fetchImageDimensions(
 
     dimensionsCache.set(url, dimensions)
     return dimensions
-  } catch {
+  } catch (err) {
+    console.warn('[CDN Icons] Failed to fetch icon:', err)
     dimensionsCache.set(url, null)
     return null
   }

@@ -22,6 +22,7 @@ export class ZabbixClient {
 
     const response = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         'Content-Type': 'application/json-rpc',
         Authorization: `Bearer ${this.config.token}`,

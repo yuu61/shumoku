@@ -388,8 +388,8 @@ export class TopologyService {
     if (topology.mappingJson) {
       try {
         mapping = JSON.parse(topology.mappingJson) as ZabbixMapping
-      } catch {
-        // Invalid JSON, ignore
+      } catch (err) {
+        console.warn('[TopologyService] Invalid mapping JSON:', err)
       }
     }
 

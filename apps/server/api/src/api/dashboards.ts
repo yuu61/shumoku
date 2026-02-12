@@ -59,8 +59,8 @@ export function createDashboardsApi(): Hono {
       const dashboard = await service.create(body)
       return c.json(dashboard, 201)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[Dashboards] Error creating dashboard:', err)
+      return c.json({ error: 'Internal server error' }, 400)
     }
   })
 
@@ -76,8 +76,8 @@ export function createDashboardsApi(): Hono {
       }
       return c.json(dashboard)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 400)
+      console.error('[Dashboards] Error updating dashboard:', err)
+      return c.json({ error: 'Internal server error' }, 400)
     }
   })
 

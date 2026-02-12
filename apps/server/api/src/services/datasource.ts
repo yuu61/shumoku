@@ -13,10 +13,12 @@ import {
   hasTopologyCapability,
   pluginRegistry,
 } from '../plugins/index.js'
+import type { PluginRegistration } from '../plugins/registry.js'
 import type {
   Alert,
   AlertQueryOptions,
   ConnectionResult,
+  DataSourcePlugin,
   DiscoveredMetric,
   Host,
   HostItem,
@@ -25,7 +27,7 @@ import type {
 import type { DataSource, DataSourceInput, DataSourceStatus, DataSourceType } from '../types.js'
 
 /** Config keys that should be preserved on update when not explicitly provided */
-const SECRET_KEYS = ['token', 'password', 'secret', 'apikey', 'apiKey']
+export const SECRET_KEYS = new Set(['token', 'password', 'secret', 'apikey', 'apiKey'])
 
 interface DataSourceRow {
   id: string
@@ -242,7 +244,7 @@ export class DataSourceService {
   /**
    * Get a plugin instance for a data source
    */
-  getPlugin(id: string) {
+  getPlugin(id: string): DataSourcePlugin | null {
     const dataSource = this.get(id)
     if (!dataSource) {
       return null
@@ -380,14 +382,14 @@ export class DataSourceService {
   /**
    * Get plugin info for a type
    */
-  getPluginInfo(type: string) {
+  getPluginInfo(type: string): PluginRegistration | undefined {
     return pluginRegistry.getInfo(type)
   }
 
   /**
    * Get all registered plugin types
    */
-  getRegisteredTypes() {
+  getRegisteredTypes(): PluginRegistration[] {
     return pluginRegistry.getRegisteredTypes()
   }
 

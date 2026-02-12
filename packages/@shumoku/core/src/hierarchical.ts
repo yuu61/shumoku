@@ -9,8 +9,8 @@ import type { LayoutResult, Link, NetworkGraph, Node, Subgraph } from './models/
 // Constants
 // ============================================
 
-const EXPORT_NODE_PREFIX = '__export_'
-const EXPORT_LINK_PREFIX = '__export_link_'
+export const EXPORT_NODE_PREFIX = '__export_'
+export const EXPORT_LINK_PREFIX = '__export_link_'
 
 // ============================================
 // Types

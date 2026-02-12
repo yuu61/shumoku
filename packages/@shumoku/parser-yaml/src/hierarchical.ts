@@ -4,7 +4,12 @@
  */
 
 import path from 'node:path'
-import { isExportLink, isExportNode } from '@shumoku/core'
+import {
+  EXPORT_LINK_PREFIX,
+  EXPORT_NODE_PREFIX,
+  isExportLink,
+  isExportNode,
+} from '@shumoku/core'
 import type {
   HierarchicalNetworkGraph,
   Link,
@@ -15,15 +20,6 @@ import type {
 import { type ParseResult, type ParseWarning, YamlParser } from './parser.js'
 
 export { isExportNode, isExportLink }
-
-// ============================================
-// Constants
-// ============================================
-
-/** Prefix for virtual export connector nodes */
-const EXPORT_NODE_PREFIX = '__export_'
-/** Prefix for virtual export connector links */
-const EXPORT_LINK_PREFIX = '__export_link_'
 
 // ============================================
 // Interfaces

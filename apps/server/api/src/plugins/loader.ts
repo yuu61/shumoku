@@ -481,6 +481,11 @@ export async function installPluginFromUrl(
       if (!response.ok) {
         return { success: false, error: `Failed to download: HTTP ${response.status}` }
       }
+      const contentLength = response.headers.get('content-length')
+      const MAX_PLUGIN_SIZE = 50 * 1024 * 1024 // 50MB
+      if (contentLength && Number(contentLength) > MAX_PLUGIN_SIZE) {
+        throw new Error(`Plugin package too large: ${contentLength} bytes (max ${MAX_PLUGIN_SIZE})`)
+      }
       // biome-ignore lint/nursery/useAwaitThenable: response.arrayBuffer() returns a Promise
       const buffer = Buffer.from(await response.arrayBuffer())
       return installPluginFromZip(buffer, pluginsDir, subdirectory)
@@ -491,6 +496,11 @@ export async function installPluginFromUrl(
       const response = await fetch(url)
       if (!response.ok) {
         return { success: false, error: `Failed to download: HTTP ${response.status}` }
+      }
+      const contentLength = response.headers.get('content-length')
+      const MAX_PLUGIN_SIZE = 50 * 1024 * 1024 // 50MB
+      if (contentLength && Number(contentLength) > MAX_PLUGIN_SIZE) {
+        throw new Error(`Plugin package too large: ${contentLength} bytes (max ${MAX_PLUGIN_SIZE})`)
       }
       // biome-ignore lint/nursery/useAwaitThenable: response.arrayBuffer() returns a Promise
       const buffer = Buffer.from(await response.arrayBuffer())
@@ -579,7 +589,7 @@ async function installPluginFromGit(
   subdirectory?: string,
 ): Promise<AddPluginResult> {
   try {
-    const { execSync } = await import('node:child_process')
+    const { execFileSync } = await import('node:child_process')
 
     // Create temp directory for clone
     const tempDir = join(pluginsDir, `.tmp-git-${Date.now()}`)
@@ -588,7 +598,7 @@ async function installPluginFromGit(
 
     try {
       // Git clone with depth 1
-      execSync(`git clone --depth 1 "${gitUrl}" "${tempDir}"`, {
+      execFileSync('git', ['clone', '--depth', '1', gitUrl, tempDir], {
         stdio: 'pipe',
         timeout: 60000, // 60 second timeout
       })

@@ -46,8 +46,8 @@ export function createShareApi(): Hono {
         metrics: parsed.metrics,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[Share] Error:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 
@@ -67,8 +67,8 @@ export function createShareApi(): Hono {
       }
       return c.json(await buildRenderOutput(parsed))
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return c.json({ error: message }, 500)
+      console.error('[Share] Error:', err)
+      return c.json({ error: 'Internal server error' }, 500)
     }
   })
 

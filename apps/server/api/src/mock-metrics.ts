@@ -102,8 +102,4 @@ export class MockMetricsProvider {
     this.lastValues.set(key, current)
     return current
   }
-
-  /**
-   * Get bandwidth capacity in bps
-   */
 }
