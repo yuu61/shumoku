@@ -13,7 +13,7 @@ import {
   dashboardEditMode,
 } from '$lib/stores/dashboards'
 import { initializeWidgets, getAllWidgets, getWidget } from '$lib/widgets'
-import type { WidgetPosition } from '$lib/types'
+import type { DashboardLayout, WidgetPosition } from '$lib/types'
 import ShareButton from '$lib/components/ShareButton.svelte'
 import { api } from '$lib/api'
 import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
@@ -44,7 +44,7 @@ let gridStackReady = false
 // Initialize on mount
 onMount(() => {
   initializeWidgets()
-  dashboardStore.get(id)
+  if (id) dashboardStore.get(id)
 
   return () => {
     cleanupAllWidgets()
@@ -67,7 +67,7 @@ function cleanupAllWidgets() {
   mountedComponents.clear()
 }
 
-function layoutToGridWidgets(widgets: typeof $currentLayout.widgets): GridStackWidget[] {
+function layoutToGridWidgets(widgets: DashboardLayout['widgets']): GridStackWidget[] {
   return widgets.map((w) => ({
     id: w.id,
     x: w.position.x,
@@ -117,6 +117,7 @@ async function initGrid() {
             props: {
               id: widgetId,
               config: widgetData.config,
+              editMode: $dashboardEditMode,
               onRemove: () => removeWidget(widgetId),
             },
           })

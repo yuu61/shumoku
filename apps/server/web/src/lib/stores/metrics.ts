@@ -85,10 +85,7 @@ function createMetricsStore() {
 
   function getWebSocketUrl(): string {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    // In development (Vite), connect directly to API server
-    // In production, use same host
-    const isDev = window.location.port === '5173'
-    const host = isDev ? 'localhost:8080' : window.location.host
+    const host = import.meta.env.VITE_API_HOST || window.location.host
     return `${protocol}//${host}/ws`
   }
 
@@ -235,7 +232,4 @@ export const metricsStore = createMetricsStore()
 export const metricsConnected = derived(metricsStore, ($store) => $store.connected)
 export const metricsData = derived(metricsStore, ($store) => $store.metrics)
 export const metricsError = derived(metricsStore, ($store) => $store.error)
-export const metricsWarnings = derived(
-  metricsStore,
-  ($store) => $store.metrics?.warnings ?? [],
-)
+export const metricsWarnings = derived(metricsStore, ($store) => $store.metrics?.warnings ?? [])

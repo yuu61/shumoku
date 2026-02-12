@@ -16,7 +16,8 @@ onMount(async () => {
     // Fetch context to get the name (lightweight call)
     const res = await fetch(`/api/share/topologies/${token}`)
     if (!res.ok) {
-      error = res.status === 404 ? 'This shared link is no longer valid.' : 'Failed to load topology'
+      error =
+        res.status === 404 ? 'This shared link is no longer valid.' : 'Failed to load topology'
       return
     }
     const data = await res.json()

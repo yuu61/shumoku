@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte'
 import { api, auth } from '$lib/api'
-import { themeSetting } from '$lib/stores'
+import { themeSetting, type ThemeValue } from '$lib/stores'
 import GithubLogo from 'phosphor-svelte/lib/GithubLogo'
 import FileText from 'phosphor-svelte/lib/FileText'
 
@@ -10,7 +10,7 @@ let loading = true
 let error = ''
 
 // Local settings (stored in localStorage)
-let theme = 'system'
+let theme: ThemeValue = 'system'
 let updateInterval = '30000'
 
 onMount(async () => {

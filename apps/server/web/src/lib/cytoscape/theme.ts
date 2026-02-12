@@ -3,8 +3,6 @@
  * This module converts shumoku themes to Cytoscape stylesheets
  */
 
-import type { Stylesheet } from 'cytoscape'
-
 // Re-export formatTraffic from shared utils
 export { formatTraffic } from '$lib/utils/format'
 
@@ -52,7 +50,7 @@ export const statusColors = {
 /**
  * Generate Cytoscape stylesheet for dark theme
  */
-export function createDarkStylesheet(): Stylesheet[] {
+export function createDarkStylesheet(): Array<{ selector: string; style: Record<string, unknown> }> {
   return [
     // ========== Base Node Style ==========
     {

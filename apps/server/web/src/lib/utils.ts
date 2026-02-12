@@ -8,3 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export type WithoutChildrenOrChild<T> = T extends { children?: unknown; child?: unknown }
   ? Omit<T, 'children' | 'child'>
   : T
+
+export type WithElementRef<T extends Record<string, any>> = T & {
+  ref?: HTMLElement | null
+}

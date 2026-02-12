@@ -13,7 +13,12 @@ let name = $state('')
 let loading = $state(true)
 let error = $state('')
 let widgets: WidgetInstance[] = $state([])
-let layoutData: { columns?: number; rowHeight?: number; margin?: number; widgets: WidgetInstance[] } | null = $state(null)
+let layoutData: {
+  columns?: number
+  rowHeight?: number
+  margin?: number
+  widgets: WidgetInstance[]
+} | null = $state(null)
 
 let gridContainer: HTMLDivElement | null = $state(null)
 let grid: GridStack | null = $state(null)
@@ -47,7 +52,8 @@ async function loadDashboard() {
   try {
     const res = await fetch(`/api/share/dashboards/${token}`)
     if (!res.ok) {
-      error = res.status === 404 ? 'This shared link is no longer valid.' : 'Failed to load dashboard'
+      error =
+        res.status === 404 ? 'This shared link is no longer valid.' : 'Failed to load dashboard'
       return
     }
     const data = await res.json()
@@ -77,7 +83,12 @@ function cleanupAllWidgets() {
   mountedComponents.clear()
 }
 
-async function initGrid(layout: { columns?: number; rowHeight?: number; margin?: number; widgets: WidgetInstance[] }) {
+async function initGrid(layout: {
+  columns?: number
+  rowHeight?: number
+  margin?: number
+  widgets: WidgetInstance[]
+}) {
   if (!browser || !gridContainer) return
 
   try {

@@ -37,10 +37,13 @@ const STATUS_COLORS: Record<string, string> = {
   down: '#ef4444',
   unknown: '#6b7280',
 }
-const CX = 18, CY = 18, R = 15.5, SW = 3
+const CX = 18,
+  CY = 18,
+  R = 15.5,
+  SW = 3
 const CIRC = 2 * Math.PI * R
-const GAP = 0.08 * R       // gap between segments (arc length)
-const TYPE_GAP = 0.14 * R  // larger gap between device types
+const GAP = 0.08 * R // gap between segments (arc length)
+const TYPE_GAP = 0.14 * R // larger gap between device types
 
 // --- Types ---
 interface TypeStatus {
@@ -72,7 +75,10 @@ interface TypeLabel {
 
 // --- Helpers ---
 function formatTypeName(type: string): string {
-  return type.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')
+  return type
+    .split('-')
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
 function scoreColorClass(score: number): string {
@@ -133,7 +139,8 @@ function buildTypeLabelPositions(
     const angleRad = (mid / CIRC) * 2 * Math.PI - Math.PI / 2
     const cos = Math.cos(angleRad)
     labels.push({
-      type, displayName: ts.displayName,
+      type,
+      displayName: ts.displayName,
       x: CX + labelR * cos,
       y: CY + labelR * Math.sin(angleRad),
       anchor: cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle',
@@ -171,27 +178,44 @@ function buildDetailItems() {
 // --- Derived data ---
 let typeStatuses = $derived.by(() => {
   if (nodes.length === 0) return [] as TypeStatus[]
-  const groups = new Map<string, { nodes: NetworkNode[]; up: number; down: number; unknown: number }>()
+  const groups = new Map<
+    string,
+    { nodes: NetworkNode[]; up: number; down: number; unknown: number }
+  >()
   for (const node of nodes) {
     const type = node.type || 'unknown'
     if (!groups.has(type)) groups.set(type, { nodes: [], up: 0, down: 0, unknown: 0 })
     const g = groups.get(type)!
     g.nodes.push(node)
     const s = nodeMetrics[node.id]?.status || 'unknown'
-    if (s === 'up') g.up++; else if (s === 'down') g.down++; else g.unknown++
+    if (s === 'up') g.up++
+    else if (s === 'down') g.down++
+    else g.unknown++
   }
   return [...groups.entries()]
     .map(([type, g]) => ({
-      type, displayName: formatTypeName(type),
-      total: g.nodes.length, up: g.up, down: g.down, unknown: g.unknown,
+      type,
+      displayName: formatTypeName(type),
+      total: g.nodes.length,
+      up: g.up,
+      down: g.down,
+      unknown: g.unknown,
       score: g.nodes.length > 0 ? Math.round((g.up / g.nodes.length) * 100) : 0,
     }))
     .sort((a, b) => b.total - a.total)
 })
 
 let overallStats = $derived.by(() => {
-  let total = 0, up = 0, down = 0, unknown = 0
-  for (const s of typeStatuses) { total += s.total; up += s.up; down += s.down; unknown += s.unknown }
+  let total = 0,
+    up = 0,
+    down = 0,
+    unknown = 0
+  for (const s of typeStatuses) {
+    total += s.total
+    up += s.up
+    down += s.down
+    unknown += s.unknown
+  }
   return { total, up, down, unknown, score: total > 0 ? Math.round((up / total) * 100) : 0 }
 })
 
@@ -230,16 +254,26 @@ let viewBox = $derived.by(() => {
 
   // Estimate text width: ~1.8 SVG units per character at font-size 3
   const charWidth = 1.8
-  let minX = CX - R - SW, maxX = CX + R + SW
-  let minY = CY - R - SW, maxY = CY + R + SW
+  let minX = CX - R - SW,
+    maxX = CX + R + SW
+  let minY = CY - R - SW,
+    maxY = CY + R + SW
 
   for (const label of typeLabels) {
     const textW = label.displayName.length * charWidth
     let lx0: number, lx1: number
-    if (label.anchor === 'start') { lx0 = label.x; lx1 = label.x + textW }
-    else if (label.anchor === 'end') { lx0 = label.x - textW; lx1 = label.x }
-    else { lx0 = label.x - textW / 2; lx1 = label.x + textW / 2 }
-    const ly0 = label.y - 2, ly1 = label.y + 2
+    if (label.anchor === 'start') {
+      lx0 = label.x
+      lx1 = label.x + textW
+    } else if (label.anchor === 'end') {
+      lx0 = label.x - textW
+      lx1 = label.x
+    } else {
+      lx0 = label.x - textW / 2
+      lx1 = label.x + textW / 2
+    }
+    const ly0 = label.y - 2,
+      ly1 = label.y + 2
 
     minX = Math.min(minX, lx0)
     maxX = Math.max(maxX, lx1)
@@ -274,7 +308,8 @@ let centerUnit = $derived(hoveredSegment ? '' : '%')
 
 let centerColor = $derived.by(() => {
   if (hoveredSegment) return ''
-  if (hoveredType) return scoreColorClass(typeStatuses.find((t) => t.type === hoveredType)?.score ?? 0)
+  if (hoveredType)
+    return scoreColorClass(typeStatuses.find((t) => t.type === hoveredType)?.score ?? 0)
   return scoreColorClass(overallStats.score)
 })
 
@@ -284,16 +319,22 @@ function handleSegmentHover(type: string, status: string) {
   hoveredType = null
   if (!config.topologyId) return
   const ids = nodes
-    .filter((n) => (n.type || 'unknown') === type && (nodeMetrics[n.id]?.status || 'unknown') === status)
+    .filter(
+      (n) => (n.type || 'unknown') === type && (nodeMetrics[n.id]?.status || 'unknown') === status,
+    )
     .map((n) => n.id)
-  if (ids.length > 0) emitHighlightNodes(config.topologyId, ids, { spotlight: true, sourceWidgetId: id })
+  if (ids.length > 0)
+    emitHighlightNodes(config.topologyId, ids, { spotlight: true, sourceWidgetId: id })
 }
 
 function handleTypeHover(type: string) {
   hoveredSegment = null
   hoveredType = type
   if (!config.topologyId) return
-  emitHighlightByAttribute(config.topologyId, 'data-device-type', type, { spotlight: true, sourceWidgetId: id })
+  emitHighlightByAttribute(config.topologyId, 'data-device-type', type, {
+    spotlight: true,
+    sourceWidgetId: id,
+  })
 }
 
 function handleHoverLeave() {
@@ -304,11 +345,18 @@ function handleHoverLeave() {
 
 // --- Data loading ---
 async function loadTopologies() {
-  try { topologies = await api.topologies.list() } catch (err) { console.error('Failed to load topologies:', err) }
+  try {
+    topologies = await api.topologies.list()
+  } catch (err) {
+    console.error('Failed to load topologies:', err)
+  }
 }
 
 async function loadTopologyData() {
-  if (!config.topologyId) { loading = false; return }
+  if (!config.topologyId) {
+    loading = false
+    return
+  }
   loading = true
   error = ''
   try {
@@ -341,7 +389,9 @@ async function refreshMetrics() {
     const res = await fetch(`/api/topologies/${config.topologyId}/context`)
     const ctx = await res.json()
     if (!ctx.error) nodeMetrics = ctx.metrics?.nodes || {}
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 onMount(() => {
@@ -350,7 +400,9 @@ onMount(() => {
   pollInterval = setInterval(refreshMetrics, 10000)
 })
 
-onDestroy(() => { if (pollInterval) clearInterval(pollInterval) })
+onDestroy(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 
 $effect(() => {
   if (config.topologyId && config.topologyId !== lastTopologyId) {
@@ -359,7 +411,9 @@ $effect(() => {
   }
 })
 
-function handleSettings() { showSelector = !showSelector }
+function handleSettings() {
+  showSelector = !showSelector
+}
 </script>
 
 <WidgetWrapper

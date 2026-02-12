@@ -11,11 +11,7 @@ interface Props {
   onDrillDown?: (subgraphId: string) => void
 }
 
-let {
-  open = $bindable(false),
-  subgraphData = null,
-  onDrillDown,
-}: Props = $props()
+let { open = $bindable(false), subgraphData = null, onDrillDown }: Props = $props()
 
 function handleClose() {
   open = false

@@ -12,7 +12,11 @@ import {
   showNodeStatus,
 } from '$lib/stores'
 import { WeathermapController } from '$lib/weathermap'
-import { highlightNodes, highlightByAttribute, clearHighlight as clearHighlightUtil } from '$lib/highlight'
+import {
+  highlightNodes,
+  highlightByAttribute,
+  clearHighlight as clearHighlightUtil,
+} from '$lib/highlight'
 import WidgetWrapper from './WidgetWrapper.svelte'
 import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
 import Spinner from 'phosphor-svelte/lib/Spinner'
@@ -256,7 +260,9 @@ function zoomToFitHighlighted() {
   const svg = containerElement.querySelector('svg')
   if (!svg) return
 
-  const highlighted = containerElement.querySelectorAll('.node-highlighted') as NodeListOf<SVGGElement>
+  const highlighted = containerElement.querySelectorAll(
+    '.node-highlighted',
+  ) as NodeListOf<SVGGElement>
   if (highlighted.length === 0) return
 
   // Save original viewBox (only if not already saved)
@@ -266,7 +272,10 @@ function zoomToFitHighlighted() {
   }
 
   // Compute union bounding box of highlighted nodes
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity
   for (const el of highlighted) {
     const bbox = el.getBBox?.()
     if (!bbox) continue

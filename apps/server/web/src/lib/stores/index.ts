@@ -38,7 +38,7 @@ export {
   type DisplaySettings,
 } from './displaySettings'
 
-export { themeSetting, resolvedTheme } from './theme'
+export { themeSetting, resolvedTheme, type ThemeValue } from './theme'
 
 export {
   mappingStore,

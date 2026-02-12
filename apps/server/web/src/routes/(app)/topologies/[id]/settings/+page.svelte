@@ -74,11 +74,16 @@ let syncResult = $state<{ nodeCount: number; linkCount: number } | null>(null)
 let copiedSecret = $state<string | null>(null)
 
 // Filter options cache
-let filterOptionsCache = $state<Record<string, {
-  sites: { slug: string; name: string }[]
-  tags: { slug: string; name: string }[]
-  roles?: { slug: string; name: string }[]
-}>>({})
+let filterOptionsCache = $state<
+  Record<
+    string,
+    {
+      sites: { slug: string; name: string }[]
+      tags: { slug: string; name: string }[]
+      roles?: { slug: string; name: string }[]
+    }
+  >
+>({})
 let filterOptionsLoading = $state<Record<string, boolean>>({})
 
 // Merge state
@@ -143,29 +148,31 @@ interface NetBoxOptions {
 let metricsSourceId = $derived($mappingStore.metricsSourceId)
 let hasMetricsSource = $derived(!!metricsSourceId)
 
-let topologySources = $derived(editableSources.filter(s => s.purpose === 'topology'))
-let metricsSources = $derived(editableSources.filter(s => s.purpose === 'metrics'))
+let topologySources = $derived(editableSources.filter((s) => s.purpose === 'topology'))
+let metricsSources = $derived(editableSources.filter((s) => s.purpose === 'metrics'))
 let hasMultipleTopologySources = $derived(topologySources.length >= 2)
 
-let overlaySources = $derived(currentSources.filter(s => s.purpose === 'topology' && s.dataSourceId !== baseSourceId))
+let overlaySources = $derived(
+  currentSources.filter((s) => s.purpose === 'topology' && s.dataSourceId !== baseSourceId),
+)
 
 let filteredNodes = $derived(
-  parsedTopology?.graph.nodes.filter(node => {
+  parsedTopology?.graph.nodes.filter((node) => {
     if (!nodeSearchQuery) return true
     const label = getNodeLabel(node).toLowerCase()
     return label.includes(nodeSearchQuery.toLowerCase())
-  }) || []
+  }) || [],
 )
 
 let mappedCount = $derived(
-  parsedTopology?.graph.nodes.filter(n => $nodeMapping[n.id]?.hostId).length || 0
+  parsedTopology?.graph.nodes.filter((n) => $nodeMapping[n.id]?.hostId).length || 0,
 )
 let totalNodes = $derived(parsedTopology?.graph.nodes.length || 0)
 let mappedLinksCount = $derived(
-  edges.filter(e => {
+  edges.filter((e) => {
     const m = $linkMapping[e.id]
     return m?.monitoredNodeId && m?.interface
-  }).length
+  }).length,
 )
 let totalLinks = $derived(edges.length)
 
@@ -187,7 +194,7 @@ async function loadData() {
   try {
     const [topoData, renderResponse, sources, topoSources, metricsSrcs] = await Promise.all([
       api.topologies.get(topologyId),
-      fetch(`/api/topologies/${topologyId}/render`).then(r => r.json()),
+      fetch(`/api/topologies/${topologyId}/render`).then((r) => r.json()),
       api.topologies.sources.list(topologyId),
       api.dataSources.listByCapability('topology'),
       api.dataSources.listByCapability('metrics'),
@@ -203,7 +210,7 @@ async function loadData() {
     parseGraphSettings()
 
     // Initialize editable sources
-    editableSources = sources.map(s => ({
+    editableSources = sources.map((s) => ({
       dataSourceId: s.dataSourceId,
       purpose: s.purpose,
       syncMode: s.syncMode,
@@ -217,7 +224,7 @@ async function loadData() {
     }
 
     // Initialize merge state
-    for (const source of sources.filter(s => s.purpose === 'topology')) {
+    for (const source of sources.filter((s) => s.purpose === 'topology')) {
       const config = parseMergeConfig(source.optionsJson)
       if (config.isBase) {
         baseSourceId = source.dataSourceId
@@ -233,8 +240,8 @@ async function loadData() {
       }
     }
 
-    if (!baseSourceId && sources.filter(s => s.purpose === 'topology').length > 0) {
-      baseSourceId = sources.find(s => s.purpose === 'topology')?.dataSourceId || null
+    if (!baseSourceId && sources.filter((s) => s.purpose === 'topology').length > 0) {
+      baseSourceId = sources.find((s) => s.purpose === 'topology')?.dataSourceId || null
     }
 
     // Load mapping data
@@ -255,13 +262,13 @@ async function loadMappingData() {
       id: contextData.id,
       name: contextData.name,
       graph: {
-        nodes: contextData.nodes.map(n => ({
+        nodes: contextData.nodes.map((n) => ({
           id: n.id,
           label: n.label,
           type: n.type,
           vendor: n.vendor,
         })),
-        links: contextData.edges.map(e => ({
+        links: contextData.edges.map((e) => ({
           id: e.id,
           from: e.from.nodeId,
           to: e.to.nodeId,
@@ -332,31 +339,34 @@ async function handleDelete() {
 // ============================================
 
 function getDataSource(id: string): DataSource | undefined {
-  return [...topologyDataSources, ...metricsDataSources].find(ds => ds.id === id)
+  return [...topologyDataSources, ...metricsDataSources].find((ds) => ds.id === id)
 }
 
 function getCurrentSource(dataSourceId: string, purpose: string): TopologyDataSource | undefined {
-  return currentSources.find(s => s.dataSourceId === dataSourceId && s.purpose === purpose)
+  return currentSources.find((s) => s.dataSourceId === dataSourceId && s.purpose === purpose)
 }
 
 function getSourcesByPurpose(purpose: 'topology' | 'metrics') {
-  return editableSources.map((s, index) => ({ ...s, index })).filter(s => s.purpose === purpose)
+  return editableSources.map((s, index) => ({ ...s, index })).filter((s) => s.purpose === purpose)
 }
 
 function addSource(purpose: 'topology' | 'metrics') {
   const availableSources = purpose === 'topology' ? topologyDataSources : metricsDataSources
-  const existing = editableSources.filter(s => s.purpose === purpose).map(s => s.dataSourceId)
-  const available = availableSources.filter(ds => !existing.includes(ds.id))
+  const existing = editableSources.filter((s) => s.purpose === purpose).map((s) => s.dataSourceId)
+  const available = availableSources.filter((ds) => !existing.includes(ds.id))
   if (available.length === 0) {
     alert('No more data sources available to add')
     return
   }
-  editableSources = [...editableSources, {
-    dataSourceId: available[0].id,
-    purpose,
-    syncMode: 'manual',
-    priority: existing.length,
-  }]
+  editableSources = [
+    ...editableSources,
+    {
+      dataSourceId: available[0].id,
+      purpose,
+      syncMode: 'manual',
+      priority: existing.length,
+    },
+  ]
   hasSourceChanges = true
 }
 
@@ -366,7 +376,7 @@ function removeSource(index: number) {
 }
 
 function updateSource(index: number, updates: Partial<TopologyDataSourceInput>) {
-  editableSources = editableSources.map((s, i) => i === index ? { ...s, ...updates } : s)
+  editableSources = editableSources.map((s, i) => (i === index ? { ...s, ...updates } : s))
   hasSourceChanges = true
   if (updates.dataSourceId) loadFilterOptions(updates.dataSourceId)
 }
@@ -393,8 +403,10 @@ function parseOptions(optionsJson?: string): NetBoxOptions {
     if (typeof raw.siteFilter === 'string') raw.siteFilter = raw.siteFilter ? [raw.siteFilter] : []
     if (typeof raw.tagFilter === 'string') raw.tagFilter = raw.tagFilter ? [raw.tagFilter] : []
     if (typeof raw.roleFilter === 'string') raw.roleFilter = raw.roleFilter ? [raw.roleFilter] : []
-    if (typeof raw.excludeRoleFilter === 'string') raw.excludeRoleFilter = raw.excludeRoleFilter ? [raw.excludeRoleFilter] : []
-    if (typeof raw.excludeTagFilter === 'string') raw.excludeTagFilter = raw.excludeTagFilter ? [raw.excludeTagFilter] : []
+    if (typeof raw.excludeRoleFilter === 'string')
+      raw.excludeRoleFilter = raw.excludeRoleFilter ? [raw.excludeRoleFilter] : []
+    if (typeof raw.excludeTagFilter === 'string')
+      raw.excludeTagFilter = raw.excludeTagFilter ? [raw.excludeTagFilter] : []
     return raw
   } catch {
     return {}
@@ -416,7 +428,7 @@ function updateOptions(index: number, patch: Partial<NetBoxOptions>) {
 
 function toggleArrayOption(arr: string[] | undefined, value: string): string[] {
   const current = arr || []
-  return current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+  return current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
 }
 
 async function handleSaveSources() {
@@ -424,7 +436,7 @@ async function handleSaveSources() {
   error = ''
   try {
     // Include merge config in optionsJson
-    const sourcesWithMerge = editableSources.map(source => {
+    const sourcesWithMerge = editableSources.map((source) => {
       if (source.purpose !== 'topology') return source
 
       const otherOptions = getOtherOptions(source.optionsJson)
@@ -459,7 +471,7 @@ async function handleSaveSources() {
 
     const updated = await api.topologies.sources.replaceAll(topologyId, sourcesWithMerge)
     currentSources = updated
-    editableSources = updated.map(s => ({
+    editableSources = updated.map((s) => ({
       dataSourceId: s.dataSourceId,
       purpose: s.purpose,
       syncMode: s.syncMode,
@@ -496,22 +508,39 @@ function getWebhookUrl(source: TopologyDataSource): string {
 async function copyWebhookUrl(source: TopologyDataSource) {
   await navigator.clipboard.writeText(getWebhookUrl(source))
   copiedSecret = source.id
-  setTimeout(() => { copiedSecret = null }, 2000)
+  setTimeout(() => {
+    copiedSecret = null
+  }, 2000)
 }
 
 // Merge functions
 function parseMergeConfig(optionsJson?: string): MergeConfig {
   if (!optionsJson) return {}
-  try { return JSON.parse(optionsJson) } catch { return {} }
+  try {
+    return JSON.parse(optionsJson)
+  } catch {
+    return {}
+  }
 }
 
 function getOtherOptions(optionsJson?: string): Record<string, unknown> {
   if (!optionsJson) return {}
   try {
     const parsed = JSON.parse(optionsJson)
-    const { isBase, match, matchAttribute, idMapping, onMatch, onUnmatched, subgraphName, ...rest } = parsed
+    const {
+      isBase,
+      match,
+      matchAttribute,
+      idMapping,
+      onMatch,
+      onUnmatched,
+      subgraphName,
+      ...rest
+    } = parsed
     return rest
-  } catch { return {} }
+  } catch {
+    return {}
+  }
 }
 
 function setBaseSource(dataSourceId: string) {
@@ -530,12 +559,12 @@ function updateOverlayConfig(dataSourceId: string, updates: Partial<OverlayConfi
 }
 
 function getSourceName(dataSourceId: string): string {
-  const source = currentSources.find(s => s.dataSourceId === dataSourceId)
+  const source = currentSources.find((s) => s.dataSourceId === dataSourceId)
   return source?.dataSource?.name || dataSourceId
 }
 
 function getSourceType(dataSourceId: string): string {
-  const source = currentSources.find(s => s.dataSourceId === dataSourceId)
+  const source = currentSources.find((s) => s.dataSourceId === dataSourceId)
   return source?.dataSource?.type || 'unknown'
 }
 
@@ -554,7 +583,7 @@ function getNodeLabel(node: { label?: string | string[] }): string {
 }
 
 function getNodeLabelById(nodeId: string): string {
-  const node = parsedTopology?.graph.nodes.find(n => n.id === nodeId)
+  const node = parsedTopology?.graph.nodes.find((n) => n.id === nodeId)
   if (!node) return nodeId
   return getNodeLabel(node)
 }
@@ -573,15 +602,20 @@ function loadInterfacesForMappedNodes() {
 }
 
 function handleNodeMappingChange(nodeId: string, hostId: string) {
-  const host = $mappingHosts.find(h => h.id === hostId)
-  mappingStore.updateNode(nodeId, hostId ? { hostId, hostName: host?.name || host?.displayName } : {})
+  const host = $mappingHosts.find((h) => h.id === hostId)
+  mappingStore.updateNode(
+    nodeId,
+    hostId ? { hostId, hostName: host?.name || host?.displayName } : {},
+  )
   if (hostId) mappingStore.loadHostInterfaces(hostId)
 }
 
 function handleAutoMap() {
   if (!parsedTopology) return
   autoMapResult = mappingStore.autoMapNodes(parsedTopology.graph.nodes, { overwrite: false })
-  setTimeout(() => { autoMapResult = null }, 5000)
+  setTimeout(() => {
+    autoMapResult = null
+  }, 5000)
 }
 
 function handleClearAll() {
@@ -609,7 +643,11 @@ function handleMonitoredNodeChange(linkId: string, nodeId: string) {
     const hostId = $nodeMapping[nodeId]?.hostId
     if (hostId) mappingStore.loadHostInterfaces(hostId)
   } else {
-    mappingStore.updateLink(linkId, { ...existing, monitoredNodeId: undefined, interface: undefined })
+    mappingStore.updateLink(linkId, {
+      ...existing,
+      monitoredNodeId: undefined,
+      interface: undefined,
+    })
   }
 }
 
@@ -618,7 +656,14 @@ function handleLinkInterfaceChange(linkId: string, interfaceName: string) {
   mappingStore.updateLink(linkId, { ...existing, interface: interfaceName || undefined })
 }
 
-const standardCapacities = new Set(['100000000', '1000000000', '10000000000', '25000000000', '40000000000', '100000000000'])
+const standardCapacities = new Set([
+  '100000000',
+  '1000000000',
+  '10000000000',
+  '25000000000',
+  '40000000000',
+  '100000000000',
+])
 let customCapacityLinks = $state(new Set<string>())
 
 function capacityToSelectValue(linkId: string, capacity?: number): string {
@@ -657,11 +702,17 @@ function handleAutoMapLinks() {
 
     if (fromHostId && fromInterfaces.length > 0 && edge.from.port) {
       const match = findMatchingInterface(edge.from.port, fromInterfaces)
-      if (match) { monitoredNodeId = edge.from.nodeId; matchedInterface = match }
+      if (match) {
+        monitoredNodeId = edge.from.nodeId
+        matchedInterface = match
+      }
     }
     if (!matchedInterface && toHostId && toInterfaces.length > 0 && edge.to.port) {
       const match = findMatchingInterface(edge.to.port, toInterfaces)
-      if (match) { monitoredNodeId = edge.to.nodeId; matchedInterface = match }
+      if (match) {
+        monitoredNodeId = edge.to.nodeId
+        matchedInterface = match
+      }
     }
     if (!matchedInterface) {
       if (fromHostId && fromInterfaces.length > 0) monitoredNodeId = edge.from.nodeId
@@ -669,7 +720,11 @@ function handleAutoMapLinks() {
     }
 
     if (monitoredNodeId && matchedInterface) {
-      mappingStore.updateLink(edge.id, { ...currentMapping, monitoredNodeId, interface: matchedInterface })
+      mappingStore.updateLink(edge.id, {
+        ...currentMapping,
+        monitoredNodeId,
+        interface: matchedInterface,
+      })
       matched++
     } else if (monitoredNodeId && !currentMapping.monitoredNodeId) {
       mappingStore.updateLink(edge.id, { ...currentMapping, monitoredNodeId })
@@ -678,7 +733,10 @@ function handleAutoMapLinks() {
   return matched
 }
 
-function findMatchingInterface(portName: string, interfaces: Array<{ name: string }>): string | null {
+function findMatchingInterface(
+  portName: string,
+  interfaces: Array<{ name: string }>,
+): string | null {
   const normalized = portName.toLowerCase().replace(/[:\s]/g, '')
   for (const iface of interfaces) {
     if (iface.name.toLowerCase() === portName.toLowerCase()) return iface.name

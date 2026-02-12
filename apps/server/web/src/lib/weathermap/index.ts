@@ -118,10 +118,18 @@ function createOffsetPathD(
     const p2 = path.getPointAtLength(Math.min(len, t + dt))
     const a = Math.atan2(p2.y - p1.y, p2.x - p1.x)
 
-    points.push(`${(p.x - Math.sin(a) * offset).toFixed(2)} ${(p.y + Math.cos(a) * offset).toFixed(2)}`)
+    points.push(
+      `${(p.x - Math.sin(a) * offset).toFixed(2)} ${(p.y + Math.cos(a) * offset).toFixed(2)}`,
+    )
   }
 
-  return `M ${points[0]}` + points.slice(1).map((p) => ` L ${p}`).join('')
+  return (
+    `M ${points[0]}` +
+    points
+      .slice(1)
+      .map((p) => ` L ${p}`)
+      .join('')
+  )
 }
 
 // --- WeathermapController ---
@@ -299,7 +307,11 @@ export class WeathermapController {
     }
   }
 
-  private ensureOverlayRecord(linkId: string, group: Element, origPaths: SVGPathElement[]): LinkOverlay {
+  private ensureOverlayRecord(
+    linkId: string,
+    group: Element,
+    origPaths: SVGPathElement[],
+  ): LinkOverlay {
     const existing = this.overlays.get(linkId)
     if (existing) return existing
 
@@ -331,17 +343,17 @@ export class WeathermapController {
     }
 
     if ('requestIdleCallback' in window) {
-      this.idleHandle = window.requestIdleCallback(handler, { timeout: 100 })
+      this.idleHandle = (window as any).requestIdleCallback(handler, { timeout: 100 })
     } else {
-      this.idleHandle = window.setTimeout(() => handler(undefined), 16)
+      this.idleHandle = (globalThis as any).setTimeout(() => handler(undefined), 16) as number
     }
   }
 
   private cancelIdleCallback(handle: number): void {
     if ('cancelIdleCallback' in window) {
-      window.cancelIdleCallback(handle)
+      (window as any).cancelIdleCallback(handle)
     } else {
-      window.clearTimeout(handle)
+      clearTimeout(handle)
     }
   }
 
@@ -553,9 +565,7 @@ export class WeathermapController {
     const direction: 'in' | 'out' = isIn ? 'out' : 'in'
     const durationMs = Math.max(50, durationSeconds * 1000)
     const needsNew =
-      !layer.animation ||
-      layer.animDurationMs !== durationMs ||
-      layer.animDirection !== direction
+      !layer.animation || layer.animDurationMs !== durationMs || layer.animDirection !== direction
 
     if (needsNew) {
       if (layer.animation) layer.animation.cancel()

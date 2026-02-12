@@ -5,7 +5,10 @@ import { goto } from '$app/navigation'
 import { api } from '$lib/api'
 import { metricsConnected, mappingStore, nodeMapping } from '$lib/stores'
 import InteractiveSvgDiagram from '$lib/components/InteractiveSvgDiagram.svelte'
-import type { NodeSelectEvent, SubgraphSelectEvent } from '$lib/components/InteractiveSvgDiagram.svelte'
+import type {
+  NodeSelectEvent,
+  SubgraphSelectEvent,
+} from '$lib/components/InteractiveSvgDiagram.svelte'
 import TopologySettings from '$lib/components/TopologySettings.svelte'
 import NodeMappingModal from '$lib/components/NodeMappingModal.svelte'
 import SubgraphInfoModal from '$lib/components/SubgraphInfoModal.svelte'

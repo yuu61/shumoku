@@ -15,11 +15,7 @@ interface Props {
   onSelect?: (nodeId: string) => void
 }
 
-let {
-  open = $bindable(false),
-  getSvgElement,
-  onSelect,
-}: Props = $props()
+let { open = $bindable(false), getSvgElement, onSelect }: Props = $props()
 
 // Collect nodes from SVG each time palette opens
 let allNodes = $derived.by(() => {

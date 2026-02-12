@@ -73,7 +73,12 @@ const RESOLVED_COLOR = '#16a34a' // green-600
 const RESOLVED_BG_COLOR = 'bg-green-500/10'
 
 const SEVERITY_RANK: Record<AlertSeverity, number> = {
-  disaster: 0, high: 1, average: 2, warning: 3, information: 4, ok: 5,
+  disaster: 0,
+  high: 1,
+  average: 2,
+  warning: 3,
+  information: 4,
+  ok: 5,
 }
 
 function getSeverityIcon(severity: AlertSeverity) {

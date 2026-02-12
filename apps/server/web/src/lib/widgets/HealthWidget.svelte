@@ -66,11 +66,10 @@ onMount(() => {
   return () => clearInterval(interval)
 })
 
-let overallHealthy = $derived(
-  health !== null &&
-    health.api &&
-    (health.dataSources.total === 0 || health.dataSources.connected > 0),
-)
+let overallHealthy = $derived.by(() => {
+  if (health === null) return false
+  return health.api && (health.dataSources.total === 0 || health.dataSources.connected > 0)
+})
 
 function handleSettings() {
   // Settings modal handled by parent

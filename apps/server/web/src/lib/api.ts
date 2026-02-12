@@ -36,6 +36,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${BASE_URL}${path}`
 
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(30_000),
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -124,8 +125,7 @@ export const dataSources = {
     return request<Alert[]>(url)
   },
 
-  getWebhookUrl: (id: string) =>
-    request<{ webhookPath: string }>(`/datasources/${id}/webhook-url`),
+  getWebhookUrl: (id: string) => request<{ webhookPath: string }>(`/datasources/${id}/webhook-url`),
 
   getFilterOptions: (id: string) =>
     request<{ sites: { slug: string; name: string }[]; tags: { slug: string; name: string }[] }>(
@@ -320,13 +320,16 @@ export interface PluginInfo {
   configSchema?: {
     type: 'object'
     required?: string[]
-    properties: Record<string, {
-      type: string
-      title?: string
-      description?: string
-      format?: string
-      default?: unknown
-    }>
+    properties: Record<
+      string,
+      {
+        type: string
+        title?: string
+        description?: string
+        format?: string
+        default?: unknown
+      }
+    >
   }
   enabled: boolean
   builtin: boolean
@@ -375,7 +378,9 @@ export const plugins = {
       try {
         const data = await response.json()
         if (data.error) message = data.error
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       throw new ApiError(message, response.status)
     }
 
