@@ -3,5 +3,15 @@
   "title": "Server",
   "description": "Shumoku Server documentation",
   "icon": "Server",
-  "pages": ["index"]
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "installation",
+    "---Usage---",
+    "topologies",
+    "datasources",
+    "dashboards",
+    "---Reference---",
+    "api"
+  ]
 }
