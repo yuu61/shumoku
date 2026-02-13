@@ -8,13 +8,13 @@
     "dev:api": "cd api && NODE_ENV=development bun --watch src/index.ts",
     "dev:demo": "DEMO_MODE=true bun run dev",
     "dev:web": "wait-on http://localhost:8080/api/health && cd web && bun run dev",
-    "build": "cd api && bun run build && cd ../web && bun run build",
+    "build": "cd api && bun run build && cd ../web && rm -rf .svelte-kit && bun run build",
     "start": "cd api && bun run start",
     "typecheck": "cd api && bun run typecheck && cd ../web && bun run check",
     "lint": "cd api && bun run lint"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "wait-on": "^9.0.3"
+    "concurrently": "^9.2.1",
+    "wait-on": "^9.0.4"
   }
 }

@@ -1,12 +1,22 @@
 // @ts-nocheck
-import * as __fd_glob_39 from "../content/docs/npm/netbox/visualization.ja.mdx?collection=docs"
-import * as __fd_glob_38 from "../content/docs/npm/netbox/visualization.en.mdx?collection=docs"
-import * as __fd_glob_37 from "../content/docs/npm/netbox/index.ja.mdx?collection=docs"
-import * as __fd_glob_36 from "../content/docs/npm/netbox/index.en.mdx?collection=docs"
-import * as __fd_glob_35 from "../content/docs/npm/netbox/api.ja.mdx?collection=docs"
-import * as __fd_glob_34 from "../content/docs/npm/netbox/api.en.mdx?collection=docs"
-import * as __fd_glob_33 from "../content/docs/server/index.ja.mdx?collection=docs"
-import * as __fd_glob_32 from "../content/docs/server/index.en.mdx?collection=docs"
+import * as __fd_glob_49 from "../content/docs/npm/netbox/visualization.ja.mdx?collection=docs"
+import * as __fd_glob_48 from "../content/docs/npm/netbox/visualization.en.mdx?collection=docs"
+import * as __fd_glob_47 from "../content/docs/npm/netbox/index.ja.mdx?collection=docs"
+import * as __fd_glob_46 from "../content/docs/npm/netbox/index.en.mdx?collection=docs"
+import * as __fd_glob_45 from "../content/docs/npm/netbox/api.ja.mdx?collection=docs"
+import * as __fd_glob_44 from "../content/docs/npm/netbox/api.en.mdx?collection=docs"
+import * as __fd_glob_43 from "../content/docs/server/topologies.ja.mdx?collection=docs"
+import * as __fd_glob_42 from "../content/docs/server/topologies.en.mdx?collection=docs"
+import * as __fd_glob_41 from "../content/docs/server/installation.ja.mdx?collection=docs"
+import * as __fd_glob_40 from "../content/docs/server/installation.en.mdx?collection=docs"
+import * as __fd_glob_39 from "../content/docs/server/index.ja.mdx?collection=docs"
+import * as __fd_glob_38 from "../content/docs/server/index.en.mdx?collection=docs"
+import * as __fd_glob_37 from "../content/docs/server/datasources.ja.mdx?collection=docs"
+import * as __fd_glob_36 from "../content/docs/server/datasources.en.mdx?collection=docs"
+import * as __fd_glob_35 from "../content/docs/server/dashboards.ja.mdx?collection=docs"
+import * as __fd_glob_34 from "../content/docs/server/dashboards.en.mdx?collection=docs"
+import * as __fd_glob_33 from "../content/docs/server/api.ja.mdx?collection=docs"
+import * as __fd_glob_32 from "../content/docs/server/api.en.mdx?collection=docs"
 import * as __fd_glob_31 from "../content/docs/npm/yaml-reference.ja.mdx?collection=docs"
 import * as __fd_glob_30 from "../content/docs/npm/yaml-reference.en.mdx?collection=docs"
 import * as __fd_glob_29 from "../content/docs/npm/vendor-icons.ja.mdx?collection=docs"
@@ -47,4 +57,4 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
-export const docs = await create.docs("docs", "content/docs", {"npm/meta.en.json": __fd_glob_0, "npm/meta.ja.json": __fd_glob_1, "server/meta.en.json": __fd_glob_2, "server/meta.ja.json": __fd_glob_3, "npm/netbox/meta.en.json": __fd_glob_4, "npm/netbox/meta.ja.json": __fd_glob_5, }, {"npm/about.en.mdx": __fd_glob_6, "npm/about.ja.mdx": __fd_glob_7, "npm/basic-diagram.en.mdx": __fd_glob_8, "npm/basic-diagram.ja.mdx": __fd_glob_9, "npm/cli.en.mdx": __fd_glob_10, "npm/cli.ja.mdx": __fd_glob_11, "npm/custom-integration.en.mdx": __fd_glob_12, "npm/custom-integration.ja.mdx": __fd_glob_13, "npm/examples.en.mdx": __fd_glob_14, "npm/examples.ja.mdx": __fd_glob_15, "npm/index.en.mdx": __fd_glob_16, "npm/index.ja.mdx": __fd_glob_17, "npm/interactive-features.en.mdx": __fd_glob_18, "npm/interactive-features.ja.mdx": __fd_glob_19, "npm/json-reference.en.mdx": __fd_glob_20, "npm/json-reference.ja.mdx": __fd_glob_21, "npm/multi-file.en.mdx": __fd_glob_22, "npm/multi-file.ja.mdx": __fd_glob_23, "npm/organizing-groups.en.mdx": __fd_glob_24, "npm/organizing-groups.ja.mdx": __fd_glob_25, "npm/styling-themes.en.mdx": __fd_glob_26, "npm/styling-themes.ja.mdx": __fd_glob_27, "npm/vendor-icons.en.mdx": __fd_glob_28, "npm/vendor-icons.ja.mdx": __fd_glob_29, "npm/yaml-reference.en.mdx": __fd_glob_30, "npm/yaml-reference.ja.mdx": __fd_glob_31, "server/index.en.mdx": __fd_glob_32, "server/index.ja.mdx": __fd_glob_33, "npm/netbox/api.en.mdx": __fd_glob_34, "npm/netbox/api.ja.mdx": __fd_glob_35, "npm/netbox/index.en.mdx": __fd_glob_36, "npm/netbox/index.ja.mdx": __fd_glob_37, "npm/netbox/visualization.en.mdx": __fd_glob_38, "npm/netbox/visualization.ja.mdx": __fd_glob_39, });
+export const docs = await create.docs("docs", "content/docs", {"npm/meta.en.json": __fd_glob_0, "npm/meta.ja.json": __fd_glob_1, "server/meta.en.json": __fd_glob_2, "server/meta.ja.json": __fd_glob_3, "npm/netbox/meta.en.json": __fd_glob_4, "npm/netbox/meta.ja.json": __fd_glob_5, }, {"npm/about.en.mdx": __fd_glob_6, "npm/about.ja.mdx": __fd_glob_7, "npm/basic-diagram.en.mdx": __fd_glob_8, "npm/basic-diagram.ja.mdx": __fd_glob_9, "npm/cli.en.mdx": __fd_glob_10, "npm/cli.ja.mdx": __fd_glob_11, "npm/custom-integration.en.mdx": __fd_glob_12, "npm/custom-integration.ja.mdx": __fd_glob_13, "npm/examples.en.mdx": __fd_glob_14, "npm/examples.ja.mdx": __fd_glob_15, "npm/index.en.mdx": __fd_glob_16, "npm/index.ja.mdx": __fd_glob_17, "npm/interactive-features.en.mdx": __fd_glob_18, "npm/interactive-features.ja.mdx": __fd_glob_19, "npm/json-reference.en.mdx": __fd_glob_20, "npm/json-reference.ja.mdx": __fd_glob_21, "npm/multi-file.en.mdx": __fd_glob_22, "npm/multi-file.ja.mdx": __fd_glob_23, "npm/organizing-groups.en.mdx": __fd_glob_24, "npm/organizing-groups.ja.mdx": __fd_glob_25, "npm/styling-themes.en.mdx": __fd_glob_26, "npm/styling-themes.ja.mdx": __fd_glob_27, "npm/vendor-icons.en.mdx": __fd_glob_28, "npm/vendor-icons.ja.mdx": __fd_glob_29, "npm/yaml-reference.en.mdx": __fd_glob_30, "npm/yaml-reference.ja.mdx": __fd_glob_31, "server/api.en.mdx": __fd_glob_32, "server/api.ja.mdx": __fd_glob_33, "server/dashboards.en.mdx": __fd_glob_34, "server/dashboards.ja.mdx": __fd_glob_35, "server/datasources.en.mdx": __fd_glob_36, "server/datasources.ja.mdx": __fd_glob_37, "server/index.en.mdx": __fd_glob_38, "server/index.ja.mdx": __fd_glob_39, "server/installation.en.mdx": __fd_glob_40, "server/installation.ja.mdx": __fd_glob_41, "server/topologies.en.mdx": __fd_glob_42, "server/topologies.ja.mdx": __fd_glob_43, "npm/netbox/api.en.mdx": __fd_glob_44, "npm/netbox/api.ja.mdx": __fd_glob_45, "npm/netbox/index.en.mdx": __fd_glob_46, "npm/netbox/index.ja.mdx": __fd_glob_47, "npm/netbox/visualization.en.mdx": __fd_glob_48, "npm/netbox/visualization.ja.mdx": __fd_glob_49, });

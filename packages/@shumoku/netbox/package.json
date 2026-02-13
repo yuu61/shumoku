@@ -49,9 +49,9 @@
     "@shumoku/renderer": "^0.2.25"
   },
   "devDependencies": {
-    "@types/node": "^25.0.7",
-    "typescript": "^5.6.3",
-    "vitest": "^4.0.17"
+    "@types/node": "^25.2.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "publishConfig": {
     "access": "public"
